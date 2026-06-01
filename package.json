@@ -1,8 +1,29 @@
 {
   "name": "onlinecode",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
-  "description": "OnlineCode - 2026 cross-platform online code editor and compiler",
+  "description": "Instant online code editor & compiler — 19 languages, no login required. PWA + Vercel + Piston.",
+  "homepage": "https://github.com/badhope/OnlineCode#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/badhope/OnlineCode.git"
+  },
+  "license": "MIT",
+  "author": "OnlineCode Contributors",
+  "keywords": [
+    "code-editor",
+    "online-compiler",
+    "code-playground",
+    "piston",
+    "monaco-editor",
+    "nextjs",
+    "typescript",
+    "react",
+    "pwa",
+    "tailwindcss",
+    "collaborative-editing",
+    "self-hosted"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
