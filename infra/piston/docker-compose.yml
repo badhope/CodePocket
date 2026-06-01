@@ -10,12 +10,14 @@ services:
     environment:
       - PISTON_PORT=2000
       - PISTON_LOG_LEVEL=info
-      - PISTON_DISABLE_NETWORK=true
-      - PISTON_ENABLE_NETWORK=false
+      - PISTON_DISABLE_NETWORK=false
+      - PISTON_ENABLE_NETWORK=true
       - PISTON_MAX_CONCURRENT=8
       - PISTON_LIMIT_CPU_TIME=true
       - PISTON_LIMIT_MEMORY=true
       - PISTON_LIMIT_WALL_TIME=true
+      - PISTON_RUN_TIMEOUT=60000
+      - PISTON_COMPILE_TIMEOUT=60000
       - PISTON_RUNNER_DETECTION=shared
       - PISTON_KEY=${PISTON_KEY:-local-dev}
     volumes:
@@ -24,8 +26,8 @@ services:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2000/api/v2/runtimes"]
       interval: 30s
       timeout: 5s
-      retries: 3
-      start_period: 20s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:

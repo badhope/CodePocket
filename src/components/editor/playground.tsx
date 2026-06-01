@@ -296,19 +296,50 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
 
     appendOutput({ type: "info", text: `> ${meta.label} ${version ?? meta.defaultVersion}` });
 
-    // Emit package install info
-    if (packages.length > 0 && ecosystem) {
-      appendOutput({ type: "info", text: `> ${t("installing")} ${packages.join(", ")}` });
-    }
+    // If packages are added, we need to install them first
+    // Strategy: create a setup script file that installs packages before running user code
+    const hasPackages = packages.length > 0 && ecosystem;
 
     try {
+      let executeFiles = files.map((f) => ({ name: f.name, content: f.content }));
+      let executeLanguage = meta.pistonLanguage;
+      let executeVersion = version ?? meta.defaultVersion;
+
+      if (hasPackages) {
+        appendOutput({ type: "info", text: `> ${t("installing")} ${packages.join(", ")}` });
+
+        // Generate install + run script for each ecosystem
+        const installCmd = ecosystem!.installCmd;
+        const pkgList = packages.join(" ");
+        const mainFile = files[0]?.name ?? "main";
+        const runCmd = meta.runCommand.replace("{filename}", mainFile);
+
+        // Build a bash setup script that installs packages then runs the code
+        const setupScript = [
+          "#!/bin/bash",
+          "set -e",
+          `echo "=== Installing: ${pkgList}"`,
+          `${installCmd} ${pkgList} 2>&1`,
+          `echo "=== Running: ${runCmd}"`,
+          runCmd,
+        ].join("\n");
+
+        // Use bash language to execute the setup script
+        executeFiles = [
+          { name: "setup.sh", content: setupScript },
+          ...files.map((f) => ({ name: f.name, content: f.content })),
+        ];
+        executeLanguage = "bash";
+        executeVersion = "5.2.0";
+      }
+
       const res = await fetch("/api/execute", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          language: meta.pistonLanguage,
-          version: version ?? meta.defaultVersion,
-          files: files.map((f) => ({ name: f.name, content: f.content })),
+          language: executeLanguage,
+          version: executeVersion,
+          files: executeFiles,
           stdin: stdinInput,
           args: [],
         }),
