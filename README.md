@@ -1,83 +1,147 @@
 # 🚀 OnlineCode
 
-> 纯前端离线多语言编译器 | 支持Python/C/C++/Rust/Go | 3D绘图 | 移动端适配 | 无需后端
+> 2026 cross-platform online code editor and compiler
+> Pure web (PWA) + Vercel hosted + 19+ languages via Piston
 
-[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-brightgreen)](https://badhope.github.io/OnlineCode)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-blue)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org)
+[![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8)](https://tailwindcss.com)
+[![Drizzle](https://img.shields.io/badge/Drizzle-0.45-c5f74f)](https://orm.drizzle.team)
+[![NextAuth](https://img.shields.io/badge/NextAuth-v5-purple)](https://authjs.dev)
+[![PWA](https://img.shields.io/badge/PWA-enabled-green)](https://web.dev/progressive-web-apps)
 
-## ✨ 特性
+## ✨ Features
 
-- 🌐 **纯前端** - 无需后端服务器，完全在浏览器中运行
-- 🔄 **离线支持** - PWA技术，可离线使用
-- 🐍 **多语言** - Python, C/C++, Rust, Go, JavaScript
-- 📦 **包管理** - 在线安装Python包（通过Pyodide）
-- 🎨 **3D绘图** - 内置Three.js支持3D可视化
-- 📱 **移动端** - 响应式设计，手机平板完美适配
-- 🎨 **深色主题** - 舒适的代码编辑体验
-- 💾 **自动保存** - 代码自动保存到本地
+- 🌐 **20+ languages**: Python, JS, TS, C, C++, Rust, Go, Java, C#, PHP, Ruby, Kotlin, Swift, Scala, Bash, Lua, SQL, HTML, CSS
+- ⚡ **Piston execution**: Secure code execution via Piston API (self-hostable)
+- 📁 **Multi-file projects**: File tree, tabbed editing, version history
+- 🔐 **Full auth**: Email/password, GitHub & Google OAuth, JWT sessions
+- 👥 **Collaboration-ready**: Yjs CRDT infrastructure
+- 🌍 **6 locales**: English, Chinese, Japanese, Korean, Spanish, French
+- 🎨 **Themes**: Light/Dark/System with shadcn/ui
+- 📦 **Storage**: Vercel Blob + Vercel Postgres
+- 🛡️ **Security**: Rate limiting, CORS, CSP, HSTS, bcrypt(12)
+- 📱 **PWA**: Installable, offline-capable
+- 🔭 **Observability**: Sentry, structured logs
+- 🧪 **Tests**: Vitest (unit) + Playwright (E2E)
+- 🚀 **CI/CD**: GitHub Actions + Vercel
 
-## 🚀 在线体验
+## 🛠️ Tech Stack
 
-👉 **[https://badhope.github.io/OnlineCode](https://badhope.github.io/OnlineCode)**
+- **Framework**: Next.js 16.2 (App Router) + React 19.2 + Turbopack
+- **Language**: TypeScript 5.9
+- **Styling**: Tailwind CSS 4 + shadcn/ui (new-york)
+- **State**: Zustand 5 + TanStack Query 5
+- **DB**: Vercel Postgres (Neon) + Drizzle ORM
+- **Auth**: NextAuth v5 (Auth.js) with Drizzle adapter
+- **Cache/Queue**: Upstash Redis
+- **Storage**: Vercel Blob
+- **Editor**: Monaco Editor (VS Code)
+- **Terminal**: xterm.js
+- **3D**: Three.js + React Three Fiber
+- **i18n**: next-intl
+- **Execution**: Piston API (self-hostable)
+- **Observability**: Sentry
+- **Testing**: Vitest + Playwright
+- **CI/CD**: GitHub Actions + Vercel
 
-## 🛠️ 技术栈
+## 🏃 Quick Start
 
-- **前端框架**: 原生 JavaScript (ES6+)
-- **Python运行时**: [Pyodide](https://pyodide.org/) (WebAssembly)
-- **3D绘图**: [Three.js](https://threejs.org/)
-- **样式**: CSS3 + Flexbox/Grid
-- **PWA**: Service Worker + Manifest
+```bash
+# Install
+pnpm install --frozen-lockfile
 
-## 📦 项目结构
+# Copy environment template
+cp .env.example .env
+# Edit .env with your secrets
+
+# Generate DB migrations
+pnpm db:generate
+pnpm db:migrate
+
+# Dev
+pnpm dev          # http://localhost:3000
+
+# Build
+pnpm build
+
+# Test
+pnpm test
+pnpm test:e2e
+
+# Lint + format
+pnpm lint
+pnpm format
+```
+
+## 📁 Project Structure
 
 ```
 OnlineCode/
-├── index.html          # 主页面
-├── manifest.json       # PWA配置
-├── sw.js              # Service Worker
-├── styles/
-│   └── main.css       # 主样式
-├── js/
-│   ├── app.js         # 主应用逻辑
-│   ├── editor.js      # 代码编辑器
-│   ├── compiler.js    # 编译器模块
-│   └── packages.js    # 包管理器
-└── assets/            # 图标资源
+├── src/
+│   ├── app/                  # Next.js App Router
+│   │   ├── [locale]/         # Localized routes
+│   │   │   ├── sign-in/
+│   │   │   ├── sign-up/
+│   │   │   ├── page.tsx      # Homepage
+│   │   │   └── layout.tsx
+│   │   └── api/              # API routes
+│   │       ├── auth/         # NextAuth
+│   │       ├── projects/     # Projects CRUD
+│   │       ├── execute/      # Code execution
+│   │       ├── share/        # Share links
+│   │       └── health/       # Health check
+│   ├── components/           # React components
+│   │   ├── ui/               # shadcn primitives
+│   │   └── layout/           # Header, user menu, etc.
+│   ├── lib/                  # Server + shared utilities
+│   │   ├── auth/             # NextAuth config
+│   │   ├── db/               # Drizzle schema + client
+│   │   ├── execution/        # Piston client + languages
+│   │   ├── storage/          # Redis + Blob
+│   │   ├── validators/       # Zod schemas
+│   │   ├── i18n/             # next-intl config
+│   │   └── utils/            # Helpers
+│   ├── messages/             # i18n message catalogs
+│   └── proxy.ts              # next-intl middleware (Next 16)
+├── drizzle/                  # Generated migrations
+├── public/                   # Static assets + PWA
+├── tests/                    # E2E tests
+└── .github/workflows/        # CI
 ```
 
-## 🏃 本地运行
+## 🔐 Environment Variables
 
+See `.env.example` for the full list. Required:
+
+- `POSTGRES_URL` - Database
+- `AUTH_SECRET` - NextAuth secret
+- `AUTH_URL` - Public URL
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` - Redis
+- `BLOB_READ_WRITE_TOKEN` - Vercel Blob
+- `PISTON_API_URL` - Piston endpoint (default: emkc.org)
+
+Optional:
+- `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` - GitHub OAuth
+- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` - Google OAuth
+- `SENTRY_DSN` - Error tracking
+
+## 🚀 Deployment (Vercel)
+
+1. Push to GitHub
+2. Import in Vercel
+3. Add environment variables
+4. Deploy
+
+The execution sandbox runs via Piston API. For self-hosting Piston:
 ```bash
-# 克隆仓库
-git clone https://github.com/badhope/OnlineCode.git
-cd OnlineCode
-
-# 启动本地服务器
-python3 -m http.server 8000
-
-# 访问 http://localhost:8000
+git clone https://github.com/engineer-man/piston
+cd piston
+docker compose up
+# Piston now at http://localhost:2000/api/v2
 ```
 
-## 🗺️ 开发路线图
+## 📜 License
 
-- [x] 基础框架搭建
-- [x] 代码编辑器
-- [x] Python执行 (Pyodide)
-- [x] JavaScript执行
-- [x] 包管理器UI
-- [x] PWA支持
-- [ ] C/C++编译 (WebAssembly)
-- [ ] Rust编译 (WebAssembly)
-- [ ] Go编译 (WebAssembly)
-- [ ] 3D绘图功能
-- [ ] 代码分享功能
-- [ ] 主题切换
-- [ ] 文件系统支持
-
-## 🤝 贡献
-
-欢迎提交Issue和PR！
-
-## 📄 许可证
-
-MIT License
+MIT
