@@ -7,33 +7,43 @@ const globalForDb = globalThis as unknown as {
   dbInstance: ReturnType<typeof drizzle<typeof schema>> | undefined;
 };
 
-function getConnection() {
-  if (globalForDb.conn) return globalForDb.conn;
+function resolveUrl(): string {
   const url = process.env.POSTGRES_URL;
-  if (!url) {
-    throw new Error("Database is not configured. Set POSTGRES_URL in your environment.");
+  if (url && url.length > 0) return url;
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return "postgres://build:build@127.0.0.1:5432/build";
   }
-  const conn = postgres(url, {
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10,
-    prepare: false,
-  });
-  if (process.env.NODE_ENV !== "production") globalForDb.conn = conn;
-  return conn;
+  throw new Error("Database is not configured. Set POSTGRES_URL in your environment.");
 }
 
 function createDb() {
-  return drizzle(getConnection(), { schema, casing: "snake_case" });
+  const conn = postgres(resolveUrl(), {
+    max: process.env.POSTGRES_URL ? 10 : 1,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    prepare: false,
+    no_prepare: true,
+    onnotice: () => {},
+    connection: { application_name: "onlinecode" },
+  });
+  if (process.env.POSTGRES_URL && process.env.NODE_ENV !== "production") {
+    globalForDb.conn = conn;
+  }
+  return drizzle(conn, { schema, casing: "snake_case" });
 }
 
-function init() {
-  if (!globalForDb.dbInstance) globalForDb.dbInstance = createDb();
-  return globalForDb.dbInstance;
-}
+const dbInstance: ReturnType<typeof drizzle<typeof schema>> = createDb();
+if (process.env.NODE_ENV !== "production") globalForDb.dbInstance = dbInstance;
 
-init();
+const dbProxy = new Proxy(dbInstance, {
+  get(target, prop, receiver) {
+    return Reflect.get(target, prop, receiver);
+  },
+  has(target, prop) {
+    return Reflect.has(target, prop);
+  },
+});
 
-export const db = globalForDb.dbInstance as ReturnType<typeof drizzle<typeof schema>>;
+export const db = dbProxy as ReturnType<typeof drizzle<typeof schema>>;
 export { schema };
-export type Database = typeof db;
+export type Database = ReturnType<typeof drizzle<typeof schema>>;
