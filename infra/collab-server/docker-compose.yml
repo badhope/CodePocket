@@ -1,0 +1,20 @@
+services:
+  collab:
+    build: .
+    container_name: onlinecode-collab
+    restart: unless-stopped
+    ports:
+      - "1234:1234"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "1234"
+      COLLAB_REQUIRE_AUTH: "${COLLAB_REQUIRE_AUTH:-false}"
+      COLLAB_SHARED_SECRET: "${COLLAB_SHARED_SECRET:-}"
+      COLLAB_MAX_DOCS: "1000"
+      COLLAB_DOC_TTL_MS: "3600000"
+      COLLAB_LOG_LEVEL: "info"
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

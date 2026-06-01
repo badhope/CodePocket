@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { snippets, projects, shares } from "@/lib/db/schema";
@@ -16,6 +16,29 @@ const createShareSchema = z.object({
   password: z.string().min(4).max(128).optional(),
   expiresIn: z.number().int().min(0).max(2_592_000).default(2_592_000),
 });
+
+export async function GET(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const url = new URL(req.url);
+  const projectId = url.searchParams.get("projectId");
+  const snippetId = url.searchParams.get("snippetId");
+  if (!projectId && !snippetId) {
+    return NextResponse.json({ error: "missing_target" }, { status: 400 });
+  }
+  const rows = await db
+    .select()
+    .from(shares)
+    .where(
+      and(
+        eq(shares.authorId, session.user.id),
+        projectId ? eq(shares.projectId, projectId) : eq(shares.snippetId, snippetId!),
+      ),
+    )
+    .orderBy(desc(shares.createdAt))
+    .limit(100);
+  return NextResponse.json({ shares: rows });
+}
 
 export async function POST(req: Request) {
   const session = await auth();

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
+import { useSession } from "next-auth/react";
+import type { editor as MonacoEditor } from "monaco-editor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,11 +32,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Play, Square, Save, Trash2, X, AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { Play, Square, Save, Trash2, X, AlertCircle, ArrowLeft, Loader2, Boxes } from "lucide-react";
 import { useEditorStore } from "@/stores/editor";
 import { FileTree, type FileNode } from "@/components/project/file-tree";
+import { PackageManager } from "@/components/project/package-manager";
+import { CollabPresence } from "@/components/collab/collab-presence";
+import { ShareDialog } from "@/components/share/share-dialog";
 import { getLanguage, type ExecuteResponse } from "@/lib/execution";
+import { useYCollab, useYMonacoBinding } from "@/lib/collab";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 const CodeEditor = dynamic(
@@ -116,9 +123,11 @@ function languageFromPath(path: string): string {
 export function ProjectEditor({ id }: ProjectEditorProps) {
   const router = useRouter();
   const locale = useLocale();
+  const { data: session } = useSession();
   const [data, setData] = useState<ProjectData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleteFileId, setDeleteFileId] = useState<FileNode | null>(null);
+  const [monacoEditor, setMonacoEditor] = useState<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const {
@@ -142,6 +151,20 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
     clearOutput,
     setActiveOutputTab,
   } = useEditorStore();
+
+  const userId = session?.user?.id ?? "anon";
+  const userName = session?.user?.name ?? "Guest";
+  const t = useTranslations("projectEditor");
+  const texec = useTranslations("execution");
+  const tpkg = useTranslations("packages");
+  const tc = useTranslations("common");
+  const collabRoomId = activeTabId ? `p:${id}:${activeTabId}` : null;
+  const { ydoc, status: collabStatus, users: collabUsers } = useYCollab({
+    roomId: collabRoomId,
+    userId,
+    userName,
+  });
+  useYMonacoBinding(monacoEditor, { ydoc });
 
   useEffect(() => {
     fetch(`/api/projects/${id}/files`)
@@ -212,12 +235,12 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
   const onDelete = useCallback(
     async (fileId: string, path: string) => {
       if (!fileId) {
-        toast.error("Folder delete not yet supported");
+        toast.error(t("folderDeleteNotSupported"));
         return;
       }
       setDeleteFileId({ id: fileId, path, type: "file" });
     },
-    [],
+    [t],
   );
 
   const confirmDelete = useCallback(async () => {
@@ -227,13 +250,13 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
     const res = await fetch(`/api/projects/${id}/files/${fileId}`, { method: "DELETE" });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "Delete failed");
+      toast.error(err.error || t("deleteFailed"));
       return;
     }
     setData((d) => (d ? { ...d, files: d.files.filter((f) => f.id !== fileId) } : d));
     closeTab(fileId);
-    toast.success("File deleted");
-  }, [deleteFileId, id, closeTab]);
+    toast.success(t("fileDeleted"));
+  }, [deleteFileId, id, closeTab, t]);
 
   const onRename = useCallback(
     async (fileId: string, newPath: string) => {
@@ -244,7 +267,7 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Rename failed");
+        toast.error(err.error || t("renameFailed"));
         return;
       }
       setData((d) =>
@@ -252,10 +275,10 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
           ? { ...d, files: d.files.map((f) => (f.id === fileId ? { ...f, path: newPath } : f)) }
           : d,
       );
-      const t = tabs.find((t) => t.id === fileId);
-      if (t) updateTab(fileId, { path: newPath });
+      const t0 = tabs.find((t2) => t2.id === fileId);
+      if (t0) updateTab(fileId, { path: newPath });
     },
-    [id, tabs, updateTab],
+    [id, tabs, updateTab, t],
   );
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
@@ -283,8 +306,8 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
 
   const saveNow = useCallback(async () => {
     if (!activeTab) return;
-    const t = saveTimers.current.get(activeTab.id);
-    if (t) clearTimeout(t);
+    const timer = saveTimers.current.get(activeTab.id);
+    if (timer) clearTimeout(timer);
     saveTimers.current.delete(activeTab.id);
     const res = await fetch(`/api/projects/${id}/files/${activeTab.id}`, {
       method: "PATCH",
@@ -293,17 +316,17 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
     });
     if (res.ok) {
       markClean(activeTab.id);
-      toast.success("Saved");
+      toast.success(t("saved"));
     } else {
-      toast.error("Save failed");
+      toast.error(t("saveFailed"));
     }
-  }, [activeTab, id, markClean]);
+  }, [activeTab, id, markClean, t]);
 
   const run = useCallback(async () => {
     if (!activeTab || isExecuting) return;
     const meta = getLanguage(languageFromPath(activeTab.path));
     if (!meta) {
-      toast.error("No language for this file");
+      toast.error(t("noLanguageDetected"));
       return;
     }
     setIsExecuting(true);
@@ -349,7 +372,7 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
       setIsExecuting(false);
       setIsRunning(false);
     }
-  }, [activeTab, isExecuting, setIsExecuting, setIsRunning, clearOutput, appendOutput]);
+  }, [activeTab, isExecuting, setIsExecuting, setIsRunning, clearOutput, appendOutput, t]);
 
   if (error) {
     return (
@@ -358,11 +381,11 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <AlertCircle className="text-destructive size-12" />
             <h2 className="text-lg font-semibold">
-              {error === "not_found" ? "Project not found" : error === "forbidden" ? "Access denied" : "Failed to load"}
+              {error === "not_found" ? t("projectNotFound") : error === "forbidden" ? t("accessDenied") : t("loadFailed")}
             </h2>
             <Button asChild>
               <Link href={`/${locale}/projects`}>
-                <ArrowLeft className="mr-2 size-4" /> Back
+                <ArrowLeft className="mr-2 size-4" /> {t("back")}
               </Link>
             </Button>
           </CardContent>
@@ -395,7 +418,7 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
         </Button>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-semibold">{data.project.name}</span>
-          <span className="text-muted-foreground truncate text-xs">{data.project.description || "No description"}</span>
+          <span className="text-muted-foreground truncate text-xs">{data.project.description || t("noDescription")}</span>
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -403,11 +426,13 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
               <Save className="size-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Save (Ctrl+S)</TooltipContent>
+          <TooltipContent>{t("saveTooltip")}</TooltipContent>
         </Tooltip>
+        <CollabPresence users={collabUsers} status={collabStatus} selfId={userId} />
+        <ShareDialog projectId={id} />
         <Button size="sm" onClick={run} disabled={!activeTab || isExecuting}>
           {isExecuting ? <Square className="size-4" /> : <Play className="size-4" />}
-          {isExecuting ? "Stop" : "Run"}
+          {isExecuting ? t("stop") : t("run")}
         </Button>
       </div>
 
@@ -429,7 +454,7 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
               <div className="flex h-full flex-col">
                 <div className="bg-muted/30 flex items-center gap-0.5 overflow-x-auto border-b px-1 py-0.5">
                   {tabs.length === 0 ? (
-                    <span className="text-muted-foreground px-2 py-1 text-xs">No file open</span>
+                    <span className="text-muted-foreground px-2 py-1 text-xs">{t("noFileOpen")}</span>
                   ) : (
                     tabs.map((t) => (
                       <div
@@ -468,10 +493,11 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
                       wordWrap={wordWrap ? "on" : "off"}
                       minimap={minimap}
                       height="100%"
+                      onMount={(ed) => setMonacoEditor(ed)}
                     />
                   ) : (
                     <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-                      Select a file to start editing
+                      {t("selectFileToEdit")}
                     </div>
                   )}
                 </div>
@@ -486,9 +512,12 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
               >
                 <div className="flex items-center justify-between border-b px-2">
                   <TabsList className="bg-transparent">
-                    <TabsTrigger value="console">Console</TabsTrigger>
-                    <TabsTrigger value="graphics">Graphics</TabsTrigger>
-                    <TabsTrigger value="canvas3d">3D</TabsTrigger>
+                    <TabsTrigger value="console">{texec("console")}</TabsTrigger>
+                    <TabsTrigger value="graphics">{texec("graphics")}</TabsTrigger>
+                    <TabsTrigger value="canvas3d">{texec("canvas3d")}</TabsTrigger>
+                    <TabsTrigger value="packages">
+                      <Boxes className="mr-1 size-3" /> {tpkg("title")}
+                    </TabsTrigger>
                   </TabsList>
                   <Button size="icon" variant="ghost" className="size-6" onClick={clearOutput} aria-label="Clear">
                     <Trash2 className="size-3" />
@@ -497,7 +526,7 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
                 <TabsContent value="console" className="mt-0 flex-1 overflow-hidden">
                   <div className="bg-background h-full overflow-auto p-2 font-mono text-xs">
                     {output.length === 0 ? (
-                      <p className="text-muted-foreground p-4 text-center">No output yet</p>
+                      <p className="text-muted-foreground p-4 text-center">{t("noOutput")}</p>
                     ) : (
                       output.map((line, i) => (
                         <div
@@ -507,9 +536,9 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
                               ? "text-red-500"
                               : line.type === "warn"
                                 ? "text-yellow-500"
-                                : line.type === "info"
-                                  ? "text-blue-500"
-                                  : "text-foreground"
+                                  : line.type === "info"
+                                    ? "text-blue-500"
+                                    : "text-foreground"
                           }
                         >
                           {line.text}
@@ -524,6 +553,9 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
                 <TabsContent value="canvas3d" className="mt-0 flex-1 overflow-hidden">
                   <Scene3D />
                 </TabsContent>
+                <TabsContent value="packages" className="mt-0 flex-1 overflow-hidden">
+                  <PackageManager projectId={id} className="h-full overflow-auto" />
+                </TabsContent>
               </Tabs>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -533,14 +565,14 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
       <AlertDialog open={!!deleteFileId}         onOpenChange={(o: boolean) => !o && setDeleteFileId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete file?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteFileConfirm")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete <code className="font-mono">{deleteFileId?.path}</code>.
+              {t("deleteFileWarning", { path: deleteFileId?.path ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>{tc("delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -338,6 +338,38 @@ export const auditLogs = pgTable(
 );
 
 // ============================================================================
+// PACKAGES
+// ============================================================================
+
+export const packageEcosystemEnum = pgEnum("package_ecosystem", [
+  "npm",
+  "pip",
+  "cargo",
+  "maven",
+  "gem",
+  "go",
+]);
+
+export const packages = pgTable(
+  "package",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    ecosystem: packageEcosystemEnum("ecosystem").notNull(),
+    name: varchar("name", { length: 128 }).notNull(),
+    version: varchar("version", { length: 64 }),
+    dev: boolean("dev").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("package_project_idx").on(t.projectId),
+    uniqueIndex("package_unique_idx").on(t.projectId, t.ecosystem, t.name),
+  ],
+);
+
+// ============================================================================
 // RELATIONS
 // ============================================================================
 
@@ -356,6 +388,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   team: one(teams, { fields: [projects.teamId], references: [teams.id] }),
   files: many(projectFiles),
   executions: many(executions),
+  packages: many(packages),
 }));
 
 export const projectFilesRelations = relations(projectFiles, ({ one, many }) => ({
@@ -409,3 +442,5 @@ export type Team = typeof teams.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type Package = typeof packages.$inferSelect;
+export type NewPackage = typeof packages.$inferInsert;

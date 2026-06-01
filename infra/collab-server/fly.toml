@@ -1,0 +1,49 @@
+# Fly.io config for the OnlineCode collab server.
+# Requires the flyctl CLI: https://fly.io/docs/hands-on/install-flyctl/
+#
+#   fly launch --copy-config --name onlinecode-collab
+#   fly secrets set COLLAB_SHARED_SECRET=<random>
+#   fly deploy
+#   fly secrets set NEXT_PUBLIC_COLLAB_URL=wss://onlinecode-collab.fly.dev --app onlinecode
+
+app = "onlinecode-collab"
+primary_region = "iad"
+kill_signal = "SIGINT"
+kill_timeout = "10s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "1234"
+  COLLAB_REQUIRE_AUTH = "true"
+  COLLAB_MAX_DOCS = "1000"
+  COLLAB_DOC_TTL_MS = "3600000"
+  COLLAB_LOG_LEVEL = "info"
+
+[[services]]
+  internal_port = 1234
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 5000
+    soft_limit = 4000
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

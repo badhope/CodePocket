@@ -10,22 +10,26 @@
 [![Drizzle](https://img.shields.io/badge/Drizzle-0.45-c5f74f)](https://orm.drizzle.team)
 [![NextAuth](https://img.shields.io/badge/NextAuth-v5-purple)](https://authjs.dev)
 [![PWA](https://img.shields.io/badge/PWA-enabled-green)](https://web.dev/progressive-web-apps)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/badhope/OnlineCode/actions/workflows/ci.yml/badge.svg)](https://github.com/badhope/OnlineCode/actions/workflows/ci.yml)
 
 ## ✨ Features
 
-- 🌐 **20+ languages**: Python, JS, TS, C, C++, Rust, Go, Java, C#, PHP, Ruby, Kotlin, Swift, Scala, Bash, Lua, SQL, HTML, CSS
+- 🌐 **19 languages**: Python, JavaScript, TypeScript, C, C++, Rust, Go, Java, C#, PHP, Ruby, Kotlin, Swift, Scala, Bash, Lua, SQL, HTML, CSS
 - ⚡ **Piston execution**: Secure code execution via Piston API (self-hostable)
-- 📁 **Multi-file projects**: File tree, tabbed editing, version history
-- 🔐 **Full auth**: Email/password, GitHub & Google OAuth, JWT sessions
-- 👥 **Collaboration-ready**: Yjs CRDT infrastructure
-- 🌍 **6 locales**: English, Chinese, Japanese, Korean, Spanish, French
-- 🎨 **Themes**: Light/Dark/System with shadcn/ui
-- 📦 **Storage**: Vercel Blob + Vercel Postgres
+- 📁 **Multi-file projects**: File tree, tabbed editing, auto-save, version history
+- 🔐 **Full auth**: Email/password, GitHub & Google OAuth, JWT sessions, rate limiting
+- 👥 **Collaboration-ready**: Yjs CRDT infrastructure with Hocuspocus server
+- 🌍 **6 locales**: English, 中文, 日本語, 한국어, Español, Français
+- 🎨 **Themes**: Light/Dark/System with shadcn/ui (New York)
+- 📦 **Storage**: Vercel Blob + Vercel Postgres (Neon) + Upstash Redis
 - 🛡️ **Security**: Rate limiting, CORS, CSP, HSTS, bcrypt(12)
-- 📱 **PWA**: Installable, offline-capable
-- 🔭 **Observability**: Sentry, structured logs
-- 🧪 **Tests**: Vitest (unit) + Playwright (E2E)
-- 🚀 **CI/CD**: GitHub Actions + Vercel
+- 📱 **PWA**: Installable, offline-capable with service worker
+- 📦 **Package Manager**: pip, npm, cargo, go modules support
+- 🔗 **Sharing**: Password-protected links, burn-after-read, QR codes
+- 🔭 **Observability**: Sentry error tracking, structured logs
+- 🧪 **Tests**: 26 Vitest unit tests + 5 Playwright E2E tests (all passing)
+- 🚀 **CI/CD**: GitHub Actions (lint, typecheck, test, build) + Vercel deploy
 
 ## 🛠️ Tech Stack
 
@@ -82,33 +86,67 @@ OnlineCode/
 ├── src/
 │   ├── app/                  # Next.js App Router
 │   │   ├── [locale]/         # Localized routes
-│   │   │   ├── sign-in/
-│   │   │   ├── sign-up/
-│   │   │   ├── page.tsx      # Homepage
+│   │   │   ├── dashboard/
+│   │   │   ├── docs/         # Documentation
+│   │   │   ├── playground/   # Code playground
+│   │   │   ├── pricing/      # Pricing page
+│   │   │   ├── projects/     # Project CRUD + detail
+│   │   │   ├── s/[shortId]/  # Shared content
+│   │   │   ├── settings/     # User settings
+│   │   │   ├── sign-in/      # Auth: credentials + OAuth
+│   │   │   ├── sign-up/      # Auth: registration
+│   │   │   ├── snippets/     # Code snippets
+│   │   │   ├── offline/      # PWA offline fallback
+│   │   │   ├── page.tsx      # Landing page
 │   │   │   └── layout.tsx
-│   │   └── api/              # API routes
-│   │       ├── auth/         # NextAuth
-│   │       ├── projects/     # Projects CRUD
-│   │       ├── execute/      # Code execution
+│   │   └── api/              # API routes (18 endpoints)
+│   │       ├── auth/         # NextAuth + sign-up
+│   │       ├── cron/         # Scheduled cleanup
+│   │       ├── execute/      # Code execution + SSE stream
+│   │       ├── executions/   # History
+│   │       ├── health/       # DB + Redis health check
+│   │       ├── me/           # User profile
+│   │       ├── projects/     # Projects CRUD + files + packages
+│   │       ├── runtimes/     # Cached Piston runtimes
+│   │       ├── s/[shortId]/  # Burn-after-read share
 │   │       ├── share/        # Share links
-│   │       └── health/       # Health check
+│   │       └── snippets/     # Snippets CRUD
 │   ├── components/           # React components
-│   │   ├── ui/               # shadcn primitives
-│   │   └── layout/           # Header, user menu, etc.
+│   │   ├── ui/               # 25 shadcn/ui primitives
+│   │   ├── layout/           # Header, user menu, theme, i18n
+│   │   ├── editor/           # CodeEditor, Playground, Terminal, 3D
+│   │   ├── project/          # ProjectEditor, FileTree, PackageManager
+│   │   ├── collab/           # CollabPresence (Yjs)
+│   │   ├── share/            # ShareDialog with QR codes
+│   │   ├── pwa/              # Service Worker registration
+│   │   └── providers.tsx     # Session, Query, Theme, Tooltip
 │   ├── lib/                  # Server + shared utilities
-│   │   ├── auth/             # NextAuth config
-│   │   ├── db/               # Drizzle schema + client
-│   │   ├── execution/        # Piston client + languages
-│   │   ├── storage/          # Redis + Blob
-│   │   ├── validators/       # Zod schemas
-│   │   ├── i18n/             # next-intl config
-│   │   └── utils/            # Helpers
-│   ├── messages/             # i18n message catalogs
-│   └── proxy.ts              # next-intl middleware (Next 16)
+│   │   ├── auth/             # NextAuth config + Drizzle adapter
+│   │   ├── db/               # Drizzle schema (15 tables) + client
+│   │   ├── execution/        # Piston client + 19 languages
+│   │   ├── storage/          # Redis + Vercel Blob
+│   │   ├── collab/           # Yjs Hocuspocus hooks
+│   │   ├── validators/       # Zod schemas (5 files)
+│   │   ├── i18n/             # next-intl config + routing
+│   │   ├── packages/         # Package manager utilities
+│   │   └── utils/            # 15 utility functions
+│   ├── messages/             # i18n: en, zh-CN, ja, ko, es, fr
+│   ├── stores/               # Zustand editor state (persisted)
+│   └── proxy.ts              # next-intl middleware
+├── public/                   # Static assets + manifest.json + sw.js
 ├── drizzle/                  # Generated migrations
-├── public/                   # Static assets + PWA
-├── tests/                    # E2E tests
-└── .github/workflows/        # CI
+├── tests/
+│   ├── unit/                 # Vitest: utils, languages, validators
+│   └── e2e/                  # Playwright: home, sign-in, playground
+├── infra/
+│   ├── collab-server/        # Docker + Fly.io (Hocuspocus/Yjs)
+│   └── piston/               # Docker + Fly.io (Piston sandbox)
+├── scripts/
+│   └── seed.ts               # Database seeding
+├── .github/workflows/        # CI (lint, typecheck, test, build)
+│   ├── ci.yml
+│   └── vercel-preview.yml
+└── LICENSE
 ```
 
 ## 🔐 Environment Variables

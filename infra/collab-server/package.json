@@ -1,0 +1,20 @@
+{
+  "name": "@onlinecode/collab-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Yjs/Hocuspocus real-time collaboration WebSocket server for OnlineCode",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@hocuspocus/server": "^3.1.4",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.30"
+  }
+}

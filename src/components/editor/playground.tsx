@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEditorStore } from "@/stores/editor";
-import { LANGUAGES, getLanguage } from "@/lib/execution";
-import type { ExecuteResponse } from "@/lib/execution";
-import { Play, Square, Trash2, Save, Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -20,23 +18,162 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Play,
+  Square,
+  Trash2,
+  Copy,
+  Share2,
+  Package,
+  FileCode2,
+  Plus,
+  X,
+  Terminal,
+  Download,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { LANGUAGES, getLanguage, type LanguageMeta } from "@/lib/execution";
+import type { ExecuteResponse } from "@/lib/execution";
+import { cn } from "@/lib/utils";
+import { LANGUAGE_LIST } from "@/lib/execution";
+import { ECOSYSTEMS, type EcosystemConfig, type PackageEcosystem } from "@/lib/packages";
+
+// ─── Dynamic imports ────────────────────────────────────────────
 
 const CodeEditor = dynamic(
   () => import("@/components/editor/code-editor").then((m) => m.CodeEditor),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-full w-full" />,
-  },
+  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
 );
 
-const Scene3D = dynamic(() => import("@/components/editor/scene-3d").then((m) => m.Scene3D), {
-  ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
-});
+// ─── Types ───────────────────────────────────────────────────────
+
+interface PlaygroundFile {
+  name: string;
+  content: string;
+}
+
+type SidePanel = "templates" | "packages";
+
+interface OutputLine {
+  type: "info" | "out" | "err" | "warn";
+  text: string;
+}
+
+// ─── Language → Ecosystem mapping ────────────────────────────────
+
+const LANG_ECOSYSTEM: Partial<Record<string, PackageEcosystem>> = {
+  python: "pip",
+  javascript: "npm",
+  typescript: "npm",
+  rust: "cargo",
+  go: "go",
+  java: "maven",
+  kotlin: "maven",
+  ruby: "gem",
+  php: "pip",
+};
+
+function getEcosystemForLanguage(langId: string): EcosystemConfig | null {
+  const eco = LANG_ECOSYSTEM[langId];
+  if (!eco) return null;
+  return ECOSYSTEMS[eco] ?? null;
+}
+
+function getDefaultFilename(lang: LanguageMeta): string {
+  const extMap: Record<string, string> = {
+    python: "main.py",
+    javascript: "main.js",
+    typescript: "main.ts",
+    cpp: "main.cpp",
+    c: "main.c",
+    java: "Main.java",
+    rust: "main.rs",
+    go: "main.go",
+    csharp: "Program.cs",
+    php: "index.php",
+    ruby: "main.rb",
+    kotlin: "Main.kt",
+    swift: "main.swift",
+    scala: "Main.scala",
+    bash: "main.sh",
+    lua: "main.lua",
+    sql: "query.sql",
+    html: "index.html",
+    css: "style.css",
+  };
+  return extMap[lang.id] ?? "main.txt";
+}
+
+// ─── URL Share Codec ─────────────────────────────────────────────
+
+function encodeShare(data: { code: string; lang: string }): string {
+  try {
+    return btoa(encodeURIComponent(JSON.stringify(data)));
+  } catch {
+    return "";
+  }
+}
+
+function decodeShare(hash: string): { code: string; lang: string } | null {
+  try {
+    return JSON.parse(decodeURIComponent(atob(hash)));
+  } catch {
+    return null;
+  }
+}
+
+// ─── Templates ───────────────────────────────────────────────────
+
+const TEMPLATES: Record<string, { label: string; code: string }[]> = {
+  python: [
+    { label: "Hello World", code: 'print("Hello, OnlineCode!")' },
+    { label: "Fibonacci", code: "def fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        print(a)\n        a, b = b, a + b\n\nfib(10)" },
+    { label: "Prime Check", code: "def is_prime(n):\n    if n < 2:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True\n\nfor n in range(1, 51):\n    if is_prime(n):\n        print(n)" },
+    { label: "List Comprehension", code: 'evens = [x for x in range(20) if x % 2 == 0]\nprint("Even numbers:", evens)\n\nsquares = {x: x**2 for x in range(6)}\nprint("Squares:", squares)' },
+    { label: "File Read", code: 'with open("data.txt", "w") as f:\n    f.write("Hello\\nWorld\\nPython")\n\nwith open("data.txt", "r") as f:\n    for line in f:\n        print(line.strip())' },
+  ],
+  javascript: [
+    { label: "Hello World", code: 'console.log("Hello, OnlineCode!");' },
+    { label: "Array Methods", code: 'const nums = [1, 2, 3, 4, 5];\nconst doubled = nums.map(n => n * 2);\nconst sum = nums.reduce((a, b) => a + b, 0);\nconsole.log("Doubled:", doubled);\nconsole.log("Sum:", sum);' },
+    { label: "Async/Await", code: 'async function fetchData() {\n  const data = await Promise.resolve({ id: 1, name: "test" });\n  console.log("Data:", data);\n}\nfetchData();' },
+    { label: "Class Example", code: 'class Calculator {\n  add(a, b) { return a + b; }\n  multiply(a, b) { return a * b; }\n}\nconst calc = new Calculator();\nconsole.log(calc.add(5, 3));\nconsole.log(calc.multiply(5, 3));' },
+  ],
+  typescript: [
+    { label: "Hello World", code: 'const greet = (name: string): string => `Hello, ${name}!`;\nconsole.log(greet("OnlineCode"));' },
+    { label: "Interface", code: 'interface User {\n  id: number;\n  name: string;\n  email?: string;\n}\nconst user: User = { id: 1, name: "Alice" };\nconsole.log(user);' },
+    { label: "Generic Function", code: 'function first<T>(arr: T[]): T | undefined {\n  return arr[0];\n}\nconsole.log(first([1, 2, 3]));\nconsole.log(first(["a", "b"]));' },
+  ],
+  cpp: [
+    { label: "Hello World", code: '#include <iostream>\nint main() {\n    std::cout << "Hello, OnlineCode!" << std::endl;\n    return 0;\n}' },
+    { label: "Vector Sort", code: '#include <iostream>\n#include <vector>\n#include <algorithm>\nint main() {\n    std::vector<int> v = {3, 1, 4, 1, 5, 9};\n    std::sort(v.begin(), v.end());\n    for (int x : v) std::cout << x << " ";\n    return 0;\n}' },
+  ],
+  rust: [
+    { label: "Hello World", code: 'fn main() {\n    println!("Hello, OnlineCode!");\n}' },
+    { label: "Struct + impl", code: 'struct Point { x: f64, y: f64 }\nimpl Point {\n    fn distance(&self, other: &Point) -> f64 {\n        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()\n    }\n}\nfn main() {\n    let a = Point { x: 0.0, y: 0.0 };\n    let b = Point { x: 3.0, y: 4.0 };\n    println!("Distance: {}", a.distance(&b));\n}' },
+  ],
+  go: [
+    { label: "Hello World", code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, OnlineCode!")\n}' },
+    { label: "Goroutine", code: 'package main\n\nimport ("fmt"; "time")\n\nfunc worker(id int) {\n    for i := 0; i < 3; i++ {\n        fmt.Printf("Worker %d: %d\\n", id, i)\n        time.Sleep(100 * time.Millisecond)\n    }\n}\nfunc main() {\n    go worker(1)\n    go worker(2)\n    time.Sleep(500 * time.Millisecond)\n}' },
+  ],
+};
+
+// ─── Main Component ──────────────────────────────────────────────
 
 export interface PlaygroundProps {
   initialCode?: string;
@@ -44,255 +181,560 @@ export interface PlaygroundProps {
 }
 
 export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
-  const t = useTranslations("execution");
+  const t = useTranslations("playground");
   const te = useTranslations("editor");
   const tc = useTranslations("common");
-  const {
-    currentLanguage,
-    setLanguage,
-    fontSize,
-    wordWrap,
-    minimap,
-    output,
-    isExecuting,
-    setIsExecuting,
-    setIsRunning,
-    appendOutput,
-    clearOutput,
-  } = useEditorStore();
-  const [code, setCode] = useState<string>(initialCode ?? "");
+
+  // ─── State ───
+  const [languageId, setLanguageId] = useState(initialLanguage ?? "python");
   const [version, setVersion] = useState<string | undefined>(undefined);
+  const [files, setFiles] = useState<PlaygroundFile[]>([
+    { name: getDefaultFilename(LANGUAGES[initialLanguage as never] ?? LANGUAGES.python), content: initialCode ?? LANGUAGES.python.defaultCode },
+  ]);
+  const [activeFileIndex, setActiveFileIndex] = useState(0);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [output, setOutput] = useState<OutputLine[]>([]);
+  const [stdinInput, setStdinInput] = useState("");
+  const [packages, setPackages] = useState<string[]>([]);
+  const [pkgInput, setPkgInput] = useState("");
+  const [sidePanel, setSidePanel] = useState<SidePanel>("templates");
+  const [templateConfirm, setTemplateConfirm] = useState<{ label: string; code: string } | null>(null);
 
-  const meta = getLanguage(currentLanguage);
+  const meta = getLanguage(languageId);
+  const activeFile = files[activeFileIndex] ?? files[0]!;
+  const ecosystem = getEcosystemForLanguage(languageId);
+  const codeRef = useRef(activeFile.content);
 
+  // Keep ref in sync with active file content
   useEffect(() => {
-    if (!code && meta?.defaultCode) {
+    codeRef.current = activeFile.content;
+  }, [activeFile.content]);
+
+  // ─── URL Share decode on mount ───
+  useEffect(() => {
+    const h = window.location.hash.slice(1);
+    if (!h) return;
+    const shared = decodeShare(h);
+    if (shared && getLanguage(shared.lang)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCode(meta.defaultCode);
+      setLanguageId(shared.lang);
+      setFiles([{ name: getDefaultFilename(getLanguage(shared.lang)!), content: shared.code }]);
+      setActiveFileIndex(0);
+      window.history.replaceState(null, "", window.location.pathname);
     }
-    if (initialCode) {
-      setCode(initialCode);
+  }, []);
+
+  // ─── Restore code from localStorage ───
+  useEffect(() => {
+    const saved = localStorage.getItem("oc_playground_" + languageId);
+    if (saved && !initialCode) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setFiles([{ name: getDefaultFilename(meta!), content: saved }]);
+      } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLanguage, meta?.id]);
+  }, [languageId]);
 
-  useEffect(() => {
-    if (initialLanguage && getLanguage(initialLanguage)) {
-      setLanguage(initialLanguage as never);
+  // ─── Change language ───
+  const changeLanguage = useCallback((langId: string) => {
+    setLanguageId(langId);
+    const m = getLanguage(langId);
+    if (m) {
+      setFiles([{ name: getDefaultFilename(m), content: m.defaultCode }]);
+      setActiveFileIndex(0);
+      setVersion(undefined);
     }
-  }, [initialLanguage, setLanguage]);
+  }, []);
 
+  // ─── File operations ───
+  const addFile = useCallback(() => {
+    const base = meta ? getDefaultFilename(meta) : "file.txt";
+    const ext = base.includes(".") ? base.split(".").pop()! : "";
+    const stem = base.includes(".") ? base.slice(0, base.lastIndexOf(".")) : base;
+    const existing = files.map((f) => f.name);
+    let i = 1;
+    let name = base;
+    while (existing.includes(name)) {
+      name = `${stem}_${i}.${ext}`;
+      i++;
+    }
+    setFiles((prev) => [...prev, { name, content: "" }]);
+    setActiveFileIndex(files.length);
+  }, [files, meta]);
+
+  const removeFile = useCallback((idx: number) => {
+    if (files.length <= 1) return;
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+    setActiveFileIndex((prev) => (prev >= idx ? Math.max(0, prev - 1) : prev));
+  }, [files.length]);
+
+  const updateFileContent = useCallback((content: string) => {
+    setFiles((prev) =>
+      prev.map((f, i) => (i === activeFileIndex ? { ...f, content } : f)),
+    );
+  }, [activeFileIndex]);
+
+  // ─── Output helpers ───
+  const appendOutput = useCallback((line: OutputLine) => {
+    setOutput((prev) => [...prev, line]);
+  }, []);
+
+  const clearOutput = useCallback(() => setOutput([]), []);
+
+  // ─── Run ───
   const run = useCallback(async () => {
+    if (!meta) return;
+    const code = codeRef.current;
     if (!code.trim()) {
-      toast.error(t("errors.emptyCode"));
+      toast.error(t("languageNotSupported"));
       return;
     }
     if (isExecuting) return;
     setIsExecuting(true);
-    setIsRunning(true);
-    clearOutput();
-    appendOutput({ type: "info", text: `>>> ${meta?.label} ${version ?? meta?.defaultVersion} starting...` });
+    setOutput([]);
+
+    appendOutput({ type: "info", text: `> ${meta.label} ${version ?? meta.defaultVersion}` });
+
+    // Emit package install info
+    if (packages.length > 0 && ecosystem) {
+      appendOutput({ type: "info", text: `> ${t("installing")} ${packages.join(", ")}` });
+    }
 
     try {
       const res = await fetch("/api/execute", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          language: currentLanguage,
-          version,
-          files: [{ name: meta?.runCommand.split(" ")[1] ?? "main", content: code }],
-          stdin: "",
+          language: meta.pistonLanguage,
+          version: version ?? meta.defaultVersion,
+          files: files.map((f) => ({ name: f.name, content: f.content })),
+          stdin: stdinInput,
           args: [],
-          env: {},
         }),
       });
       const data: ExecuteResponse & { durationMs?: number } = await res.json();
       const startMs = Date.now();
+
+      if (data.result?.compile?.stdout) {
+        appendOutput({ type: "info", text: data.result.compile.stdout.trim() });
+      }
+      if (data.result?.compile?.stderr) {
+        data.result.compile.stderr.split("\n").forEach((l: string) => {
+          if (l.trim()) appendOutput({ type: "err", text: l });
+        });
+      }
+
       if (data.result?.run?.stdout) {
-        data.result.run.stdout.split("\n").forEach((line: string) => {
-          if (line) appendOutput({ type: "out", text: line });
+        data.result.run.stdout.split("\n").forEach((l: string) => {
+          if (l) appendOutput({ type: "out", text: l });
         });
       }
       if (data.result?.run?.stderr) {
-        data.result.run.stderr.split("\n").forEach((line: string) => {
-          if (line) appendOutput({ type: "err", text: line });
+        data.result.run.stderr.split("\n").forEach((l: string) => {
+          if (l) appendOutput({ type: "err", text: l });
         });
       }
-      const duration = data.durationMs ?? Date.now() - startMs;
-      const exitCode = data.result?.run?.code ?? -1;
+
+      const dur = (data.durationMs ?? Date.now() - startMs) / 1000;
+      const code = data.result?.run?.code ?? -1;
       appendOutput({
-        type: exitCode === 0 ? "info" : "err",
-        text:
-          exitCode === 0
-            ? `✓ ${t("completed", { duration: (duration / 1000).toFixed(2) + "s" })}`
-            : `✗ Exit ${exitCode}`,
+        type: code === 0 ? "info" : "err",
+        text: code === 0 ? `✓ ${t("success")} (${dur.toFixed(2)}s)` : `✗ Exit code ${code}`,
       });
     } catch (e) {
       appendOutput({ type: "err", text: e instanceof Error ? e.message : String(e) });
     } finally {
       setIsExecuting(false);
-      setIsRunning(false);
     }
-  }, [code, isExecuting, currentLanguage, version, meta, setIsExecuting, setIsRunning, clearOutput, appendOutput, t]);
+  }, [meta, isExecuting, version, files, stdinInput, packages, ecosystem, t, appendOutput]);
 
   const stop = useCallback(() => {
-    setIsRunning(false);
     setIsExecuting(false);
-    appendOutput({ type: "warn", text: "■ stopped" });
-  }, [setIsRunning, setIsExecuting, appendOutput]);
+    appendOutput({ type: "warn", text: "■ Stopped" });
+  }, [appendOutput]);
 
-  const save = useCallback(() => {
-    localStorage.setItem("oc_playground_" + currentLanguage, code);
-    toast.success(tc("save") + " ✓");
-  }, [code, currentLanguage, tc]);
-
-  const copy = useCallback(async () => {
-    await navigator.clipboard.writeText(code);
+  // ─── Copy ───
+  const copyCode = useCallback(async () => {
+    await navigator.clipboard.writeText(activeFile.content);
     toast.success(tc("copied"));
-  }, [code, tc]);
+  }, [activeFile.content, tc]);
 
-  const share = useCallback(async () => {
-    try {
-      const res = await fetch("/api/share", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ snippetId: undefined }),
-      });
-      if (!res.ok) throw new Error("share failed");
-      const data = await res.json();
-      const url = `${window.location.origin}${data.url}`;
-      await navigator.clipboard.writeText(url);
-      toast.success(tc("copied") + " · " + url);
-    } catch {
-      await navigator.clipboard.writeText(code);
-      toast.success(tc("copied"));
+  // ─── Save to localStorage ───
+  const saveLocal = useCallback(() => {
+    localStorage.setItem("oc_playground_" + languageId, activeFile.content);
+    toast.success(tc("save") + " ✓");
+  }, [languageId, activeFile.content, tc]);
+
+  // ─── Share via URL ───
+  const shareUrl = useCallback(async () => {
+    const encoded = encodeShare({ code: activeFile.content, lang: languageId });
+    if (!encoded) {
+      toast.error(t("shareUrlError"));
+      return;
     }
-  }, [code, tc]);
+    const url = `${window.location.origin}${window.location.pathname}#${encoded}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(t("linkCopied"));
+    } catch {
+      toast.success(url);
+    }
+  }, [activeFile.content, languageId, t]);
+
+  // ─── Packages ───
+  const addPackage = useCallback(() => {
+    const name = pkgInput.trim();
+    if (!name) return;
+    if (packages.includes(name)) {
+      toast.error("Already added");
+      return;
+    }
+    setPackages((prev) => [...prev, name]);
+    setPkgInput("");
+  }, [pkgInput, packages]);
+
+  const removePackage = useCallback((name: string) => {
+    setPackages((prev) => prev.filter((p) => p !== name));
+  }, []);
+
+  const handlePkgKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addPackage();
+      }
+    },
+    [addPackage],
+  );
+
+  // ─── Template ───
+  const applyTemplate = useCallback((tpl: { label: string; code: string }) => {
+    setTemplateConfirm(tpl);
+  }, []);
+
+  const confirmTemplate = useCallback(() => {
+    if (!templateConfirm) return;
+    updateFileContent(templateConfirm.code);
+    setTemplateConfirm(null);
+  }, [templateConfirm, updateFileContent]);
+
+  // ─── Render ───
+  if (!meta) {
+    return (
+      <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center text-sm text-muted-foreground">
+        {t("languageNotSupported")}
+      </div>
+    );
+  }
+
+  const langTemplates = TEMPLATES[languageId] ?? [];
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <div className="bg-background flex items-center gap-2 border-b px-4 py-2">
-        <Select value={currentLanguage} onValueChange={(v) => setLanguage(v as never)}>
-          <SelectTrigger className="w-44">
+      {/* ─── Toolbar ─── */}
+      <div className="flex items-center gap-1.5 border-b bg-background px-3 py-1.5">
+        <Select value={languageId} onValueChange={changeLanguage}>
+          <SelectTrigger className="w-40 h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.values(LANGUAGES).map((l) => (
+            {LANGUAGE_LIST.map((l) => (
               <SelectItem key={l.id} value={l.id}>
-                {l.icon} {l.label}
+                <span className="mr-1">{l.icon}</span> {l.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={version ?? meta?.defaultVersion ?? ""} onValueChange={setVersion}>
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="version" />
+
+        <Select value={version ?? meta.defaultVersion} onValueChange={setVersion}>
+          <SelectTrigger className="w-28 h-8 text-xs">
+            <SelectValue placeholder={meta.defaultVersion} />
           </SelectTrigger>
           <SelectContent>
-            {(version ? [version, meta?.defaultVersion] : [meta?.defaultVersion])
-              .filter(Boolean)
-              .map((v) => (
-                <SelectItem key={v} value={v!}>
-                  {v}
-                </SelectItem>
-              ))}
+            <SelectItem value={meta.defaultVersion}>{meta.defaultVersion}</SelectItem>
+            {version && version !== meta.defaultVersion && (
+              <SelectItem value={version}>{version}</SelectItem>
+            )}
           </SelectContent>
         </Select>
-        <div className="ml-auto flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={save} aria-label="Save">
-                <Save className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{tc("save")}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy">
-                <Copy className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{tc("copy")}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={share} aria-label="Share">
-                <Share2 className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{tc("share")}</TooltipContent>
-          </Tooltip>
-          <Button size="sm" variant="ghost" onClick={clearOutput} aria-label="Clear">
-            <Trash2 className="size-4" />
+
+        <div className="flex-1" />
+
+        {isExecuting ? (
+          <Button size="sm" variant="destructive" onClick={stop} className="h-8 gap-1 text-xs">
+            <Square className="size-3.5" /> {t("stop")}
           </Button>
-          {isExecuting ? (
-            <Button size="sm" variant="destructive" onClick={stop}>
-              <Square className="size-4" /> {te("stop")}
+        ) : (
+          <Button size="sm" onClick={run} className="h-8 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700">
+            <Play className="size-3.5" /> {t("run")}
+          </Button>
+        )}
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="ghost" className="size-8" onClick={clearOutput} aria-label={t("clearOutput")}>
+              <Trash2 className="size-3.5" />
             </Button>
-          ) : (
-            <Button size="sm" onClick={run} disabled={!code.trim()}>
-              <Play className="size-4" /> {te("run")}
+          </TooltipTrigger>
+          <TooltipContent>{t("clearOutput")}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="ghost" className="size-8" onClick={copyCode} aria-label={tc("copy")}>
+              <Copy className="size-3.5" />
             </Button>
-          )}
+          </TooltipTrigger>
+          <TooltipContent>{tc("copy")}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="ghost" className="size-8" onClick={shareUrl} aria-label={t("share")}>
+              <Share2 className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t("copyLink")}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="ghost" className="size-8" onClick={saveLocal} aria-label={tc("save")}>
+              <Download className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{tc("save")} (localStorage)</TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* ─── Main area ─── */}
+      <ResizablePanelGroup orientation="horizontal" className="flex-1">
+        {/* ─── Editor panel ─── */}
+        <ResizablePanel defaultSize={65} minSize={35}>
+          <div className="flex h-full flex-col">
+            {/* File tabs */}
+            <div className="flex items-center gap-0.5 border-b bg-muted/30 px-1 py-0.5">
+              {files.map((f, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "group flex items-center gap-1 rounded-t-sm px-2.5 py-1 text-xs cursor-pointer border-b-2 transition-colors",
+                    i === activeFileIndex
+                      ? "bg-background border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-background/50",
+                  )}
+                  onClick={() => setActiveFileIndex(i)}
+                >
+                  <FileCode2 className="size-3" />
+                  <span className="max-w-[120px] truncate">{f.name}</span>
+                  {files.length > 1 && (
+                    <button
+                      className="ml-0.5 opacity-0 group-hover:opacity-100"
+                      onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                      aria-label="Close"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={addFile}
+                className="flex items-center gap-0.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-background/50"
+                aria-label={t("newFile")}
+              >
+                <Plus className="size-3" /> {t("newFile")}
+              </button>
+            </div>
+
+            {/* Code editor */}
+            <div className="flex-1 overflow-hidden">
+              <CodeEditor
+                value={activeFile.content}
+                onChange={updateFileContent}
+                language={meta.monacoLanguage}
+                fontSize={14}
+                wordWrap="on"
+                minimap={false}
+                height="100%"
+              />
+            </div>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle />
+
+        {/* ─── Side panel ─── */}
+        <ResizablePanel defaultSize={35} minSize={20} maxSize={45}>
+          <div className="flex h-full flex-col border-l">
+            {/* Side panel tabs */}
+            <div className="flex items-center border-b bg-muted/30 px-2">
+              <button
+                onClick={() => setSidePanel("templates")}
+                className={cn(
+                  "flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
+                  sidePanel === "templates"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground",
+                )}
+              >
+                <FileCode2 className="size-3.5" /> {t("templates")}
+              </button>
+              <button
+                onClick={() => setSidePanel("packages")}
+                className={cn(
+                  "flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
+                  sidePanel === "packages"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground",
+                )}
+              >
+                <Package className="size-3.5" /> {t("packages")}
+              </button>
+            </div>
+
+            {/* Side panel content */}
+            <div className="flex-1 overflow-auto p-2">
+              {sidePanel === "templates" ? (
+                <div className="space-y-2">
+                  <p className="text-muted-foreground px-1 text-xs">{t("selectTemplate")}</p>
+                  {langTemplates.length === 0 ? (
+                    <p className="text-muted-foreground px-1 py-4 text-center text-xs">
+                      {tc("comingSoon")}
+                    </p>
+                  ) : (
+                    langTemplates.map((tpl) => (
+                      <button
+                        key={tpl.label}
+                        onClick={() => applyTemplate(tpl)}
+                        className="w-full rounded-md border px-3 py-2 text-left text-xs transition-colors hover:bg-accent"
+                      >
+                        <div className="font-medium">{tpl.label}</div>
+                        <div className="text-muted-foreground mt-0.5 truncate font-mono text-[10px]">
+                          {tpl.code.split("\n").slice(0, 2).join(" · ")}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {ecosystem ? (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={pkgInput}
+                          onChange={(e) => setPkgInput(e.target.value)}
+                          onKeyDown={handlePkgKeyDown}
+                          placeholder={ecosystem.placeholder}
+                          className="h-7 flex-1 text-xs"
+                        />
+                        <Button size="sm" onClick={addPackage} className="h-7 text-xs">
+                          {t("addPackage")}
+                        </Button>
+                      </div>
+                      <p className="text-muted-foreground text-[10px]">
+                        {ecosystem.installCmd} {packages.join(" ")}
+                      </p>
+                      {packages.length === 0 ? (
+                        <p className="text-muted-foreground py-3 text-center text-xs">
+                          {t("noPackages")}
+                        </p>
+                      ) : (
+                        <div className="space-y-1">
+                          {packages.map((p) => (
+                            <div
+                              key={p}
+                              className="flex items-center justify-between rounded border px-2 py-1"
+                            >
+                              <span className="font-mono text-xs">{p}</span>
+                              <button
+                                onClick={() => removePackage(p)}
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label="Remove"
+                              >
+                                <X className="size-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground py-3 text-center text-xs">
+                      {t("noPackages")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      {/* ─── Output panel ─── */}
+      <div className="border-t bg-background">
+        <div className="flex items-center gap-1 border-b px-3 py-1">
+          <Terminal className="text-muted-foreground size-3" />
+          <span className="text-xs font-medium">{t("output")}</span>
+          {isExecuting && <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">{t("executing")}</Badge>}
+        </div>
+        <div className="flex flex-col">
+          {/* Output */}
+          <div className="h-[28vh] overflow-auto p-3 font-mono text-xs">
+            {output.length === 0 ? (
+              <p className="text-muted-foreground p-2 text-center text-xs">
+                {te("ready")}
+              </p>
+            ) : (
+              output.map((line, i) => (
+                <div
+                  key={i}
+                  className={
+                    line.type === "err"
+                      ? "text-red-500"
+                      : line.type === "warn"
+                        ? "text-yellow-500"
+                        : line.type === "info"
+                          ? "text-blue-400"
+                          : "text-foreground"
+                  }
+                >
+                  {line.text}
+                </div>
+              ))
+            )}
+          </div>
+          {/* Stdin input */}
+          <div className="border-t px-3 py-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-muted-foreground text-[10px] font-medium">{t("stdin")}</span>
+            </div>
+            <textarea
+              value={stdinInput}
+              onChange={(e) => setStdinInput(e.target.value)}
+              placeholder={t("stdinPlaceholder")}
+              className="w-full resize-none rounded-md border bg-background px-2 py-1.5 font-mono text-xs outline-none min-h-[40px] max-h-[80px]"
+              rows={2}
+            />
+          </div>
         </div>
       </div>
 
-      <ResizablePanelGroup orientation="vertical" className="flex-1">
-        <ResizablePanel defaultSize={65} minSize={20}>
-          <CodeEditor
-            value={code}
-            onChange={setCode}
-            language={meta?.monacoLanguage ?? "plaintext"}
-            fontSize={fontSize}
-            wordWrap={wordWrap ? "on" : "off"}
-            minimap={minimap}
-            height="100%"
-          />
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel defaultSize={35} minSize={10}>
-          <Tabs defaultValue="console" className="flex h-full flex-col">
-            <div className="flex items-center border-b px-2">
-              <TabsList className="bg-transparent">
-                <TabsTrigger value="console">{t("console")}</TabsTrigger>
-                <TabsTrigger value="graphics">{t("graphics")}</TabsTrigger>
-                <TabsTrigger value="canvas3d">{t("canvas3d")}</TabsTrigger>
-              </TabsList>
-            </div>
-            <TabsContent value="console" className="mt-0 flex-1 overflow-hidden">
-              <div className="bg-background h-full overflow-auto p-2 font-mono text-xs">
-                {output.length === 0 ? (
-                  <p className="text-muted-foreground p-4 text-center">{t("empty")}</p>
-                ) : (
-                  output.map((line, i) => (
-                    <div
-                      key={i}
-                      className={
-                        line.type === "err"
-                          ? "text-red-500"
-                          : line.type === "warn"
-                            ? "text-yellow-500"
-                            : line.type === "info"
-                              ? "text-blue-500"
-                              : "text-foreground"
-                      }
-                    >
-                      {line.text}
-                    </div>
-                  ))
-                )}
-              </div>
-            </TabsContent>
-            <TabsContent value="graphics" className="mt-0 flex-1 overflow-hidden">
-              <canvas id="graphics-canvas" className="h-full w-full" />
-            </TabsContent>
-            <TabsContent value="canvas3d" className="mt-0 flex-1 overflow-hidden">
-              <Scene3D />
-            </TabsContent>
-          </Tabs>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      {/* ─── Template confirm dialog ─── */}
+      <AlertDialog open={!!templateConfirm} onOpenChange={(o) => !o && setTemplateConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{templateConfirm?.label}</AlertDialogTitle>
+            <AlertDialogDescription>{t("confirmTemplate")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmTemplate}>{t("replace")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
