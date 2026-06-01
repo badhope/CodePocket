@@ -1,0 +1,40 @@
+name: onlinecode-piston
+
+services:
+  piston:
+    build: .
+    container_name: onlinecode-piston
+    restart: unless-stopped
+    ports:
+      - "2000:2000"
+    environment:
+      - PISTON_PORT=2000
+      - PISTON_LOG_LEVEL=info
+      - PISTON_DISABLE_NETWORK=true
+      - PISTON_ENABLE_NETWORK=false
+      - PISTON_MAX_CONCURRENT=8
+      - PISTON_LIMIT_CPU_TIME=true
+      - PISTON_LIMIT_MEMORY=true
+      - PISTON_LIMIT_WALL_TIME=true
+      - PISTON_RUNNER_DETECTION=shared
+      - PISTON_KEY=${PISTON_KEY:-local-dev}
+    volumes:
+      - piston_cache:/piston_cache
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2000/api/v2/runtimes"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+volumes:
+  piston_cache:
+    name: onlinecode_piston_cache

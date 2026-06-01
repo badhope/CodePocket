@@ -1,5 +1,8 @@
 import { SUPPORTED_LANGUAGES } from "@/lib/constants";
 import type { Language } from "@/lib/constants";
+import { z } from "zod";
+
+export const languageIdSchema = z.enum(SUPPORTED_LANGUAGES);
 
 export interface PistonLanguage {
   language: string;

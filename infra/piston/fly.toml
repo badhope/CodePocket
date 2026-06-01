@@ -1,0 +1,55 @@
+# Fly.io deployment for Piston API
+# https://fly.io/docs/languages-and-frameworks/dockerfile/
+
+app = "onlinecode-piston"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PISTON_PORT = "2000"
+  PISTON_LOG_LEVEL = "info"
+  PISTON_DISABLE_NETWORK = "true"
+  PISTON_ENABLE_NETWORK = "false"
+  PISTON_MAX_CONCURRENT = "16"
+  PISTON_LIMIT_CPU_TIME = "true"
+  PISTON_LIMIT_MEMORY = "true"
+  PISTON_LIMIT_WALL_TIME = "true"
+  PISTON_RUNNER_DETECTION = "shared"
+  PISTON_CACHE_DIR = "/piston_cache"
+  PISTON_KEY = "oc-prod"
+
+[[services]]
+  internal_port = 2000
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  size = "shared-cpu-4x"
+  memory = "4gb"
+  cpu_kind = "shared"
+  cpus = 4
+
+[mounts]
+  source = "piston_cache"
+  destination = "/piston_cache"
+
+[deploy]
+  strategy = "rolling"

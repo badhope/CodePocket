@@ -66,3 +66,16 @@ export function safeJSON<T>(value: string | null | undefined, fallback: T): T {
     return fallback;
   }
 }
+
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 200);
+}
+
+export const isServer = typeof window === "undefined";
+export const isClient = typeof window !== "undefined";
