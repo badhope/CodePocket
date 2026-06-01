@@ -1,8 +1,10 @@
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { CloudOff } from "lucide-react";
-import { getTranslations } from "next-intl/server";
 
-export default async function OfflinePage() {
+export default async function OfflinePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations("errors");
   return (
     <div className="flex min-h-screen items-center justify-center p-4">

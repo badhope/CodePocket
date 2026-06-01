@@ -5,6 +5,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/layout/header";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { routing } from "@/lib/i18n/routing";
 import "@/app/globals.css";
 
@@ -61,6 +62,7 @@ export default async function LocaleLayout({
           <Providers>
             <Header />
             <main className="flex-1">{children}</main>
+            <ServiceWorkerRegistration />
           </Providers>
         </NextIntlClientProvider>
       </body>
