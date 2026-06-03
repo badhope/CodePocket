@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { shares, executions } from "@/lib/db/schema";

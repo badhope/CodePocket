@@ -1,0 +1,41 @@
+{
+  "name": "docforge-miniprogram",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DocForge WeChat Mini Program",
+  "templateInfo": {
+    "name": "default",
+    "typescript": true,
+    "css": "sass"
+  },
+  "scripts": {
+    "build:weapp": "taro build --type weapp",
+    "build:h5": "taro build --type h5",
+    "dev:weapp": "npm run build:weapp -- --watch",
+    "dev:h5": "npm run build:h5 -- --watch"
+  },
+  "dependencies": {
+    "@tarojs/components": "4.0.8",
+    "@tarojs/helper": "4.0.8",
+    "@tarojs/plugin-framework-react": "4.0.8",
+    "@tarojs/plugin-platform-weapp": "4.0.8",
+    "@tarojs/plugin-platform-h5": "4.0.8",
+    "@tarojs/react": "4.0.8",
+    "@tarojs/runtime": "4.0.8",
+    "@tarojs/shared": "4.0.8",
+    "@tarojs/taro": "4.0.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-react": "^7.24.0",
+    "@tarojs/cli": "4.0.8",
+    "@tarojs/webpack5-runner": "4.0.8",
+    "@types/react": "^18.3.0",
+    "babel-preset-taro": "4.0.8",
+    "sass": "^1.77.0",
+    "typescript": "^5.4.0",
+    "webpack": "5.91.0"
+  }
+}

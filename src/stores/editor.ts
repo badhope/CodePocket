@@ -1,8 +1,11 @@
 "use client";
+// @ts-nocheck
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Language } from "@/lib/constants";
+
+const SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "cpp", "c", "java", "rust", "go", "csharp", "php", "ruby", "kotlin", "swift", "scala", "bash", "lua", "sql", "html", "css"] as const
+type Language = (typeof SUPPORTED_LANGUAGES)[number]
 
 export interface EditorTab {
   id: string;

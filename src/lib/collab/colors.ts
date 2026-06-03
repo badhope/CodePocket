@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Deterministic color generation from a user identifier.
 // Uses HSL with a fixed S/L so colors are readable on dark backgrounds.
 

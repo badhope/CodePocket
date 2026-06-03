@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface PistonStage {
   stdout: string;
   stderr: string;

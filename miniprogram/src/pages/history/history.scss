@@ -1,0 +1,110 @@
+.history-page {
+  padding: 32px;
+  
+  .page-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #1a1a1a;
+    display: block;
+    margin-bottom: 32px;
+  }
+  
+  .loading {
+    text-align: center;
+    padding: 80px 0;
+    color: #999;
+    font-size: 28px;
+  }
+  
+  .empty {
+    text-align: center;
+    padding: 80px 0;
+    
+    .empty-icon {
+      font-size: 80px;
+      display: block;
+    }
+    
+    .empty-text {
+      font-size: 30px;
+      color: #666;
+      margin-top: 24px;
+      display: block;
+    }
+    
+    .empty-hint {
+      font-size: 26px;
+      color: #999;
+      margin-top: 12px;
+      display: block;
+    }
+  }
+  
+  .history-list {
+    .history-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      
+      .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        
+        .item-name {
+          font-size: 28px;
+          color: #1a1a1a;
+          font-weight: 500;
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        
+        .item-status {
+          font-size: 22px;
+          padding: 4px 12px;
+          border-radius: 6px;
+          
+          &.status-completed {
+            background: #f0fdf4;
+            color: #16a34a;
+          }
+          
+          &.status-failed {
+            background: #fef2f2;
+            color: #dc2626;
+          }
+          
+          &.status-processing {
+            background: #eff6ff;
+            color: #2563eb;
+          }
+        }
+      }
+      
+      .item-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        
+        .item-format {
+          font-size: 24px;
+          color: #666;
+        }
+        
+        .item-size {
+          font-size: 24px;
+          color: #999;
+        }
+      }
+      
+      .item-date {
+        font-size: 22px;
+        color: #999;
+      }
+    }
+  }
+}

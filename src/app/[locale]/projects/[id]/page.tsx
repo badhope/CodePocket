@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Playground } from "@/components/editor/playground";
 

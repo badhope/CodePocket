@@ -3,19 +3,19 @@ import {
   APP_NAME,
   APP_VERSION,
   SUPPORTED_LOCALES,
-  SUPPORTED_LANGUAGES,
   DEFAULT_LOCALE,
   FREE_TIER_LIMITS,
   PRO_TIER_LIMITS,
   ADMIN_TIER_LIMITS,
-  PROJECT_VISIBILITY,
-  FILE_LIMITS,
-  SHARE_TTL_OPTIONS,
+  MAX_FILE_SIZE_MB,
+  MAX_FILES_PER_UPLOAD,
+  ROLES,
+  CONVERSION_STATUS,
 } from "@/lib/constants";
 
 describe("app constants", () => {
   it("APP_NAME and APP_VERSION are set", () => {
-    expect(APP_NAME).toBe("OnlineCode");
+    expect(APP_NAME).toBe("DocForge");
     expect(APP_VERSION.length).toBeGreaterThan(0);
   });
 });
@@ -36,62 +36,42 @@ describe("locales", () => {
   });
 });
 
-describe("languages", () => {
-  it("has 19 supported languages", () => {
-    expect(SUPPORTED_LANGUAGES.length).toBe(19);
-  });
-
-  it("no duplicate languages", () => {
-    const set = new Set(SUPPORTED_LANGUAGES);
-    expect(set.size).toBe(SUPPORTED_LANGUAGES.length);
-  });
-});
-
 describe("tier limits", () => {
   it("PRO limits exceed FREE limits", () => {
-    expect(PRO_TIER_LIMITS.projects).toBeGreaterThan(FREE_TIER_LIMITS.projects);
-    expect(PRO_TIER_LIMITS.executionsPerHour).toBeGreaterThan(FREE_TIER_LIMITS.executionsPerHour);
+    expect(PRO_TIER_LIMITS.conversionsPerDay).toBeGreaterThan(FREE_TIER_LIMITS.conversionsPerDay);
+    expect(PRO_TIER_LIMITS.maxFileSizeMB).toBeGreaterThan(FREE_TIER_LIMITS.maxFileSizeMB);
     expect(PRO_TIER_LIMITS.storageMB).toBeGreaterThan(FREE_TIER_LIMITS.storageMB);
   });
 
-  it("ADMIN limits are unlimited", () => {
-    expect(ADMIN_TIER_LIMITS.projects).toBe(Infinity);
-    expect(ADMIN_TIER_LIMITS.filesPerProject).toBe(Infinity);
-    expect(ADMIN_TIER_LIMITS.executionsPerHour).toBe(Infinity);
-  });
-});
-
-describe("project visibility", () => {
-  it("has three visibility levels", () => {
-    expect(PROJECT_VISIBILITY.PRIVATE).toBe("private");
-    expect(PROJECT_VISIBILITY.PUBLIC).toBe("public");
-    expect(PROJECT_VISIBILITY.UNLISTED).toBe("unlisted");
+  it("ADMIN limits exceed PRO limits", () => {
+    expect(ADMIN_TIER_LIMITS.conversionsPerDay).toBe(Infinity);
+    expect(ADMIN_TIER_LIMITS.maxFileSizeMB).toBeGreaterThan(PRO_TIER_LIMITS.maxFileSizeMB);
+    expect(ADMIN_TIER_LIMITS.storageMB).toBeGreaterThan(PRO_TIER_LIMITS.storageMB);
   });
 });
 
 describe("file limits", () => {
-  it("maxFileSizeMB is 5", () => {
-    expect(FILE_LIMITS.maxFileSizeMB).toBe(5);
+  it("MAX_FILE_SIZE_MB is 50", () => {
+    expect(MAX_FILE_SIZE_MB).toBe(50);
   });
-  it("maxFileNameLength is 255", () => {
-    expect(FILE_LIMITS.maxFileNameLength).toBe(255);
+  it("MAX_FILES_PER_UPLOAD is 10", () => {
+    expect(MAX_FILES_PER_UPLOAD).toBe(10);
   });
 });
 
-describe("share TTL options", () => {
-  it("has 5 options", () => {
-    expect(SHARE_TTL_OPTIONS.length).toBe(5);
+describe("roles", () => {
+  it("has three roles", () => {
+    expect(ROLES.USER).toBe("user");
+    expect(ROLES.PRO).toBe("pro");
+    expect(ROLES.ADMIN).toBe("admin");
   });
+});
 
-  it("Never has value 0", () => {
-    const never = SHARE_TTL_OPTIONS.find((o) => o.label === "Never");
-    expect(never?.value).toBe(0);
-  });
-
-  it("values are in ascending order (1h < 1d < 7d < 30d < Never)", () => {
-    const values = SHARE_TTL_OPTIONS.map((o) => o.value);
-    for (let i = 1; i < values.length - 1; i++) {
-      expect(values[i]!).toBeGreaterThan(values[i - 1]!);
-    }
+describe("conversion status", () => {
+  it("has four statuses", () => {
+    expect(CONVERSION_STATUS.PENDING).toBe("pending");
+    expect(CONVERSION_STATUS.PROCESSING).toBe("processing");
+    expect(CONVERSION_STATUS.COMPLETED).toBe("completed");
+    expect(CONVERSION_STATUS.FAILED).toBe("failed");
   });
 });

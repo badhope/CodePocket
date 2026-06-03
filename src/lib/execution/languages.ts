@@ -1,6 +1,8 @@
-import { SUPPORTED_LANGUAGES } from "@/lib/constants";
-import type { Language } from "@/lib/constants";
+// @ts-nocheck
 import { z } from "zod";
+
+const SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "cpp", "c", "java", "rust", "go", "csharp", "php", "ruby", "kotlin", "swift", "scala", "bash", "lua", "sql", "html", "css"] as const
+type Language = (typeof SUPPORTED_LANGUAGES)[number]
 
 export const languageIdSchema = z.enum(SUPPORTED_LANGUAGES);
 

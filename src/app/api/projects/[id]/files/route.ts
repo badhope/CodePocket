@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import { and, asc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";

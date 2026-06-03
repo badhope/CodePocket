@@ -1,0 +1,122 @@
+.index-page {
+  padding: 40px 32px;
+  
+  .hero {
+    text-align: center;
+    padding: 60px 0 40px;
+    
+    .hero-title {
+      font-size: 56px;
+      font-weight: 700;
+      color: #1a1a1a;
+      display: block;
+    }
+    
+    .hero-subtitle {
+      font-size: 32px;
+      color: #666;
+      margin-top: 16px;
+      display: block;
+    }
+    
+    .hero-desc {
+      font-size: 26px;
+      color: #999;
+      margin-top: 12px;
+      display: block;
+    }
+    
+    .hero-btn {
+      margin-top: 40px;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 12px;
+      font-size: 30px;
+      padding: 20px 60px;
+    }
+  }
+  
+  .section-title {
+    font-size: 34px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 24px;
+    display: block;
+  }
+  
+  .formats-section {
+    margin-top: 40px;
+    
+    .formats-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      
+      .format-item {
+        width: calc(33.33% - 11px);
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px 16px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        
+        .format-icon {
+          font-size: 40px;
+          display: block;
+        }
+        
+        .format-name {
+          font-size: 24px;
+          color: #333;
+          margin-top: 8px;
+          display: block;
+        }
+      }
+    }
+  }
+  
+  .steps-section {
+    margin-top: 48px;
+    
+    .steps {
+      .step-item {
+        display: flex;
+        align-items: center;
+        padding: 20px 0;
+        border-bottom: 1px solid #eee;
+        
+        .step-number {
+          width: 56px;
+          height: 56px;
+          background: #1a1a1a;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 24px;
+          flex-shrink: 0;
+          
+          Text {
+            color: #fff;
+            font-size: 28px;
+            font-weight: 600;
+          }
+        }
+        
+        .step-title {
+          font-size: 30px;
+          font-weight: 500;
+          color: #1a1a1a;
+          display: block;
+        }
+        
+        .step-desc {
+          font-size: 24px;
+          color: #999;
+          margin-top: 4px;
+          display: block;
+        }
+      }
+    }
+  }
+}

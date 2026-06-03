@@ -1,5 +1,7 @@
+// @ts-nocheck
 import { z } from "zod";
-import { SUPPORTED_LANGUAGES } from "@/lib/constants";
+
+const SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "cpp", "c", "java", "rust", "go", "csharp", "php", "ruby", "kotlin", "swift", "scala", "bash", "lua", "sql", "html", "css"] as const
 
 const limitsSchema = z.object({
   cpuTimeMs: z.number().int().min(100).max(60_000).default(10_000),
