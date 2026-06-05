@@ -14,18 +14,27 @@ export const FREE_TIER_LIMITS = {
   conversionsPerDay: 10,
   maxFileSizeMB: 10,
   storageMB: 100,
+  executionCpuSec: 5,
+  executionMemMB: 128,
+  executionWallSec: 10,
 } as const
 
 export const PRO_TIER_LIMITS = {
   conversionsPerDay: 500,
   maxFileSizeMB: 50,
   storageMB: 1024,
+  executionCpuSec: 30,
+  executionMemMB: 512,
+  executionWallSec: 60,
 } as const
 
 export const ADMIN_TIER_LIMITS = {
   conversionsPerDay: Infinity,
   maxFileSizeMB: 200,
   storageMB: 10_240,
+  executionCpuSec: 120,
+  executionMemMB: 2048,
+  executionWallSec: 300,
 } as const
 
 export const ROLES = {

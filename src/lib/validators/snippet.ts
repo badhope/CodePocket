@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 import { z } from "zod";
 
 const SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "cpp", "c", "java", "rust", "go", "csharp", "php", "ruby", "kotlin", "swift", "scala", "bash", "lua", "sql", "html", "css"] as const

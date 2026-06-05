@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 import type {
   ExecuteRequest,
   ExecuteResponse,

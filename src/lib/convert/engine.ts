@@ -262,18 +262,29 @@ async function textToPdf(text: string): Promise<Buffer> {
   const { default: JsPDF } = await import("jspdf")
 
   const doc = new JsPDF({ unit: "pt", format: "a4" })
-  const escaped = escapeHtml(text).replace(/\n/g, "<br>")
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:serif;font-size:12pt;line-height:1.6;}</style></head><body><pre style="white-space:pre-wrap;font-family:serif;">${escaped}</pre></body></html>`
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const marginX = 40
+  const marginY = 40
+  const maxWidth = pageWidth - marginX * 2
+  let cursorY = marginY
 
-  await doc.html(html, {
-    callback: (instance) => {
-      void instance
-    },
-    x: 20,
-    y: 20,
-    width: doc.internal.pageSize.getWidth() - 40,
-    windowWidth: 800,
-  })
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(11)
+
+  function ensureSpace(needed: number) {
+    if (cursorY + needed > pageHeight - marginY) {
+      doc.addPage()
+      cursorY = marginY
+    }
+  }
+
+  for (const raw of text.split(/\r?\n/)) {
+    const wrapped = doc.splitTextToSize(raw, maxWidth)
+    ensureSpace(wrapped.length * 15 + 2)
+    doc.text(wrapped, marginX, cursorY)
+    cursorY += wrapped.length * 15 + 2
+  }
 
   const arrayBuffer = doc.output("arraybuffer")
   return Buffer.from(arrayBuffer)
@@ -283,17 +294,61 @@ async function htmlToPdf(html: string): Promise<Buffer> {
   const { default: JsPDF } = await import("jspdf")
 
   const doc = new JsPDF({ unit: "pt", format: "a4" })
-  const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:serif;font-size:12pt;line-height:1.6;}</style></head><body>${html}</body></html>`
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const marginX = 40
+  const marginY = 40
+  const maxWidth = pageWidth - marginX * 2
+  let cursorY = marginY
 
-  await doc.html(fullHtml, {
-    callback: (instance) => {
-      void instance
-    },
-    x: 20,
-    y: 20,
-    width: doc.internal.pageSize.getWidth() - 40,
-    windowWidth: 800,
-  })
+  const decode = (s: string) =>
+    s
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+
+  const stripTags = (s: string): string => s.replace(/<[^>]+>/g, "")
+
+  function ensureSpace(needed: number) {
+    if (cursorY + needed > pageHeight - marginY) {
+      doc.addPage()
+      cursorY = marginY
+    }
+  }
+
+  function writeWrapped(text: string, font: "helvetica" | "courier" = "helvetica", style: "normal" | "bold" = "normal", size = 11, lineHeight = 15) {
+    doc.setFont(font, style)
+    doc.setFontSize(size)
+    const wrapped = doc.splitTextToSize(text || " ", maxWidth)
+    ensureSpace(wrapped.length * lineHeight + 4)
+    doc.text(wrapped, marginX, cursorY)
+    cursorY += wrapped.length * lineHeight + 2
+  }
+
+  const lines = html.split(/\r?\n/)
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (!line) {
+      cursorY += 4
+      continue
+    }
+    if (line.startsWith("<h1")) {
+      writeWrapped(decode(stripTags(line)), "helvetica", "bold", 20, 26)
+    } else if (line.startsWith("<h2")) {
+      writeWrapped(decode(stripTags(line)), "helvetica", "bold", 16, 22)
+    } else if (line.startsWith("<h3")) {
+      writeWrapped(decode(stripTags(line)), "helvetica", "bold", 13, 18)
+    } else if (line.startsWith("<li>")) {
+      writeWrapped("•  " + decode(stripTags(line)), "helvetica", "normal", 11, 14)
+    } else if (line.startsWith("<p") || line.startsWith("<div")) {
+      writeWrapped(decode(stripTags(line)), "helvetica", "normal", 11, 15)
+    } else {
+      writeWrapped(decode(stripTags(line)))
+    }
+  }
 
   const arrayBuffer = doc.output("arraybuffer")
   return Buffer.from(arrayBuffer)

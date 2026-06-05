@@ -27,7 +27,6 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"
@@ -44,7 +43,6 @@
     "src/components/**/*.ts",
     "src/components/**/*.tsx",
     "src/messages/**/*.json",
-    "src/middleware.ts",
     "src/proxy.ts",
     "src/app/globals.css",
     "src/app/layout.tsx",
@@ -57,33 +55,15 @@
     "src/app/robots.ts",
     "src/app/sitemap.ts",
     "src/app/global-error.tsx",
-    "src/app/api/convert/route.ts",
-    "src/app/api/convert/formats/route.ts",
-    "src/app/api/conversions/route.ts",
-    "src/app/api/conversions/[id]/route.ts",
-    "src/app/api/conversions/[id]/download/route.ts",
-    "src/app/api/health/route.ts",
-    "src/app/api/me/route.ts",
-    "src/app/api/auth/sign-up/route.ts",
-    "src/app/api/auth/[...nextauth]/route.ts",
-    "src/app/[locale]/layout.tsx",
-    "src/app/[locale]/page.tsx",
-    "src/app/[locale]/not-found.tsx",
-    "src/app/[locale]/loading.tsx",
-    "src/app/[locale]/error.tsx",
-    "src/app/[locale]/convert/page.tsx",
-    "src/app/[locale]/history/page.tsx",
-    "src/app/[locale]/dashboard/page.tsx",
-    "src/app/[locale]/pricing/page.tsx",
-    "src/app/[locale]/settings/page.tsx",
-    "src/app/[locale]/docs/page.tsx",
-    "src/app/[locale]/sign-in/page.tsx",
-    "src/app/[locale]/sign-up/page.tsx",
+    "src/app/api/**/*.ts",
+    "src/app/[locale]/**/*.ts",
+    "src/app/[locale]/**/*.tsx",
     "next.config.ts",
     "playwright.config.ts",
     "vitest.config.ts",
     "drizzle.config.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -91,20 +71,6 @@
     "out",
     "dist",
     "miniprogram",
-    "tests",
-    "scripts",
-    "src/app/api/execute",
-    "src/app/api/executions",
-    "src/app/api/projects",
-    "src/app/api/snippets",
-    "src/app/api/share",
-    "src/app/api/s",
-    "src/app/api/cron",
-    "src/app/api/runtimes",
-    "src/app/[locale]/playground",
-    "src/app/[locale]/projects",
-    "src/app/[locale]/snippets",
-    "src/app/[locale]/s",
-    "src/app/[locale]/offline"
+    "tests"
   ]
 }

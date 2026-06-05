@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";

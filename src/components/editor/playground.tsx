@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -351,8 +351,41 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
         result?: { run?: { stdout: string; stderr: string; code: number; signal: string | null }; compile?: { stdout: string; stderr: string; code: number; signal: string | null } };
         error?: string;
         message?: string;
+        component?: string;
       } = await res.json();
       const startMs = Date.now();
+
+      // ── Backend unavailable → switch to in-browser runner ──
+      if (res.status === 503 || (data.error === "backend_unavailable")) {
+        const { frontendRunnerFor } = await import("@/lib/execution/frontend-runner");
+        const feRunner = frontendRunnerFor(executeLanguage);
+        if (!feRunner) {
+          appendOutput({ type: "err", text: `Backend is unavailable and ${executeLanguage} cannot run in the browser.` });
+          appendOutput({ type: "err", text: data.message ?? data.error ?? "no backend" });
+          appendOutput({ type: "err", text: `Configure UPSTASH_REDIS_REST_URL/TOKEN (and Piston), or pick JS/TS/HTML/Python for browser-side execution.` });
+          return;
+        }
+        appendOutput({ type: "info", text: "→ Backend unavailable, running in browser sandbox" });
+        const feResult = await feRunner(files.map((f) => ({ name: f.name, content: f.content })));
+        if (feResult.stdout) {
+          feResult.stdout.split("\n").forEach((line) => {
+            if (line) appendOutput({ type: "out", text: line });
+          });
+        }
+        if (feResult.stderr) {
+          feResult.stderr.split("\n").forEach((line) => {
+            if (line) appendOutput({ type: "err", text: line });
+          });
+        }
+        const feDur = (feResult.durationMs ?? 0) / 1000;
+        appendOutput({
+          type: feResult.ok ? "info" : "err",
+          text: feResult.ok
+            ? `✓ ${t("success")} (browser, ${feDur.toFixed(2)}s)`
+            : `✗ ${t("failed")} exit=${feResult.exitCode} (browser, ${feDur.toFixed(2)}s)`,
+        });
+        return;
+      }
 
       const compile = data.result?.compile;
       const run = data.result?.run;

@@ -1,17 +1,16 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { redis } from "@/lib/storage/redis";
+import { rateLimit, backend, upstash } from "@/lib/storage/redis";
 import { logger } from "./log";
 
 /**
- * Multi-dimensional rate limiter:
- *  - Per-IP global cap (everything not in {@link ROUTE_LIMITS})
- *  - Per-(IP + route) precise caps via {@link ROUTE_LIMITS}
- *  - Per-user caps when the requester is authenticated
- *  - Sliding window algorithm (Upstash)
- *  - Fail-open mode: if Redis is unavailable we log and let the request pass
+ * Multi-dimensional rate limiter (global -> per-route -> per-user) with
+ * production-grade fail semantics:
  *
- * Routes are matched by `method + path prefix`. Limits come from env vars
- * (with safe defaults) so production can tune them without code changes.
+ *   - If a Redis backend is configured, all checks are enforced.
+ *   - If NO backend is configured at all, the limiter surfaces 503 by
+ *     returning success: false (callers are expected to map this to a 503).
+ *
+ * The "fail-open" path is removed on purpose: silently letting traffic through
+ * when a backend is misconfigured defeats the purpose of rate limiting.
  */
 
 export type LimitAlgorithm = "sliding" | "fixed";
@@ -40,7 +39,6 @@ export interface RouteLimiterOptions {
 const DEFAULT_GLOBAL = { window: "1 m", max: 240 };
 
 function parseWindow(window: string): number {
-  // Accept "<n> <unit>" where unit in s|m|h|d. Defaults to milliseconds.
   const m = window.trim().match(/^(\d+)\s*(ms|s|m|h|d)?$/i);
   if (!m) return 60_000;
   const n = Number(m[1] ?? 60);
@@ -61,31 +59,29 @@ function parseWindow(window: string): number {
   }
 }
 
-function makeLimiter(max: number, window: string, prefix: string): Ratelimit {
-  if (!redis) {
-    // This is unreachable in practice because callers gate on `redis`, but
-    // TypeScript needs a safe default.
-    throw new Error("Redis is not configured");
-  }
-  void parseWindow; // acknowledged
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(max, window as `${number} ${"ms" | "s" | "m" | "h" | "d"}`),
-    analytics: true,
-    prefix,
-  });
-}
+type LimitFn = (key: string) => Promise<{
+  success: boolean;
+  remaining: number;
+  limit: number;
+  reset: number;
+}>;
 
-const limiterCache = new Map<string, Ratelimit>();
+const limiterCache = new Map<string, LimitFn>();
+const limiterInitCache = new Map<string, Promise<LimitFn>>();
 
-function getLimiter(prefix: string, max: number, window: string): Ratelimit | null {
-  if (!redis) return null;
+function getLimiter(prefix: string, max: number, window: string): LimitFn | Promise<LimitFn> | null {
+  if (backend() === "none") return null;
   const key = `${prefix}:${max}:${window}`;
   const cached = limiterCache.get(key);
   if (cached) return cached;
-  const limiter = makeLimiter(max, window, prefix);
-  limiterCache.set(key, limiter);
-  return limiter;
+  const inFlight = limiterInitCache.get(key);
+  if (inFlight) return inFlight;
+  const init: Promise<LimitFn> = rateLimit({ prefix, limit: max, windowMs: parseWindow(window) }).then((fn) => {
+    limiterCache.set(key, fn);
+    return fn;
+  });
+  limiterInitCache.set(key, init);
+  return init;
 }
 
 export interface CheckInput {
@@ -100,7 +96,7 @@ export interface CheckResult {
   remaining: number;
   limit: number;
   reset: number;
-  scope: "global" | "route" | "user" | "fail-open";
+  scope: "global" | "route" | "user" | "unconfigured";
   retryAfterMs: number;
 }
 
@@ -121,8 +117,8 @@ function matchRoute(
  * The main entry-point. Performs global -> per-route -> per-user checks in
  * that order, returning the first failure.
  *
- * On Redis outage the function degrades to a no-op (success: true) and logs a
- * warning. This is the "fail-open" mode described in the requirements.
+ * Returns success: false (with scope: "unconfigured") when no Redis backend
+ * is configured at all, so the caller can surface a 503 with a clear error.
  */
 export async function checkRateLimit(
   input: CheckInput,
@@ -131,23 +127,27 @@ export async function checkRateLimit(
   const global = options.global ?? DEFAULT_GLOBAL;
   const routes = options.routes ?? [];
 
-  if (!redis) {
-    logger.warn("rate_limit_fail_open", { reason: "redis_unconfigured", path: input.path });
+  // No backend at all -> return a denial so the caller can 503. This replaces
+  // the previous "fail-open" behaviour.
+  if (backend() === "none") {
     return {
-      success: true,
+      success: false,
       remaining: 0,
       limit: 0,
       reset: 0,
-      scope: "fail-open",
+      scope: "unconfigured",
       retryAfterMs: 0,
     };
   }
+  // If the only backend we have is Upstash and it is not reachable, let the
+  // per-call try/catch surface the error to the route layer.
+  void upstash;
 
   // 1. Global per-IP cap.
-  const globalLimiter = getLimiter("rl:global", global.max, global.window);
+  const globalLimiter = await getLimiter("rl:global", global.max, global.window);
   if (globalLimiter) {
     try {
-      const r = await globalLimiter.limit(`ip:${input.ip}`);
+      const r = await globalLimiter(`ip:${input.ip}`);
       if (!r.success) {
         return {
           success: false,
@@ -155,25 +155,33 @@ export async function checkRateLimit(
           limit: r.limit,
           reset: r.reset,
           scope: "global",
-          retryAfterMs: Math.max(0, r.reset - Date.now()),
+          retryAfterMs: Math.max(0, r.reset * 1000 - Date.now()),
         };
       }
     } catch (err) {
-      logger.warn("rate_limit_fail_open", { reason: "global_error", path: input.path, err });
+      logger.warn("rate_limit_backend_error", { reason: "global_error", path: input.path, err });
+      return {
+        success: false,
+        remaining: 0,
+        limit: 0,
+        reset: 0,
+        scope: "unconfigured",
+        retryAfterMs: 0,
+      };
     }
   }
 
   // 2. Per-route cap.
   const route = matchRoute(input.method, input.path, routes);
   if (route) {
-    const routeLimiter = getLimiter(
+    const routeLimiter = await getLimiter(
       `rl:route:${route.method === "*" ? "any" : route.method.toLowerCase()}:${route.pathPrefix.replace(/[^a-z0-9]+/gi, "_")}`,
       route.max,
       route.window,
     );
     if (routeLimiter) {
       try {
-        const r = await routeLimiter.limit(`ip:${input.ip}`);
+        const r = await routeLimiter(`ip:${input.ip}`);
         if (!r.success) {
           return {
             success: false,
@@ -181,25 +189,33 @@ export async function checkRateLimit(
             limit: r.limit,
             reset: r.reset,
             scope: "route",
-            retryAfterMs: Math.max(0, r.reset - Date.now()),
+            retryAfterMs: Math.max(0, r.reset * 1000 - Date.now()),
           };
         }
       } catch (err) {
-        logger.warn("rate_limit_fail_open", { reason: "route_error", path: input.path, err });
+        logger.warn("rate_limit_backend_error", { reason: "route_error", path: input.path, err });
+        return {
+          success: false,
+          remaining: 0,
+          limit: 0,
+          reset: 0,
+          scope: "unconfigured",
+          retryAfterMs: 0,
+        };
       }
     }
 
     // 3. Per-user cap (authenticated only).
     if (input.userId) {
       const perUserMax = route.perUserMax ?? route.max * 4;
-      const userLimiter = getLimiter(
+      const userLimiter = await getLimiter(
         `rl:user:${route.pathPrefix.replace(/[^a-z0-9]+/gi, "_")}`,
         perUserMax,
         route.window,
       );
       if (userLimiter) {
         try {
-          const r = await userLimiter.limit(`user:${input.userId}`);
+          const r = await userLimiter(`user:${input.userId}`);
           if (!r.success) {
             return {
               success: false,
@@ -207,11 +223,19 @@ export async function checkRateLimit(
               limit: r.limit,
               reset: r.reset,
               scope: "user",
-              retryAfterMs: Math.max(0, r.reset - Date.now()),
+              retryAfterMs: Math.max(0, r.reset * 1000 - Date.now()),
             };
           }
         } catch (err) {
-          logger.warn("rate_limit_fail_open", { reason: "user_error", path: input.path, err });
+          logger.warn("rate_limit_backend_error", { reason: "user_error", path: input.path, err });
+          return {
+            success: false,
+            remaining: 0,
+            limit: 0,
+            reset: 0,
+            scope: "unconfigured",
+            retryAfterMs: 0,
+          };
         }
       }
     }
@@ -241,7 +265,7 @@ export const DEFAULT_ROUTE_LIMITS: RouteLimitConfig[] = [
     method: "POST",
     pathPrefix: "/api/execute",
     window: "1 m",
-    max: 30,
+    max: Number(process.env.RATE_LIMIT_EXECUTE_PER_MIN ?? 30),
   },
   {
     method: "POST",

@@ -1,63 +1,57 @@
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { executeRateLimit, apiRateLimit } from "@/lib/ratelimit";
+import { executeRateLimit } from "@/lib/ratelimit";
 import { executeSchema } from "@/lib/validators";
 import { executeCode, getLanguage } from "@/lib/execution";
 import { db } from "@/lib/db";
 import { executions } from "@/lib/db/schema";
 import { FREE_TIER_LIMITS, PRO_TIER_LIMITS } from "@/lib/constants";
 import { nanoid } from "nanoid";
-import { Ratelimit } from "@upstash/ratelimit";
-import { requireRedis } from "@/lib/storage/redis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-// Anonymous rate limiter: stricter, IP-based
-let _anonLimit: Ratelimit | null = null;
-function anonRateLimit() {
-  if (_anonLimit) return _anonLimit;
-  _anonLimit = new Ratelimit({
-    redis: requireRedis(),
-    limiter: Ratelimit.slidingWindow(10, "1 m"),
-    analytics: true,
-    prefix: "rl:exec:anon",
-  });
-  return _anonLimit;
-}
 
 export async function POST(req: Request) {
   const session = await auth();
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
   const isAuthenticated = !!session?.user?.id;
 
-  // Rate limiting: authenticated users get more, anonymous get strict limits
-  if (isAuthenticated) {
-    const limit = await executeRateLimit().limit(`exec:${session.user.id}`);
+  // Rate limiting: must have Redis configured; surface a 503 if not.
+  try {
+    const limiterOrPromise = executeRateLimit();
+    const limiter = await limiterOrPromise;
+    const limitKey = isAuthenticated ? `exec:${session.user.id}` : `exec:anon:${ip}`;
+    const limit = await limiter(limitKey);
     if (!limit.success) {
       return NextResponse.json(
         { error: "rate_limited", retryAfter: limit.reset },
         { status: 429 },
       );
     }
-  } else {
-    try {
-      const limit = await anonRateLimit().limit(`exec:anon:${ip}`);
-      if (!limit.success) {
-        return NextResponse.json(
-          { error: "rate_limited", retryAfter: limit.reset },
-          { status: 429 },
-        );
-      }
-    } catch {
-      // If Redis is not configured, use a simple in-memory fallback
-      // Allow the request through but with reduced limits
-    }
+  } catch (e) {
+    // Redis missing -> backend is not available. Surface 503 so the
+    // frontend knows the request cannot be served (no silent fallback).
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      {
+        error: "backend_unavailable",
+        component: "ratelimit",
+        message: msg,
+      },
+      { status: 503 },
+    );
   }
 
-  const body = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: "validation", message: "Request body must be valid JSON" },
+      { status: 400 },
+    );
+  }
   const parsed = executeSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -136,8 +130,10 @@ export async function POST(req: Request) {
         startedAt: new Date(startTime),
         finishedAt: new Date(),
       });
-    } catch {
-      // Non-critical: don't fail the response if DB write fails
+    } catch (e) {
+      // DB write failure is non-critical for the response itself, but log it
+      // so ops can investigate.
+      console.error("execute_persist_failed", e);
     }
   }
 

@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 export type PackageEcosystem = "npm" | "pip" | "cargo" | "maven" | "gem" | "go";
 
 export interface PackageRecord {

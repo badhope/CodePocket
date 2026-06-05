@@ -119,10 +119,9 @@ export class BufferStream {
 
   /** Async iterator so the stream can be used with `for await`. */
   [Symbol.asyncIterator](): AsyncIterator<Buffer> {
-    const self = this
     return {
-      next(_value?: unknown): Promise<IteratorResult<Buffer>> {
-        const chunk = self.read(64 * 1024)
+      next: async (_value?: unknown): Promise<IteratorResult<Buffer>> => {
+        const chunk = this.read(64 * 1024)
         if (chunk === null) {
           return Promise.resolve({ value: undefined as unknown as Buffer, done: true })
         }

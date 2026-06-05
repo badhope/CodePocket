@@ -215,5 +215,36 @@
     "serverError": "服务器错误，请稍后重试",
     "networkError": "网络错误，请检查连接",
     "validation": "请修复上方错误"
+  },
+  "playground": {
+    "title": "title",
+    "subtitle": "subtitle",
+    "run": "run",
+    "stop": "stop",
+    "clear": "clear",
+    "share": "share",
+    "copy": "copy",
+    "downloaded": "downloaded",
+    "stdinPlaceholder": "stdinPlaceholder",
+    "languagePicker": "languagePicker",
+    "versionPicker": "versionPicker",
+    "frontendMode": "frontendMode",
+    "backendMode": "backendMode",
+    "packageManager": "packageManager",
+    "packagePlaceholder": "packagePlaceholder",
+    "output": "output",
+    "code": "code",
+    "console": "console",
+    "packages": "Packages"
+  },
+  "editor": {
+    "save": "save",
+    "saving": "saving",
+    "saved": "saved",
+    "discard": "discard",
+    "format": "format",
+    "find": "find",
+    "replace": "replace",
+    "settings": "settings"
   }
 }

@@ -1,7 +1,7 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { executeRateLimit } from "@/lib/ratelimit";
+import { streamRateLimit } from "@/lib/ratelimit";
 import { executeSchema } from "@/lib/validators";
 import { executeCode, getLanguage } from "@/lib/execution";
 import { FREE_TIER_LIMITS, PRO_TIER_LIMITS } from "@/lib/constants";
@@ -20,11 +20,19 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const limit = await executeRateLimit().limit(`exec:sse:${session.user.id}`);
-  if (!limit.success) {
+  try {
+    const limit = await streamRateLimit().limit(`exec:sse:${session.user.id}`);
+    if (!limit.success) {
+      return NextResponse.json(
+        { error: "rate_limited", retryAfter: limit.reset },
+        { status: 429 },
+      );
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
-      { error: "rate_limited", retryAfter: limit.reset },
-      { status: 429 },
+      { error: "backend_unavailable", component: "ratelimit", message: msg },
+      { status: 503 },
     );
   }
 

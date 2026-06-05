@@ -143,22 +143,182 @@ export async function convertMarkdownToHtmlSafe(md: string): Promise<string> {
 export async function convertMarkdownToPdf(md: string): Promise<Buffer> {
   enforceSizeLimit(md)
   const html = await convertMarkdownToHtml(md)
+  const sanitized = sanitizeHtml(html)
 
   const { default: JsPDF } = await import("jspdf")
 
   const doc = new JsPDF({ unit: "pt", format: "a4" })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const marginX = 40
+  const marginY = 40
+  const maxWidth = pageWidth - marginX * 2
+  let cursorY = marginY
 
-  const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:serif;font-size:12pt;line-height:1.6;color:#333;}h1{font-size:20pt;}h2{font-size:16pt;}h3{font-size:14pt;}pre{background:#f5f5f5;padding:8pt;font-size:10pt;}code{font-size:10pt;}</style></head><body>${html}</body></html>`
+  // Strip HTML tags and decode the most common entities, then render line by
+  // line. This is a server-safe path: jsPDF's html() method depends on the
+  // DOM, but we are running on the server.
+  const decode = (s: string) =>
+    s
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
 
-  await doc.html(fullHtml, {
-    callback: (instance) => {
-      void instance
-    },
-    x: 20,
-    y: 20,
-    width: doc.internal.pageSize.getWidth() - 40,
-    windowWidth: 800,
-  })
+  // Tokenize: headings, blank lines, list items, paragraphs.
+  type Block =
+    | { kind: "h1" | "h2" | "h3"; text: string }
+    | { kind: "ul"; items: string[] }
+    | { kind: "ol"; items: string[] }
+    | { kind: "code"; text: string }
+    | { kind: "p"; text: string }
+
+  const blocks: Block[] = []
+  const lines = sanitized.split(/\r?\n/)
+  let i = 0
+  while (i < lines.length) {
+    const raw = lines[i] ?? ""
+    const line = raw.trim()
+    if (!line) {
+      i++
+      continue
+    }
+    if (line.startsWith("<h1")) {
+      blocks.push({ kind: "h1", text: decode(stripTags(line)) })
+      i++
+      continue
+    }
+    if (line.startsWith("<h2")) {
+      blocks.push({ kind: "h2", text: decode(stripTags(line)) })
+      i++
+      continue
+    }
+    if (line.startsWith("<h3")) {
+      blocks.push({ kind: "h3", text: decode(stripTags(line)) })
+      i++
+      continue
+    }
+    if (line.startsWith("<pre>") || line.startsWith("<pre ")) {
+      const buf: string[] = []
+      i++
+      while (i < lines.length && !lines[i]?.includes("</pre>")) {
+        buf.push(lines[i] ?? "")
+        i++
+      }
+      i++
+      blocks.push({ kind: "code", text: decode(stripTags(buf.join("\n"))) })
+      continue
+    }
+    if (line.startsWith("<ul>")) {
+      const items: string[] = []
+      i++
+      while (i < lines.length && !lines[i]?.startsWith("</ul>")) {
+        const li = lines[i] ?? ""
+        if (li.startsWith("<li>")) items.push(decode(stripTags(li)))
+        i++
+      }
+      i++
+      blocks.push({ kind: "ul", items })
+      continue
+    }
+    if (line.startsWith("<ol>")) {
+      const items: string[] = []
+      let n = 1
+      i++
+      while (i < lines.length && !lines[i]?.startsWith("</ol>")) {
+        const li = lines[i] ?? ""
+        if (li.startsWith("<li>")) items.push(`${n++}. ${decode(stripTags(li))}`)
+        i++
+      }
+      i++
+      blocks.push({ kind: "ol", items })
+      continue
+    }
+    if (line.startsWith("<p>") || line.startsWith("<p ")) {
+      blocks.push({ kind: "p", text: decode(stripTags(line)) })
+      i++
+      continue
+    }
+    // Fallback: paragraph of raw text
+    blocks.push({ kind: "p", text: decode(stripTags(line)) })
+    i++
+  }
+
+  function stripTags(s: string): string {
+    return s.replace(/<[^>]+>/g, "")
+  }
+
+  function ensureSpace(needed: number) {
+    if (cursorY + needed > pageHeight - marginY) {
+      doc.addPage()
+      cursorY = marginY
+    }
+  }
+
+  for (const block of blocks) {
+    switch (block.kind) {
+      case "h1": {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(20)
+        ensureSpace(28)
+        doc.text(block.text, marginX, cursorY)
+        cursorY += 28
+        break
+      }
+      case "h2": {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(16)
+        ensureSpace(24)
+        doc.text(block.text, marginX, cursorY)
+        cursorY += 24
+        break
+      }
+      case "h3": {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(13)
+        ensureSpace(20)
+        doc.text(block.text, marginX, cursorY)
+        cursorY += 20
+        break
+      }
+      case "ul":
+      case "ol": {
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(11)
+        for (const item of block.items) {
+          const wrapped = doc.splitTextToSize(item, maxWidth - 14)
+          ensureSpace(wrapped.length * 14 + 4)
+          doc.text(wrapped, marginX + 14, cursorY)
+          cursorY += wrapped.length * 14 + 2
+        }
+        cursorY += 4
+        break
+      }
+      case "code": {
+        doc.setFont("courier", "normal")
+        doc.setFontSize(9)
+        for (const cl of block.text.split("\n")) {
+          const wrapped = doc.splitTextToSize(cl || " ", maxWidth)
+          ensureSpace(wrapped.length * 12 + 2)
+          doc.text(wrapped, marginX, cursorY)
+          cursorY += wrapped.length * 12
+        }
+        cursorY += 6
+        break
+      }
+      case "p": {
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(11)
+        const wrapped = doc.splitTextToSize(block.text, maxWidth)
+        ensureSpace(wrapped.length * 15 + 4)
+        doc.text(wrapped, marginX, cursorY)
+        cursorY += wrapped.length * 15 + 4
+        break
+      }
+    }
+  }
 
   const arrayBuffer = doc.output("arraybuffer")
   return Buffer.from(arrayBuffer)

@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 // Deterministic color generation from a user identifier.
 // Uses HSL with a fixed S/L so colors are readable on dark backgrounds.
 

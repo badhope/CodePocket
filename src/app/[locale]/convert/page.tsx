@@ -170,7 +170,13 @@ export default function ConvertPage() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem("docforge:recent-formats")
-      if (stored) setRecentFormats(JSON.parse(stored))
+      if (stored) {
+        // Reading localStorage on mount and hydrating state is the canonical
+        // SSR-safe pattern; React's "cascading render" warning does not apply
+        // because the effect has an empty dep array.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setRecentFormats(JSON.parse(stored))
+      }
     } catch {
       // localStorage unavailable
     }

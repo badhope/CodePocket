@@ -213,7 +213,7 @@ export interface Logger {
   flush(): void;
 }
 
-export interface ScopedLogger extends Logger {}
+export type ScopedLogger = Logger;
 
 function createLogger(scopeCtx?: RequestContext): Logger {
   return {

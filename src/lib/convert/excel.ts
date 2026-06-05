@@ -102,16 +102,54 @@ export async function convertExcelToPdf(buffer: Buffer): Promise<Buffer> {
   const { default: JsPDF } = await import("jspdf")
 
   const doc = new JsPDF({ orientation: "landscape", unit: "pt", format: "a4" })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const marginX = 20
+  const marginY = 20
+  const maxWidth = pageWidth - marginX * 2
+  let cursorY = marginY
 
-  await doc.html(html, {
-    callback: (instance) => {
-      void instance
-    },
-    x: 10,
-    y: 10,
-    width: doc.internal.pageSize.getWidth() - 20,
-    windowWidth: 1200,
-  })
+  const stripTags = (s: string) => s.replace(/<[^>]+>/g, "")
+
+  function ensureSpace(needed: number) {
+    if (cursorY + needed > pageHeight - marginY) {
+      doc.addPage()
+      cursorY = marginY
+    }
+  }
+
+  for (const raw of html.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) {
+      cursorY += 3
+      continue
+    }
+    if (line.startsWith("<th") || line.startsWith("<td")) {
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(9)
+      const text = stripTags(line)
+      const wrapped = doc.splitTextToSize(text, maxWidth)
+      ensureSpace(wrapped.length * 11 + 2)
+      doc.text(wrapped, marginX, cursorY)
+      cursorY += wrapped.length * 11 + 1
+    } else if (line.startsWith("<h")) {
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(11)
+      const text = stripTags(line)
+      const wrapped = doc.splitTextToSize(text, maxWidth)
+      ensureSpace(wrapped.length * 14 + 2)
+      doc.text(wrapped, marginX, cursorY)
+      cursorY += wrapped.length * 14 + 1
+    } else {
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(9)
+      const text = stripTags(line)
+      const wrapped = doc.splitTextToSize(text, maxWidth)
+      ensureSpace(wrapped.length * 11 + 2)
+      doc.text(wrapped, marginX, cursorY)
+      cursorY += wrapped.length * 11 + 1
+    }
+  }
 
   const arrayBuffer = doc.output("arraybuffer")
   return Buffer.from(arrayBuffer)

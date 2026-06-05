@@ -104,10 +104,15 @@ export async function POST(req: NextRequest) {
     { routes: DEFAULT_ROUTE_LIMITS },
   );
   if (!rl.success) {
-    logger.withContext({ requestId, ip, path: "/api/convert", method: "POST" }).warn(
-      "convert_rate_limited",
-      { scope: rl.scope, retryAfterMs: rl.retryAfterMs },
-    );
+    const logCtx = logger.withContext({ requestId, ip, path: "/api/convert", method: "POST" });
+    if (rl.scope === "unconfigured") {
+      logCtx.error("rate_limit_backend_unavailable", { reason: "no_redis_backend" });
+      return withCors(
+        errors.serviceUnavailable("Redis backend not configured. Set UPSTASH_REDIS_REST_URL/TOKEN or REDIS_URL."),
+        origin,
+      );
+    }
+    logCtx.warn("convert_rate_limited", { scope: rl.scope, retryAfterMs: rl.retryAfterMs });
     return withCors(
       errors.rateLimited(Math.ceil(rl.retryAfterMs / 1000)),
       origin,
@@ -128,6 +133,13 @@ export async function POST(req: NextRequest) {
         { routes: DEFAULT_ROUTE_LIMITS },
       );
       if (!userRl.success) {
+        if (userRl.scope === "unconfigured") {
+          log.error("rate_limit_backend_unavailable", { reason: "no_redis_backend", userId });
+          return withCors(
+            errors.serviceUnavailable("Redis backend not configured. Set UPSTASH_REDIS_REST_URL/TOKEN or REDIS_URL."),
+            origin,
+          );
+        }
         log.warn("convert_user_rate_limited", { userId, retryAfterMs: userRl.retryAfterMs });
         return withCors(errors.rateLimited(Math.ceil(userRl.retryAfterMs / 1000)), origin);
       }

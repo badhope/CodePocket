@@ -215,5 +215,36 @@
     "serverError": "Server error. Please try again later.",
     "networkError": "Network error. Please check your connection.",
     "validation": "Please fix the errors above"
+  },
+  "playground": {
+    "title": "title",
+    "subtitle": "subtitle",
+    "run": "run",
+    "stop": "stop",
+    "clear": "clear",
+    "share": "share",
+    "copy": "copy",
+    "downloaded": "downloaded",
+    "stdinPlaceholder": "stdinPlaceholder",
+    "languagePicker": "languagePicker",
+    "versionPicker": "versionPicker",
+    "frontendMode": "frontendMode",
+    "backendMode": "backendMode",
+    "packageManager": "packageManager",
+    "packagePlaceholder": "packagePlaceholder",
+    "output": "output",
+    "code": "code",
+    "console": "console",
+    "packages": "Packages"
+  },
+  "editor": {
+    "save": "save",
+    "saving": "saving",
+    "saved": "saved",
+    "discard": "discard",
+    "format": "format",
+    "find": "find",
+    "replace": "replace",
+    "settings": "settings"
   }
 }

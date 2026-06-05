@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 import createIntlMiddleware from "next-intl/middleware";
 import { routing } from "@/lib/i18n/routing";
 

@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Playground } from "@/components/editor/playground";
 

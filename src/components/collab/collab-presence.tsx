@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 "use client";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

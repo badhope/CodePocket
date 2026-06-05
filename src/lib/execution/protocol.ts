@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- third-party types are incomplete
 export interface PistonStage {
   stdout: string;
   stderr: string;
