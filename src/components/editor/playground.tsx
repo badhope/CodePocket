@@ -53,6 +53,9 @@ import { LANGUAGES, getLanguage, type LanguageMeta } from "@/lib/execution";
 import { cn } from "@/lib/utils";
 import { LANGUAGE_LIST } from "@/lib/execution";
 import { ECOSYSTEMS, type EcosystemConfig, type PackageEcosystem } from "@/lib/packages";
+import { useBackendStatus } from "@/lib/system/backend-status";
+import { useFeatureGate } from "@/lib/system/feature-gate";
+import { LockedOverlay } from "@/components/system/locked-overlay";
 
 // ─── Dynamic imports ────────────────────────────────────────────
 
@@ -185,6 +188,11 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
   const te = useTranslations("editor");
   const tc = useTranslations("common");
 
+  // ─── Backend status / feature gates ───
+  const { backendAvailable } = useBackendStatus();
+  const pistonGate = useFeatureGate("playground.piston");
+  const pkgGate = useFeatureGate("playground.python-packages");
+
   // ─── State ───
   const [languageId, setLanguageId] = useState(initialLanguage ?? "python");
   const [version, setVersion] = useState<string | undefined>(undefined);
@@ -295,6 +303,39 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
     setOutput([]);
 
     appendOutput({ type: "info", text: `> ${meta.label} ${version ?? meta.defaultVersion}` });
+
+    // Backend offline path: prefer frontend runner so we don't pay the
+    // cost of a network round-trip that will 503 anyway.
+    if (!pistonGate.enabled) {
+      const { frontendRunnerFor } = await import("@/lib/execution/frontend-runner");
+      const feRunner = frontendRunnerFor(languageId);
+      if (!feRunner) {
+        appendOutput({ type: "err", text: t("languageNotSupported") + " — " + t("needsBackendOrBrowser") });
+        setIsExecuting(false);
+        return;
+      }
+      appendOutput({ type: "info", text: "→ Backend offline, running in browser" });
+      const feResult = await feRunner(files.map((f) => ({ name: f.name, content: f.content })));
+      if (feResult.stdout) {
+        feResult.stdout.split("\n").forEach((line) => {
+          if (line) appendOutput({ type: "out", text: line });
+        });
+      }
+      if (feResult.stderr) {
+        feResult.stderr.split("\n").forEach((line) => {
+          if (line) appendOutput({ type: "err", text: line });
+        });
+      }
+      const feDur = (feResult.durationMs ?? 0) / 1000;
+      appendOutput({
+        type: feResult.ok ? "info" : "err",
+        text: feResult.ok
+          ? `✓ ${t("success")} (browser, ${feDur.toFixed(2)}s)`
+          : `✗ ${t("failed")} exit=${feResult.exitCode} (browser, ${feDur.toFixed(2)}s)`,
+      });
+      setIsExecuting(false);
+      return;
+    }
 
     // If packages are added, we need to install them first
     // Strategy: create a setup script file that installs packages before running user code
@@ -421,7 +462,7 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
     } finally {
       setIsExecuting(false);
     }
-  }, [meta, isExecuting, version, files, stdinInput, packages, ecosystem, t, appendOutput]);
+  }, [meta, isExecuting, version, files, stdinInput, packages, ecosystem, t, appendOutput, pistonGate.enabled, languageId]);
 
   const stop = useCallback(() => {
     setIsExecuting(false);
@@ -694,6 +735,10 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {sidePanel === "packages" && !pkgGate.enabled && (
+                    <LockedOverlay feature="playground.python-packages" inline className="my-2" />
+                  )}
+                  <div className={cn(!pkgGate.enabled && "pointer-events-none opacity-50")}>
                   {ecosystem ? (
                     <>
                       <div className="flex items-center gap-1.5">
@@ -740,6 +785,7 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
                       {t("noPackages")}
                     </p>
                   )}
+                  </div>
                 </div>
               )}
             </div>

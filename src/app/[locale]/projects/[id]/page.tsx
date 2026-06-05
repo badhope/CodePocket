@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ProjectEditor } from "@/components/project/project-editor";
+import { BackendGate } from "@/components/system/backend-gate";
 
 // Project routes require auth + a server-side data layer that is not
 // available in a static export. A single placeholder pre-render is
@@ -23,9 +24,11 @@ export default async function ProjectPage({
   if (!session?.user) redirect(`/${locale}/sign-in?callbackUrl=/${locale}/projects/${id}`);
 
   return (
-    <div>
-      <title>{t("projects")}</title>
-      <ProjectEditor id={id} />
-    </div>
+    <BackendGate feature="projects.persist">
+      <div>
+        <title>{t("projects")}</title>
+        <ProjectEditor id={id} />
+      </div>
+    </BackendGate>
   );
 }

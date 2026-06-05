@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Code2 } from "lucide-react";
 import { Link } from "@/lib/i18n/navigation";
+import { BackendGate } from "@/components/system/backend-gate";
 
 function GitHubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -126,10 +127,12 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
+    <BackendGate feature="auth.sign-in">
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
       <Suspense fallback={<div className="text-muted-foreground">Loading…</div>}>
         <SignInForm />
       </Suspense>
     </div>
+    </BackendGate>
   );
 }

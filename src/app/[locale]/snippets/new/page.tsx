@@ -15,6 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackendGate } from "@/components/system/backend-gate";
 import { toast } from "sonner";
 
 const CodeEditor = dynamic(
@@ -71,6 +72,7 @@ export default function NewSnippetPage() {
   }
 
   return (
+    <BackendGate feature="snippets.create">
     <div className="container mx-auto max-w-4xl space-y-6 p-4 md:p-8">
       <Button variant="ghost" size="sm" asChild>
         <Link href={`/${locale}/snippets`}>
@@ -163,5 +165,6 @@ export default function NewSnippetPage() {
         </CardContent>
       </Card>
     </div>
+    </BackendGate>
   );
 }

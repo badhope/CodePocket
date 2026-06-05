@@ -53,6 +53,8 @@
     "home": "Home",
     "dashboard": "Dashboard",
     "convert": "Convert",
+    "playground": "プレイグラウンド",
+    "tools": "ツール",
     "history": "History",
     "settings": "Settings",
     "docs": "Docs",
@@ -246,5 +248,57 @@
     "find": "find",
     "replace": "replace",
     "settings": "settings"
+  },
+  "backendStatus": {
+    "checking": "バックエンドを確認中…",
+    "checkingBody": "Postgres / Redis / Piston に到達できるか /api/health を確認しています。",
+    "online": "バックエンドオンライン",
+    "onlineBody": "Postgres + Redis + Piston に到達可能 — すべての機能が利用可能です。",
+    "degraded": "バックエンドが一部劣化",
+    "degradedBody": "サービスには到達できますが、一部のサブシステム (db / cache / memory) で問題が報告されています。",
+    "offline": "バックエンドオフライン",
+    "offlineBody": "DocForge バックエンドに接続できません。ブラウザーで実行可能な機能は引き続き動作し、その他は一時的にロックされます。",
+    "unsupported": "静的エクスポートビルド",
+    "unsupportedBody": "静的エクスポートビルド (例: GitHub Pages) を表示しています。/api/* は利用できません — すべてをアンロックするにはプロジェクトをローカルで実行してください。",
+    "showGuide": "バックエンドの起動方法",
+    "hideGuide": "非表示",
+    "copy": "コマンドをコピー",
+    "openRepo": "リポジトリを開く",
+    "retry": "再試行",
+    "dismiss": "閉じる",
+    "lastChecked": "{when} に確認"
+  },
+  "tools": {
+    "title": "オンラインツール",
+    "subtitle": "すべてブラウザーでローカルに実行されます — バックエンドは不要です。",
+    "categories": {
+      "format": "整形",
+      "convert": "変換",
+      "encode": "エンコード / ハッシュ",
+      "generate": "生成",
+      "parse": "解析"
+    },
+    "items": {
+      "json-format": { "name": "JSON フォーマッター", "description": "JSON の整形 / 圧縮 / 検証 / ツリー表示" },
+      "css-format": { "name": "CSS フォーマッター", "description": "CSS の整形 / 圧縮" },
+      "sql-format": { "name": "SQL フォーマッター", "description": "SQL の整形 / 圧縮 / キーワード大文字化" },
+      "html-format": { "name": "HTML フォーマッター", "description": "HTML の整形 / 圧縮" },
+      "yaml-json": { "name": "YAML ↔ JSON", "description": "YAML と JSON の相互変換" },
+      "toml-json": { "name": "TOML ↔ JSON", "description": "TOML と JSON の相互変換" },
+      "csv-json": { "name": "CSV ↔ JSON", "description": "CSV と JSON の相互変換" },
+      "md-html": { "name": "Markdown ↔ HTML", "description": "Markdown と HTML の相互変換" },
+      "base64": { "name": "Base64 エンコーダー", "description": "テキストとファイルを Base64 でエンコード / デコード" },
+      "url": { "name": "URL エンコーダー", "description": "URL のエンコード / デコード" },
+      "hash": { "name": "ハッシュ計算機", "description": "MD5 / SHA-1 / SHA-256 / SHA-512" },
+      "jwt": { "name": "JWT デコーダー", "description": "シークレットなしで JWT をデコード — ヘッダー、ペイロード、署名を表示" },
+      "uuid": { "name": "UUID / キー生成", "description": "UUID v1 / v4 / v7、Nano ID、ランダムパスワード" },
+      "color": { "name": "カラー変換", "description": "HEX / RGB / HSL / HSV / CMYK の変換" },
+      "number-base": { "name": "基数変換", "description": "2 進 / 8 進 / 10 進 / 16 進" },
+      "cron": { "name": "Cron パーサー", "description": "cron 式を解析して次回実行時刻を表示" },
+      "regex": { "name": "正規表現テスター", "description": "グループハイライト付き正規表現をライブでテスト" },
+      "diff": { "name": "テキスト差分", "description": "2 つのテキストブロックを行ごとに比較" },
+      "lorem": { "name": "Lorem Ipsum", "description": "プレースホルダーテキストを生成" },
+      "qrcode": { "name": "QRコード", "description": "任意のテキスト / URL を QR コードにエンコード" }
+    }
   }
 }

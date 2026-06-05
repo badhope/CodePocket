@@ -6,6 +6,7 @@ import { conversions, documents } from "@/lib/db/schema"
 import { eq, desc, count, and, like, or } from "drizzle-orm"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BackendGate } from "@/components/system/backend-gate"
 import { History as HistoryIcon, ArrowRight, FileText, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { HistoryList } from "@/components/history/history-list"
@@ -88,6 +89,7 @@ export default async function HistoryPage({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
+    <BackendGate feature="history.view">
     <div className="container mx-auto max-w-5xl space-y-6 p-4 md:p-8">
       <div>
         <h1 className="mb-2 flex items-center gap-3 text-3xl font-bold tracking-tight md:text-4xl">
@@ -111,5 +113,6 @@ export default async function HistoryPage({
         initialStatus={statusFilter}
       />
     </div>
+    </BackendGate>
   )
 }

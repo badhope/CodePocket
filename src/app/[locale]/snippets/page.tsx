@@ -7,6 +7,7 @@ import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { BackendGate } from "@/components/system/backend-gate";
 import { Plus, Search, Code2, Heart, Eye, EyeOff } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,7 @@ export default function SnippetsPage() {
   }, [q]);
 
   return (
+    <BackendGate feature="snippets.persist">
     <div className="container mx-auto max-w-7xl space-y-6 p-4 md:p-8">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
@@ -145,5 +147,6 @@ export default function SnippetsPage() {
         </Card>
       )}
     </div>
+    </BackendGate>
   );
 }

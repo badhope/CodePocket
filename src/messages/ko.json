@@ -53,6 +53,8 @@
     "home": "Home",
     "dashboard": "Dashboard",
     "convert": "Convert",
+    "playground": "플레이그라운드",
+    "tools": "도구",
     "history": "History",
     "settings": "Settings",
     "docs": "Docs",
@@ -246,5 +248,57 @@
     "find": "find",
     "replace": "replace",
     "settings": "settings"
+  },
+  "backendStatus": {
+    "checking": "백엔드 확인 중…",
+    "checkingBody": "Postgres / Redis / Piston에 도달할 수 있는지 /api/health 를 확인하는 중입니다.",
+    "online": "백엔드 온라인",
+    "onlineBody": "Postgres + Redis + Piston 모두 도달 가능 — 모든 기능이 잠금 해제되었습니다.",
+    "degraded": "백엔드 부분 저하",
+    "degradedBody": "서비스에 도달할 수 있지만 일부 하위 시스템 (db / cache / memory) 에 문제가 보고되었습니다.",
+    "offline": "백엔드 오프라인",
+    "offlineBody": "DocForge 백엔드에 연결할 수 없습니다. 브라우저에서 실행 가능한 기능은 계속 작동하며, 나머지 기능은 일시적으로 잠깁니다.",
+    "unsupported": "정적 내보내기 빌드",
+    "unsupportedBody": "정적 내보내기 빌드 (예: GitHub Pages) 를 보고 있습니다. /api/* 를 사용할 수 없습니다 — 모든 기능을 사용하려면 로컬에서 프로젝트를 실행하세요.",
+    "showGuide": "백엔드 시작 방법",
+    "hideGuide": "숨기기",
+    "copy": "명령 복사",
+    "openRepo": "저장소 열기",
+    "retry": "재시도",
+    "dismiss": "닫기",
+    "lastChecked": "{when} 에 확인"
+  },
+  "tools": {
+    "title": "온라인 도구",
+    "subtitle": "모두 브라우저에서 로컬로 실행됩니다 — 백엔드 필요 없음.",
+    "categories": {
+      "format": "포맷",
+      "convert": "변환",
+      "encode": "인코딩 / 해시",
+      "generate": "생성",
+      "parse": "파싱"
+    },
+    "items": {
+      "json-format": { "name": "JSON 포맷터", "description": "JSON beautify / minify / validate / tree 탐색" },
+      "css-format": { "name": "CSS 포맷터", "description": "CSS beautify / minify" },
+      "sql-format": { "name": "SQL 포맷터", "description": "SQL beautify / minify / 키워드 대문자" },
+      "html-format": { "name": "HTML 포맷터", "description": "HTML beautify / minify" },
+      "yaml-json": { "name": "YAML ↔ JSON", "description": "YAML과 JSON 간 변환" },
+      "toml-json": { "name": "TOML ↔ JSON", "description": "TOML과 JSON 간 변환" },
+      "csv-json": { "name": "CSV ↔ JSON", "description": "CSV와 JSON 간 변환" },
+      "md-html": { "name": "Markdown ↔ HTML", "description": "Markdown과 HTML 간 변환" },
+      "base64": { "name": "Base64 인코더", "description": "텍스트와 파일을 Base64로 인코딩 / 디코딩" },
+      "url": { "name": "URL 인코더", "description": "URL 인코딩 / 디코딩" },
+      "hash": { "name": "해시 계산기", "description": "MD5 / SHA-1 / SHA-256 / SHA-512" },
+      "jwt": { "name": "JWT 디코더", "description": "비밀 키 없이 JWT 디코딩 — header, payload, signature 확인" },
+      "uuid": { "name": "UUID / 키 생성기", "description": "UUID v1 / v4 / v7, Nano ID, 랜덤 비밀번호" },
+      "color": { "name": "색상 변환기", "description": "HEX / RGB / HSL / HSV / CMYK 변환" },
+      "number-base": { "name": "진법 변환기", "description": "2진 / 8진 / 10진 / 16진" },
+      "cron": { "name": "Cron 파서", "description": "cron 표현식 파싱 및 다음 실행 시각 표시" },
+      "regex": { "name": "정규식 테스터", "description": "그룹 강조 표시와 함께 정규식 실시간 테스트" },
+      "diff": { "name": "텍스트 Diff", "description": "두 텍스트 블록을 줄 단위로 비교" },
+      "lorem": { "name": "Lorem Ipsum", "description": "자리 표시자 텍스트 생성" },
+      "qrcode": { "name": "QR 코드", "description": "임의의 텍스트 / URL을 QR 코드로 인코딩" }
+    }
   }
 }

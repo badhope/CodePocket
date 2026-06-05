@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { SessionProvider } from "next-auth/react";
 import { useState, type ReactNode } from "react";
+import { BackendStatusBanner } from "@/components/system/backend-status-banner";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -34,6 +35,7 @@ export function Providers({ children }: { children: ReactNode }) {
           disableTransitionOnChange
         >
           <TooltipProvider delayDuration={150}>
+            <BackendStatusBanner />
             {children}
             <Toaster richColors position="top-right" />
           </TooltipProvider>

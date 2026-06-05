@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { LockedOverlay } from "@/components/system/locked-overlay";
+import { useFeatureGate } from "@/lib/system/feature-gate";
 import { AlertCircle, Clock, Code2, Lock } from "lucide-react";
 
 interface ShareData {
@@ -38,12 +40,14 @@ export interface ShareViewClientProps {
 
 export default function ShareViewClient({ shortId }: ShareViewClientProps) {
   const locale = useLocale();
+  const gate = useFeatureGate("share.resolve");
   const [data, setData] = useState<ShareData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!shortId) return;
+    if (!gate.enabled) return;
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
@@ -68,7 +72,15 @@ export default function ShareViewClient({ shortId }: ShareViewClientProps) {
     return () => {
       cancelled = true;
     };
-  }, [shortId]);
+  }, [shortId, gate.enabled]);
+
+  if (!gate.enabled) {
+    return (
+      <div className="container mx-auto max-w-4xl p-4 md:p-8">
+        <LockedOverlay feature="share.resolve" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -217,25 +217,155 @@
     "validation": "请修复上方错误"
   },
   "playground": {
-    "title": "title",
-    "subtitle": "subtitle",
-    "run": "run",
-    "stop": "stop",
-    "clear": "clear",
-    "share": "share",
-    "copy": "copy",
-    "downloaded": "downloaded",
-    "stdinPlaceholder": "stdinPlaceholder",
-    "languagePicker": "languagePicker",
-    "versionPicker": "versionPicker",
-    "frontendMode": "frontendMode",
-    "backendMode": "backendMode",
-    "packageManager": "packageManager",
-    "packagePlaceholder": "packagePlaceholder",
-    "output": "output",
-    "code": "code",
-    "console": "console",
-    "packages": "Packages"
+    "title": "代码游乐场",
+    "subtitle": "用 14+ 种语言在浏览器中执行代码 — Python/JS/TS/Go/Rust/Java 等",
+    "run": "运行",
+    "stop": "停止",
+    "clear": "清空",
+    "share": "分享",
+    "copy": "复制",
+    "downloaded": "已下载",
+    "stdinPlaceholder": "在此输入 stdin …",
+    "languagePicker": "语言",
+    "versionPicker": "版本",
+    "frontendMode": "浏览器执行",
+    "backendMode": "服务器执行",
+    "packageManager": "包管理",
+    "packagePlaceholder": "包名（如 numpy, requests）",
+    "output": "输出",
+    "code": "代码",
+    "console": "控制台",
+    "packages": "包",
+    "newFile": "新建文件",
+    "templates": "模板",
+    "selectTemplate": "选择模板",
+    "executing": "执行中…",
+    "stdin": "标准输入",
+    "installing": "正在安装",
+    "success": "成功",
+    "failed": "失败",
+    "languageNotSupported": "该语言在浏览器中不支持",
+    "clearOutput": "清空输出",
+    "copyLink": "复制链接",
+    "linkCopied": "链接已复制",
+    "shareUrlError": "无法生成分享链接",
+    "replace": "替换",
+    "confirmTemplate": "替换当前代码?",
+    "addPackage": "添加包",
+    "noPackages": "暂无包",
+    "needsBackendOrBrowser": "此语言需要后端执行。请切换到 JS/TS/Python/HTML 等浏览器可执行语言,或启动后端。"
+  },
+  "backendStatus": {
+    "checking": "正在检查后端…",
+    "checkingBody": "正在探测 /api/health,确认 Postgres/Redis/Piston 是否就绪。",
+    "online": "后端在线",
+    "onlineBody": "Postgres + Redis + Piston 全部可用 — 所有功能已解锁。",
+    "degraded": "后端部分降级",
+    "degradedBody": "服务可访问,但部分子系统 (db/cache/memory) 报告异常,部分功能可能不稳定。",
+    "offline": "后端离线",
+    "offlineBody": "无法连接 DocForge 后端服务。下面是可离线使用的功能,其他功能已临时锁定。",
+    "unsupported": "当前为静态构建",
+    "unsupportedBody": "你正在浏览 DocForge 的静态导出版本 (例如 GitHub Pages)。/api/* 不可用,请在本地运行项目以解锁全部功能。",
+    "showGuide": "如何启动后端",
+    "hideGuide": "收起",
+    "copy": "复制命令",
+    "openRepo": "打开仓库",
+    "retry": "重试",
+    "dismiss": "关闭",
+    "lastChecked": "{when} 检查过"
+  },
+  "tools": {
+    "title": "在线工具集",
+    "subtitle": "全部在浏览器中运行,无需后端",
+    "categories": {
+      "format": "格式化",
+      "convert": "转换",
+      "encode": "编码 / 哈希",
+      "generate": "生成器",
+      "parse": "解析"
+    },
+    "items": {
+      "json-format": {
+        "name": "JSON 格式化",
+        "description": "美化 / 压缩 / 校验 / 树状浏览 JSON"
+      },
+      "css-format": {
+        "name": "CSS 格式化",
+        "description": "美化 / 压缩 CSS"
+      },
+      "sql-format": {
+        "name": "SQL 格式化",
+        "description": "美化 / 压缩 / 关键字大写 SQL"
+      },
+      "html-format": {
+        "name": "HTML 格式化",
+        "description": "美化 / 压缩 HTML"
+      },
+      "yaml-json": {
+        "name": "YAML ↔ JSON",
+        "description": "在 YAML 和 JSON 之间互转"
+      },
+      "toml-json": {
+        "name": "TOML ↔ JSON",
+        "description": "在 TOML 和 JSON 之间互转"
+      },
+      "csv-json": {
+        "name": "CSV ↔ JSON",
+        "description": "在 CSV 和 JSON 之间互转"
+      },
+      "md-html": {
+        "name": "Markdown ↔ HTML",
+        "description": "Markdown 与 HTML 互转"
+      },
+      "base64": {
+        "name": "Base64 编解码",
+        "description": "文本 / 文件 Base64 编解码"
+      },
+      "url": {
+        "name": "URL 编解码",
+        "description": "URL 编码 / 解码"
+      },
+      "hash": {
+        "name": "哈希计算",
+        "description": "MD5 / SHA-1 / SHA-256 / SHA-512"
+      },
+      "jwt": {
+        "name": "JWT 解码",
+        "description": "无密钥解码 JWT,查看 payload / header / 签名"
+      },
+      "uuid": {
+        "name": "UUID / Key 生成",
+        "description": "UUID v1/v4/v7, Nano ID, 随机密码"
+      },
+      "color": {
+        "name": "颜色转换",
+        "description": "HEX / RGB / HSL / HSV / CMYK 互转"
+      },
+      "number-base": {
+        "name": "进制转换",
+        "description": "二进制 / 八进制 / 十进制 / 十六进制"
+      },
+      "cron": {
+        "name": "Cron 解析",
+        "description": "解析 cron 表达式,显示下次执行时间"
+      },
+      "regex": {
+        "name": "正则测试",
+        "description": "实时测试正则,带分组高亮"
+      },
+      "diff": {
+        "name": "文本 Diff",
+        "description": "两段文本逐行对比"
+      },
+      "lorem": {
+        "name": "占位文本",
+        "description": "Lorem ipsum 占位文本生成"
+      },
+      "qrcode": {
+        "name": "二维码生成",
+        "description": "把任意文本 / URL 编码成二维码"
+      }
+    }
   },
   "editor": {
     "save": "save",

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { BackendGate } from "@/components/system/backend-gate"
 import { Plus, FileText, ArrowRight, Upload, CheckCircle2, XCircle, Clock, BarChart3, Activity, TrendingUp, FileStack } from "lucide-react"
 import { formatBytes } from "@/lib/utils"
 import { TrendChart } from "@/components/dashboard/trend-chart"
@@ -129,6 +130,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   }))
 
   return (
+    <BackendGate feature="dashboard.view">
     <div className="container mx-auto max-w-7xl space-y-8 p-4 md:p-8">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
@@ -308,6 +310,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         </CardContent>
       </Card>
     </div>
+    </BackendGate>
   )
 }
 

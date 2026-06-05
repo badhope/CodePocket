@@ -16,6 +16,7 @@ import { LanguageSwitcher } from "./language-switcher"
 import { UserMenu } from "./user-menu"
 import { Link, usePathname } from "@/lib/i18n/navigation"
 import { useTranslations } from "next-intl"
+import { BackendStatusDot } from "@/components/system/backend-status-banner"
 import { cn } from "@/lib/utils"
 
 export function Header() {
@@ -25,6 +26,8 @@ export function Header() {
 
   const links = [
     { href: "/convert", label: t("convert") },
+    { href: "/playground", label: t("playground") ?? "Playground" },
+    { href: "/tools", label: t("tools") ?? "Tools" },
     { href: "/history", label: t("history") },
     { href: "/pricing", label: t("pricing") },
     { href: "/docs", label: t("docs") },
@@ -44,7 +47,7 @@ export function Header() {
               href={l.href}
               className={cn(
                 "px-3 py-2 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground/80",
-                pathname === l.href && "text-foreground",
+                pathname.startsWith(l.href) && "text-foreground",
               )}
             >
               {l.label}
@@ -52,6 +55,10 @@ export function Header() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-1">
+          <span className="mr-1 hidden items-center gap-1.5 text-xs text-muted-foreground md:inline-flex">
+            <BackendStatusDot />
+            <span className="hidden lg:inline">Backend</span>
+          </span>
           <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
             <a
               href="https://github.com/badhope/DocForge"

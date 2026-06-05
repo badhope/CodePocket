@@ -53,6 +53,8 @@
     "home": "Home",
     "dashboard": "Dashboard",
     "convert": "Convert",
+    "playground": "Bac à sable",
+    "tools": "Outils",
     "history": "History",
     "settings": "Settings",
     "docs": "Docs",
@@ -246,5 +248,57 @@
     "find": "find",
     "replace": "replace",
     "settings": "settings"
+  },
+  "backendStatus": {
+    "checking": "Vérification du backend…",
+    "checkingBody": "Test de /api/health pour voir si Postgres / Redis / Piston sont accessibles.",
+    "online": "Backend en ligne",
+    "onlineBody": "Postgres + Redis + Piston sont accessibles — toutes les fonctionnalités sont débloquées.",
+    "degraded": "Backend partiellement dégradé",
+    "degradedBody": "Le service est accessible mais certains sous-systèmes (db / cache / memory) signalent des problèmes.",
+    "offline": "Backend hors ligne",
+    "offlineBody": "Impossible de joindre le backend DocForge. Les fonctionnalités exécutables dans le navigateur fonctionnent toujours, tout le reste est temporairement verrouillé.",
+    "unsupported": "Build d'export statique",
+    "unsupportedBody": "Vous consultez la build d'export statique (par ex. GitHub Pages). /api/* n'est pas disponible — exécutez le projet en local pour tout débloquer.",
+    "showGuide": "Comment démarrer le backend",
+    "hideGuide": "Masquer",
+    "copy": "Copier les commandes",
+    "openRepo": "Ouvrir le dépôt",
+    "retry": "Réessayer",
+    "dismiss": "Ignorer",
+    "lastChecked": "Vérifié {when}"
+  },
+  "tools": {
+    "title": "Outils en ligne",
+    "subtitle": "Tout fonctionne localement dans votre navigateur — aucun backend requis.",
+    "categories": {
+      "format": "Formater",
+      "convert": "Convertir",
+      "encode": "Encoder / Hash",
+      "generate": "Générer",
+      "parse": "Analyser"
+    },
+    "items": {
+      "json-format": { "name": "Formateur JSON", "description": "Embellir / minifier / valider / parcourir en arbre JSON" },
+      "css-format": { "name": "Formateur CSS", "description": "Embellir / minifier CSS" },
+      "sql-format": { "name": "Formateur SQL", "description": "Embellir / minifier / mettre en majuscules les mots-clés SQL" },
+      "html-format": { "name": "Formateur HTML", "description": "Embellir / minifier HTML" },
+      "yaml-json": { "name": "YAML ↔ JSON", "description": "Convertir entre YAML et JSON" },
+      "toml-json": { "name": "TOML ↔ JSON", "description": "Convertir entre TOML et JSON" },
+      "csv-json": { "name": "CSV ↔ JSON", "description": "Convertir entre CSV et JSON" },
+      "md-html": { "name": "Markdown ↔ HTML", "description": "Convertir entre Markdown et HTML" },
+      "base64": { "name": "Encodeur Base64", "description": "Encoder / décoder du texte et des fichiers en Base64" },
+      "url": { "name": "Encodeur URL", "description": "Encoder / décoder des URL" },
+      "hash": { "name": "Calculateur de Hash", "description": "MD5 / SHA-1 / SHA-256 / SHA-512" },
+      "jwt": { "name": "Décodeur JWT", "description": "Décoder les JWT sans secret — voir header, payload, signature" },
+      "uuid": { "name": "Générateur UUID / Clés", "description": "UUID v1 / v4 / v7, Nano ID, mots de passe aléatoires" },
+      "color": { "name": "Convertisseur de Couleur", "description": "Conversions HEX / RGB / HSL / HSV / CMYK" },
+      "number-base": { "name": "Convertisseur de Base Numérique", "description": "Binaire / Octal / Décimal / Hexadécimal" },
+      "cron": { "name": "Parseur Cron", "description": "Parser les expressions cron et afficher les prochaines exécutions" },
+      "regex": { "name": "Testeur de Regex", "description": "Tester des regex en direct avec surlignage des groupes" },
+      "diff": { "name": "Diff de Texte", "description": "Comparer deux blocs de texte ligne par ligne" },
+      "lorem": { "name": "Lorem Ipsum", "description": "Générer du texte de remplissage" },
+      "qrcode": { "name": "Code QR", "description": "Encoder n'importe quel texte / URL dans un code QR" }
+    }
   }
 }

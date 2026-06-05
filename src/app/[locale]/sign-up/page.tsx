@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Code2 } from "lucide-react";
 import { Link } from "@/lib/i18n/navigation";
+import { BackendGate } from "@/components/system/backend-gate";
 
 export default function SignUpPage() {
   const t = useTranslations("auth");
@@ -54,6 +55,7 @@ export default function SignUpPage() {
   }
 
   return (
+    <BackendGate feature="auth.sign-up">
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -121,5 +123,6 @@ export default function SignUpPage() {
         </CardContent>
       </Card>
     </div>
+    </BackendGate>
   );
 }

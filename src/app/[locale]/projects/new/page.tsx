@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { LANGUAGE_LIST } from "@/lib/execution";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { BackendGate } from "@/components/system/backend-gate";
 
 export default function NewProjectPage() {
   const locale = useLocale();
@@ -46,6 +47,7 @@ export default function NewProjectPage() {
   }
 
   return (
+    <BackendGate feature="projects.create">
     <div className="container mx-auto max-w-2xl space-y-6 p-4 md:p-8">
       <div>
         <Button variant="ghost" size="sm" asChild>
@@ -119,5 +121,6 @@ export default function NewProjectPage() {
         </CardContent>
       </Card>
     </div>
+    </BackendGate>
   );
 }
