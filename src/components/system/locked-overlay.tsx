@@ -8,15 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useFeatureGate, type FeatureId } from "@/lib/system/feature-gate";
 import { cn } from "@/lib/utils";
 
-const REPO_URL = "https://github.com/badhope/DocForge";
+const REPO_URL = "https://github.com/badhope/OnlineCode";
 
 const COPY = {
   zh: {
     title: "此功能需要后端服务",
     subtitle: "请在本地启动 DocForge 后端以解锁",
     steps: [
-      "git clone https://github.com/badhope/DocForge",
-      "cd DocForge",
+      "git clone https://github.com/badhope/OnlineCode",
+      "cd OnlineCode",
       "pnpm install",
       "make up    # Postgres + Redis + Piston + 迁移",
       "make dev   # 启动 Next.js → http://localhost:3000",
@@ -29,11 +29,11 @@ const COPY = {
     title: "This feature needs the backend",
     subtitle: "Run DocForge locally to unlock it",
     steps: [
-      "git clone https://github.com/badhope/DocForge",
-      "cd DocForge",
+      "git clone https://github.com/badhope/OnlineCode",
+      "cd OnlineCode",
       "pnpm install",
       "make up    # Postgres + Redis + Piston + migrations",
-      "make dev   # starts Next.js → http://localhost:3000",
+      "make dev   # starts Next.js on http://localhost:3000",
     ],
     cta: "Open the repository",
     retry: "Retry",

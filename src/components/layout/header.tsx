@@ -61,7 +61,7 @@ export function Header() {
           </span>
           <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
             <a
-              href="https://github.com/badhope/DocForge"
+              href="https://github.com/badhope/OnlineCode"
               target="_blank"
               rel="noreferrer"
               aria-label="GitHub"

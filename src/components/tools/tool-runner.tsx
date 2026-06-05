@@ -1233,7 +1233,7 @@ function LoremTool() {
 }
 
 function QrTool() {
-  const [text, setText] = useState("https://github.com/badhope/DocForge");
+  const [text, setText] = useState("https://github.com/badhope/OnlineCode");
   const [dataUrl, setDataUrl] = useState<string>("");
   useEffect(() => {
     let cancelled = false;

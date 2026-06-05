@@ -3,10 +3,10 @@
   "version": "3.1.0",
   "private": true,
   "description": "Offline-first developer toolbox — 20 browser tools (run code in Python via Pyodide, JS/TS in a Web Worker, Lua, SQL; edit Monaco files; convert, diff, format, encrypt, OCR-free utilities). Optional backend enables conversion to DOCX/PDF/XLSX, account, collab, rate-limit.",
-  "homepage": "https://github.com/badhope/DocForge#readme",
+  "homepage": "https://github.com/badhope/OnlineCode#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/badhope/DocForge.git"
+    "url": "https://github.com/badhope/OnlineCode.git"
   },
   "license": "MIT",
   "author": "DocForge Contributors",

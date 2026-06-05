@@ -56,3 +56,9 @@ drizzle/meta
 
 # workbuddy (AI assistant workspace data)
 .workbuddy/
+
+# piston-shim runtime artifacts (created by `make piston-up`)
+/tmp/piston-shim.pid
+/var/log/piston-shim/
+infra/piston-shim/node_modules/
+infra/collab-server/node_modules/

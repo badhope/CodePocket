@@ -52,7 +52,7 @@ export default function NotFound() {
               </Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <a href="https://github.com/badhope/DocForge/issues" target="_blank" rel="noreferrer">
+              <a href="https://github.com/badhope/OnlineCode/issues" target="_blank" rel="noreferrer">
                 <ExternalLink className="mr-1.5 size-3.5" />
                 {t("reportIssue")}
               </a>

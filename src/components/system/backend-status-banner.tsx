@@ -16,11 +16,11 @@ import { Button } from "@/components/ui/button";
 import { useBackendStatus, type BackendState } from "@/lib/system/backend-status";
 import { cn } from "@/lib/utils";
 
-const REPO_URL = "https://github.com/badhope/DocForge";
+const REPO_URL = "https://github.com/badhope/OnlineCode";
 
 const BOOT_COMMANDS = [
-  "git clone https://github.com/badhope/DocForge",
-  "cd DocForge",
+  "git clone https://github.com/badhope/OnlineCode",
+  "cd OnlineCode",
   "pnpm install",
   "make up           # starts Postgres + Redis + Piston-shim + migrations",
   "make dev          # starts Next.js on http://localhost:3000",
