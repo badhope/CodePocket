@@ -62,3 +62,4 @@ drizzle/meta
 /var/log/piston-shim/
 infra/piston-shim/node_modules/
 infra/collab-server/node_modules/
+miniprogram/node_modules/

@@ -307,6 +307,31 @@ In production (full stack):
 The same Drizzle migration files in `drizzle/` run via
 `pnpm db:migrate` in CI.
 
+## Other packages in this repo
+
+This repository is a monorepo with two companion clients plus the main
+Next.js app:
+
+```
+OnlineCode/
+├── (this Next.js 16 app — root)
+├── infra/
+│   ├── piston-shim/        # Piston-compatible code-execution API (Node.js)
+│   └── collab-server/      # Yjs / Hocuspocus WebSocket server
+└── miniprogram/            # Taro-based WeChat Mini Program (companion)
+```
+
+| command             | what it does                                             |
+| ------------------- | -------------------------------------------------------- |
+| `pnpm mp:dev`       | `cd miniprogram && npm run dev:weapp` — Taro dev server |
+| `pnpm mp:build`     | `cd miniprogram && npm run build:weapp` — Taro build    |
+| `make piston-up`    | start the local Piston shim (port 2000)                  |
+| `make piston-down`  | stop the local Piston shim                               |
+
+The Mini Program shares the same backend over the same Next.js API
+routes; it does **not** include any of the offline-first browser
+tooling (the 20 tools and Monaco editor are web-only by design).
+
 ## License
 
 MIT
