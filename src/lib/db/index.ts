@@ -11,7 +11,8 @@ function resolveUrl(): string {
   const url = process.env.POSTGRES_URL;
   if (url && url.length > 0) return url;
   if (process.env.NEXT_PHASE === "phase-production-build") {
-    return "postgres://build:build@127.0.0.1:5432/build";
+    // Build phase never actually opens a connection; this just needs to parse.
+    return "postgres://placeholder:placeholder@127.0.0.1:5432/placeholder";
   }
   throw new Error("Database is not configured. Set POSTGRES_URL in your environment.");
 }
