@@ -1,0 +1,78 @@
+name: Deploy static site to GitHub Pages
+
+on:
+  # Run on every push to main. Use the workflow_dispatch trigger for manual runs.
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Allow only one concurrent deployment; cancel in-progress runs on new commits.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+# Required for GitHub Pages: restrict permissions to read-only by default.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Don't leave old deployments around forever.
+env:
+  NEXT_PUBLIC_STATIC_DEMO: "1"
+
+jobs:
+  build:
+    name: Build static site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: CI=true pnpm install --no-frozen-lockfile --ignore-scripts
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Build static export
+        # `pnpm build:gh-pages` runs scripts/build-gh-pages.sh, which
+        # temporarily stages out API routes and auth-only pages
+        # (dashboard / history / projects) so `output: 'export'` can
+        # pre-render the marketing surface.  After the build finishes
+        # the script moves everything back so dev / server deploys
+        # keep working.
+        run: pnpm build:gh-pages
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

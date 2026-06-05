@@ -50,8 +50,6 @@
     "src/app/not-found.tsx",
     "src/app/loading.tsx",
     "src/app/error.tsx",
-    "src/app/manifest.webmanifest/route.ts",
-    "src/app/favicon.ico/route.ts",
     "src/app/robots.ts",
     "src/app/sitemap.ts",
     "src/app/global-error.tsx",
