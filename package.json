@@ -1,8 +1,8 @@
 {
   "name": "docforge",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
-  "description": "Universal document conversion platform - Web + WeChat Mini Program. Convert between DOCX, PDF, Markdown, HTML, XLSX, CSV, and more.",
+  "description": "Offline-first developer toolbox — 20 browser tools (run code in Python via Pyodide, JS/TS in a Web Worker, Lua, SQL; edit Monaco files; convert, diff, format, encrypt, OCR-free utilities). Optional backend enables conversion to DOCX/PDF/XLSX, account, collab, rate-limit.",
   "homepage": "https://github.com/badhope/DocForge#readme",
   "repository": {
     "type": "git",
@@ -11,18 +11,23 @@
   "license": "MIT",
   "author": "DocForge Contributors",
   "keywords": [
+    "offline-first",
+    "frontend-runner",
+    "pyodide",
+    "monaco-editor",
+    "sql.js",
+    "fengari",
+    "code-playground",
     "document-converter",
-    "file-converter",
-    "docx-to-pdf",
-    "pdf-to-docx",
     "markdown-converter",
     "nextjs",
     "typescript",
     "react",
-    "pwa",
-    "tailwindcss",
-    "wechat-miniprogram",
-    "taro"
+    "next-intl",
+    "static-export",
+    "gh-pages",
+    "yjs",
+    "hocuspocus"
   ],
   "scripts": {
     "dev": "next dev",
@@ -144,7 +149,8 @@
     "overrides": {
       "dompurify@>=3 <3.3.2": ">=3.3.2",
       "uuid@<11.1.1": ">=11.1.1",
-      "postcss@<8.5.10": ">=8.5.10"
+      "postcss@<8.5.10": ">=8.5.10",
+      "esbuild@<=0.24.2": ">=0.25.0"
     }
   },
   "lint-staged": {

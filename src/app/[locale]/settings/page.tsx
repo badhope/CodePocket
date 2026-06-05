@@ -193,14 +193,8 @@ export default function SettingsPage() {
             </Badge>
           </div>
           <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Change password</p>
-              <p className="text-muted-foreground text-sm">Update your account password</p>
-            </div>
-            <Button variant="outline" size="sm" disabled>
-              Coming soon
-            </Button>
+          <div className="text-muted-foreground text-sm">
+            密码修改需在后端账户服务中实现（不在当前前端范围内）。
           </div>
         </CardContent>
       </Card>

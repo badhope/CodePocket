@@ -1,8 +1,9 @@
 # DocForge
 
-> Universal document conversion + an in-browser code playground.
-> Web (Next.js 16) and a WeChat Mini Program companion, both fed by the same
-> Postgres + Redis backend.
+> **Offline-first developer toolbox.** 20 browser tools, a polyglot code
+> playground, and a full document-conversion engine — every one of them runs
+> in the browser with **zero backend dependency**. The optional backend only
+> unlocks account, collaboration, and high-fidelity DOCX/PDF/XLSX output.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
@@ -10,40 +11,82 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://www.postgresql.org)
 [![Redis](https://img.shields.io/badge/Redis-7-dc382d?logo=redis)](https://redis.io)
 [![Drizzle](https://img.shields.io/badge/Drizzle-ORM-c5f74f)](https://orm.drizzle.team)
+[![Tests](https://img.shields.io/badge/vitest-52%20unit-6e9f18?logo=vitest)](./src/lib)
+[![Audit](https://img.shields.io/badge/pnpm%20audit-0%20CVE-success)]()
+
+## The 20 tools
+
+All available at `/[locale]/tools` and **fully offline** — no fetch, no
+network roundtrip. Grouped by category:
+
+| Category | Tools |
+| -------- | ----- |
+| **format** | JSON formatter, CSS formatter, SQL formatter, HTML formatter |
+| **convert** | YAML⇄JSON, TOML⇄JSON, CSV⇄JSON, Markdown⇄HTML |
+| **encode** | Base64, URL, Hash (SHA family), JWT decoder |
+| **generate** | UUID, Color (HEX/RGB/HSL), Number-base, Lorem ipsum, QR code |
+| **parse** | Cron, Regex tester, Text diff |
+
+All 20 are wired through the offline-first state machine
+(`useBackendStatus` + feature gate) and degrade gracefully when the
+backend is offline — none of them is a stub.
 
 ## Features
 
-- **Document conversion** — DOCX ⇄ PDF ⇄ Markdown ⇄ HTML ⇄ XLSX ⇄ CSV ⇄ JSON ⇄ XML ⇄ PPTX, with magic-byte validation and rate limiting.
-- **Code playground** — 14+ runtimes (Python 3.14, Node 24, TypeScript 5, C/C++ 13, Go 1.25, Rust, Java 25, Ruby 3.4, PHP, Perl, Swift 6, SQLite, Bash) via a **local Piston shim** ([`infra/piston-shim`](./infra/piston-shim)). A browser fallback (Web Workers for JS, TypeScript transpile, Pyodide for Python, sandboxed iframe for HTML) kicks in when the backend is unavailable.
-- **Auth** — NextAuth v5 (credentials + GitHub/Google OAuth).
-- **Persistence** — Postgres 16 via Drizzle ORM (14 tables: users, sessions, accounts, executions, projects, snippets, shares, teams, etc.).
-- **Rate limiting** — sliding-window via Redis 7 (local) or Upstash REST (production). No silent fallbacks — the route surfaces a 503 when no Redis backend is configured.
-- **i18n** — English, Chinese, Japanese, Korean, Spanish, French (next-intl).
-- **PWA** — service worker, offline shell, install prompt.
-- **Mini program** — Taro-based WeChat client sharing the same backend.
+- **20 offline tools** — every tool runs in the browser; the page works
+  even if the API routes 503. The `BackendStatusOverview` component shows
+  the live state so users know when a feature is degraded.
+- **Polyglot code playground** — Python 3 (Pyodide), JavaScript /
+  TypeScript (Web Worker transpile), Lua (fengari-web), SQL (sql.js).
+  Backend also wires 14+ system toolchains through the local Piston shim
+  (see below).
+- **Document conversion** — DOCX ⇄ PDF ⇄ Markdown ⇄ HTML ⇄ XLSX ⇄ CSV
+  ⇄ JSON ⇄ XML ⇄ PPTX via the in-browser `client-tools` engine. Backend
+  adds server-side DOCX / PDF / XLSX rendering for high-fidelity output.
+- **Auth & accounts** — NextAuth v5 (credentials + GitHub/Google OAuth).
+  Entirely optional; the 20 tools are reachable without signing in.
+- **Persistence** — Postgres 16 via Drizzle ORM (users, sessions, accounts,
+  executions, projects, snippets, shares, teams, …). Only used by
+  optional features.
+- **Rate limiting** — sliding-window via Redis 7 (local) or Upstash REST
+  (production). When no Redis backend is configured, the route returns
+  **503** — there is no silent fail-open.
+- **Realtime collab** — Yjs + Hocuspocus in
+  [`infra/collab-server`](./infra/collab-server); the editor falls back to
+  single-user mode when `NEXT_PUBLIC_COLLAB_URL` is unset.
+- **i18n** — English, Chinese, Japanese, Korean, Spanish, French
+  (next-intl).
+- **Static export** — `pnpm build:gh-pages` builds a self-contained
+  static site that runs at `100%` in the browser with no backend
+  (`NEXT_PUBLIC_STATIC_DEMO=1`).
+- **PWA** — service worker, install prompt, offline shell for the
+  tools + editor.
 
 ## Quick start
 
 ```bash
-# 1. Install system deps (Ubuntu/Debian)
-sudo apt-get install -y postgresql redis-server
-
-# 2. Install Node deps
+# 1. Install
 pnpm install
 
-# 3. Start Postgres + Redis + Piston-shim, then apply migrations
+# 2. (Recommended) start Postgres + Redis + Piston-shim
 make up
 
-# 4. Run the dev server
-make dev
-# -> http://localhost:3000
+# 3. Dev server
+make dev          # -> http://localhost:3000
+
+# 4. (Alternative) static export — no backend at all
+pnpm build:gh-pages
 ```
 
-That's it. `make up` will:
+If you only want the offline tools and playground, **skip step 2**.
+`pnpm dev` will boot the Next.js server and the tools will work
+immediately; the `/offline` page shows the live backend status.
+
+### What `make up` does
 
 - start the `main` Postgres 16 cluster on 5432
 - start `redis-server` on 6379
-- start the local **Piston shim** on `127.0.0.1:2000` (see below)
+- start the local **Piston shim** on `127.0.0.1:2000`
 - create the `docforge` and `docforge_shadow` databases with the `docforge` role
 - apply every SQL file in `drizzle/` (idempotent via `drizzle.__drizzle_migrations`)
 
@@ -54,12 +97,10 @@ The public Piston API at `https://emkc.org/api/v2/piston` has been
 To keep `/api/execute` working offline and self-hosted, DocForge ships a
 small Piston-compatible service in [`infra/piston-shim/`](./infra/piston-shim).
 It speaks the exact same two endpoints (`/api/v2/runtimes` and
-`/api/execute`) using the system toolchains that are already on your
-`PATH` (Python 3, Node 24, GCC 13, Go 1.25, Rust, Java 25, Ruby, PHP,
-Perl, Swift, SQLite, TypeScript). 14 runtimes in 200 lines of Node — no
-Docker, no `isolate(1)`, no cgroup v2 setup.
-
-Manage it with `make`:
+`/api/execute`) using the system toolchains already on your `PATH`
+(Python 3, Node 24, GCC 13, Go 1.25, Rust, Java 25, Ruby, PHP, Perl,
+Swift, SQLite, TypeScript). 14 runtimes in 200 lines of Node — no Docker,
+no `isolate(1)`, no cgroup v2 setup.
 
 ```bash
 make piston-up      # start the shim (idempotent, pidfile-tracked)
@@ -82,7 +123,7 @@ official hosted endpoint if you have a whitelist key.
 | `make status`    | print cluster / redis / Piston status                           |
 | `make dev`       | `pnpm dev`                                                      |
 | `make build`     | `pnpm build` (production)                                       |
-| `make test`      | `pnpm test`                                                     |
+| `make test`      | `pnpm test` (vitest)                                            |
 | `make lint`      | `pnpm lint`                                                     |
 | `make typecheck` | `tsc --noEmit`                                                  |
 | `make smoke`     | end-to-end Python venv + Postgres + Redis + Next.js + Piston check |
@@ -101,69 +142,73 @@ There is also a small CLI wrapper:
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                         Next.js 16 (App Router)                  │
-│  src/app/[locale]/**   — pages                                   │
-│  src/app/api/**        — route handlers                          │
-│  src/lib/auth          — NextAuth v5                             │
-│  src/lib/db            — Drizzle ORM + Postgres 16               │
-│  src/lib/convert/**    — DOCX/PDF/MD/HTML/XLSX/CSV engine        │
-│  src/lib/execution/**  — Piston-shim (local) + frontend-runner (WASM) │
-│  src/lib/storage/redis — Upstash or local ioredis (sliding win)  │
-└────────────┬────────────────────────┬────────────────────────────┘
-             │                        │
-             │                        ▼
-             │              ┌──────────────────────┐
-             │              │  Redis 7 (sliding w) │
-             │              └──────────────────────┘
-             ▼
-   ┌──────────────────────┐         ┌──────────────────────┐
-   │  PostgreSQL 16 (14   │         │  Piston-shim         │
-   │  tables) via Drizzle │         │  (127.0.0.1:2000)    │
-   └──────────────────────┘         └──────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Next.js 16 (App Router)                       │
+│                                                                       │
+│   src/app/[locale]/**      — pages (en/zh-CN/ja/ko/es/fr)            │
+│   src/app/api/**           — route handlers (convert, execute, …)    │
+│   src/lib/system/          — offline-first state machine              │
+│      backend-status.ts     —   useSyncExternalStore snapshot of /api/health│
+│      feature-gate.ts       —   capability map (LOCAL_FEATURES, …)    │
+│   src/lib/tools/           — 20 in-browser tools (client-tools.ts)    │
+│   src/lib/execution/       — Piston client + frontend-runner (WASM)   │
+│   src/lib/collab/          — Yjs / Monaco hooks (use-y-collab)       │
+│                                                                       │
+│   Feature gate ──►  if local  →  in-browser runner                    │
+│                    if remote →  /api/* → Piston shim                 │
+└────────────┬───────────────────────────────────────────┬───────────┘
+             │                                           │
+   optional ▼                                  optional ▼
+   ┌──────────────────┐                     ┌──────────────────────┐
+   │  PostgreSQL 16   │                     │  Piston-shim         │
+   │  (Drizzle ORM)   │                     │  (127.0.0.1:2000)    │
+   └──────────────────┘                     └──────────────────────┘
+             │                                           │
+             └──────────►  Redis 7  ◄────────────────────┘
+                          (sliding-window rate limit)
 ```
 
-### Backend-with-fallback
+### Offline-first state machine
 
-The application is built around a strict contract:
+Every page subscribes to a single `useBackendStatus()` hook backed by
+`useSyncExternalStore`. The status moves through five states:
 
-> **The backend is required. If it is not reachable, the user sees an error — never a fake "success".**
+```
+unknown ──► checking ──► online    ──► degraded
+                          online   ◄──┘
+                          online   ──► offline
+                          offline  ──► online  (recheck)
+```
 
-Concretely:
-
-- `/api/execute` talks to Piston. If Piston is unreachable or the request fails
-  validation, the route returns 4xx/5xx with a structured error body. The
-  frontend `playground` component then falls back to the **browser runner**
-  (Web Workers for JS, Pyodide for Python, etc.) so the user still gets an
-  answer locally.
-- `/api/convert` and all rate-limited routes call `checkRateLimit`. If no
-  Redis backend is configured, the route returns **503** with a clear
-  `serviceUnavailable` body — the previous "fail-open" path that silently
-  allowed traffic has been removed.
-- All API routes import a single Redis abstraction
-  ([`src/lib/storage/redis.ts`](./src/lib/storage/redis.ts)) that picks the
-  best backend at runtime: Upstash REST in production, local `ioredis` in
-  dev. The same factory is used for the global/route/user sliding-window
-  limiter.
+The `feature-gate` module maps every `FeatureId` to either
+`"local"` (browser-only) or `"remote"` (needs API). A `"local"` feature
+**always** works — even if the API is down — and a `"remote"` feature
+**always** reports its degraded state honestly. There is no
+"fake success" path: the `BackendStatusOverview` and
+`BackendStatusBanner` components surface the real state to the user.
 
 ## Environment variables
 
-Everything lives in `.env`. See [`.env`](./.env) for the full list; the
-essentials are:
+Everything lives in `.env`. See [`.env.example`](./.env.example) for
+the full annotated list. The essentials:
 
-| variable                  | purpose                                                    |
-| ------------------------- | ---------------------------------------------------------- |
-| `POSTGRES_URL`            | primary database connection string                         |
-| `POSTGRES_URL_SHADOW`     | used by Drizzle for shadow migrations                      |
-| `REDIS_URL`               | local Redis (`redis://127.0.0.1:6379`) — dev only          |
-| `UPSTASH_REDIS_REST_URL`  | Upstash REST URL — production                              |
-| `UPSTASH_REDIS_REST_TOKEN`| Upstash REST token — production                            |
-| `AUTH_SECRET`             | NextAuth v5 secret (32+ chars)                             |
-| `AUTH_URL`                | canonical app URL                                          |
-| `AUTH_GITHUB_ID/SECRET`   | optional GitHub OAuth                                      |
-| `RATE_LIMIT_*`            | `RATE_LIMIT_CONVERT_PER_MIN`, `_EXECUTE_PER_MIN`, etc.     |
-| `MAX_FILE_SIZE_MB`        | upload cap (default 50MB)                                  |
-| `SENTRY_DSN`              | optional error reporting                                   |
+| variable                    | purpose                                                      |
+| --------------------------- | ------------------------------------------------------------ |
+| `NEXT_PUBLIC_STATIC_DEMO`   | `1` to force pure-frontend mode (default for gh-pages build) |
+| `NEXT_PUBLIC_COLLAB_URL`    | Yjs WebSocket URL; unset = single-user mode                  |
+| `POSTGRES_URL`              | primary database connection string                           |
+| `AUTH_SECRET`               | NextAuth v5 secret (32+ chars)                               |
+| `AUTH_URL`                  | canonical app URL                                            |
+| `AUTH_GITHUB_ID/SECRET`     | optional GitHub OAuth                                        |
+| `UPSTASH_REDIS_REST_*`      | Upstash REST URL + token (production)                        |
+| `RATE_LIMIT_*`              | `RATE_LIMIT_CONVERT_PER_MIN`, `_API_PER_MIN`, …              |
+| `MAX_FILE_SIZE_MB`          | upload cap (default 50MB)                                    |
+| `SENTRY_DSN`                | optional error reporting                                     |
+| `PISTON_API_URL`            | URL of the (local) Piston-shim or a whitelisted Piston host  |
+| `COLLAB_REQUIRE_AUTH`       | `true` to require a shared secret on the collab-server       |
+| `COLLAB_SHARED_SECRET`      | required when `COLLAB_REQUIRE_AUTH=true`                     |
+| `COLLAB_MAX_DOCS`           | max concurrent rooms in memory (default 1000)                |
+| `COLLAB_DOC_TTL_MS`         | inactive-doc eviction window (default 1h)                    |
 
 ## Project layout
 
@@ -172,11 +217,13 @@ src/
 ├── app/
 │   ├── [locale]/             # Localized pages (en, zh-CN, ja, ko, es, fr)
 │   │   ├── convert/          # Document conversion UI
+│   │   ├── tools/            # The 20 offline tools (/tools, /tools/[slug])
 │   │   ├── playground/       # Code playground (Piston + frontend runner)
 │   │   ├── projects/         # Project management
 │   │   ├── snippets/         # Snippet sharing
 │   │   ├── dashboard/        # User dashboard
 │   │   ├── settings/         # Account settings
+│   │   ├── offline/          # Backend-status help page
 │   │   ├── docs/             # Documentation
 │   │   └── sign-in|sign-up/  # Auth pages
 │   └── api/                  # Route handlers
@@ -191,7 +238,8 @@ src/
 │       ├── share/            # short-link sharing
 │       ├── s/[shortId]/      # resolve share
 │       ├── runtimes/         # Piston runtime catalog
-│       ├── health/           # DB/cache/memory probe
+│       ├── collab/token/     # short-lived collab token (HS256)
+│       ├── health/           # DB / cache / memory probe (state machine source)
 │       └── metrics/          # prom-style counters
 ├── lib/
 │   ├── auth/                 # NextAuth config + helpers
@@ -203,6 +251,8 @@ src/
 │   ├── api/                  # CORS, structured logging, rate limiter
 │   ├── collab/               # Yjs / Monaco collaboration
 │   ├── packages/             # ecosystem metadata
+│   ├── system/               # offline-first state machine + feature gate
+│   ├── tools/                # 20 client-side tools (client-tools.ts)
 │   ├── validators/           # zod schemas (auth, execute, file, project, snippet)
 │   ├── ratelimit.ts          # domain helpers (convert/exec/stream/api)
 │   ├── env.ts                # zod-validated env
@@ -215,21 +265,39 @@ src/
 ## Testing
 
 ```bash
-make test       # vitest
-make lint       # eslint (0 errors, ~25 cosmetic warnings)
-make typecheck  # tsc --noEmit
+make test       # vitest (52 unit tests across 17 files)
+make lint       # eslint (0 errors, 0 warnings)
+make typecheck  # tsc --noEmit (0 errors)
 ```
 
-End-to-end (Playwright):
+End-to-end (Playwright) is scaffolded but not yet wired in CI:
 
 ```bash
 pnpm test:e2e
 ```
 
+A security audit of every transitive dependency resolves to zero
+moderate-or-above CVEs (`pnpm audit` exits clean); see
+`pnpm.overrides` in [`package.json`](./package.json) for the
+forced-upgrade pins.
+
 ## Production deployment
 
-The app is a standard Next.js 16 project — `pnpm build && pnpm start` works
-on Vercel, Render, Fly.io, or any container host. In production:
+The app is a standard Next.js 16 project — `pnpm build && pnpm start`
+works on Vercel, Render, Fly.io, or any container host. Two
+deployment profiles are supported:
+
+**Full stack (with backend)** — set `NEXT_PUBLIC_STATIC_DEMO=0` (or
+leave it unset) and bring up Postgres, Redis, and Piston-shim. Account,
+collab, and high-fidelity DOCX/PDF/XLSX output are enabled.
+
+**Static export (browser-only)** — `pnpm build:gh-pages` produces a
+self-contained static site; deploy the `out/` directory to GitHub Pages,
+Cloudflare Pages, or any static host. All 20 tools and the
+playground work without any backend. The collab-server can be
+deployed independently (see [`infra/collab-server/`](./infra/collab-server)).
+
+In production (full stack):
 
 - swap `REDIS_URL` for `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
 - point `POSTGRES_URL` at a managed Postgres (Neon, Supabase, RDS, …)
