@@ -1,70 +1,64 @@
-# Piston self-hosted execution backend
+# Piston — code execution backend
 
-This is the code-execution backend for OnlineCode. Piston is a high-performance, secure code execution engine originally built by [engineer-man](https://github.com/engineer-man/piston).
+This directory has two ways to run the code-execution backend that
+DocForge's `/api/execute` talks to.
 
-## Why Piston?
+| | [piston-shim/](./piston-shim/) (default) | [piston/](./piston/) (legacy Docker stack) |
+| --- | --- | --- |
+| Needs | Node 20+, system toolchains (`python3`, `node`, `gcc`, …) | Docker + ~2 GB of prebuilt runtimes |
+| Cold start | < 1 s | ~30 s (image pull) |
+| Isolation | per-job temp dir + wall-clock timer + rlimit-style output cap | cgroup v2 + namespaces + seccomp |
+| Runtimes | 14 (Python 3.14, Node 24, TypeScript, C/C++ 13, Go 1.25, Rust, Java 25, Ruby 3.4, PHP, Perl, Swift 6, SQLite, Bash) | 40+ (anything upstream Piston supports) |
+| Best for | local dev, CI, self-hosting | production with untrusted multi-tenant traffic |
 
-- 40+ language runtimes pre-bundled (Python 3.11, Node 22, TypeScript, C/C++, Java 21, Rust, Go, C#, PHP, Ruby, Kotlin, Swift, Scala, Bash, Lua, SQL, etc.)
-- Per-stage resource limits (CPU, wall time, memory, disk, network)
-- Hermetic isolation via namespaces + cgroups
-- HTTP API, no state — perfect for serverless
-- MIT licensed, self-hostable
+> **Why we ship a shim:** the public Piston API
+> (`https://emkc.org/api/v2/piston`) became **whitelist-only on
+> 2026-02-15** — every request without a key gets a 401. The shim is a
+> drop-in replacement that speaks the same `/api/v2/runtimes` and
+> `/api/v2/execute` endpoints, using the compilers/runtimes you already
+> have on `PATH`. It is enabled by default in DocForge's `.env`.
 
-## Package Support (pip / npm / cargo / go)
+## Default: local shim
 
-**Network is ENABLED** in this configuration so package managers can download dependencies at runtime. When a user adds packages in the Playground sidebar (e.g. `numpy`, `lodash`, `serde`), OnlineCode:
+```bash
+make piston-up      # start  (idempotent, pidfile-tracked)
+make piston-status  # inspect
+make piston-down    # stop
+make piston-logs    # tail log
+```
 
-1. Generates a bash setup script that installs all packages (`pip install numpy pandas`, `npm install lodash axios`, etc.)
-2. Sends the script + user code to Piston
-3. Piston executes the setup script first (install packages), then runs the user's code
+Source lives in [`piston-shim/`](./piston-shim/). Override the URL in
+`.env` if you want to point at a different host:
 
-**Supported ecosystems at runtime:**
-| Language | Command | Example |
-|----------|---------|---------|
-| Python | `pip install` | numpy, pandas, requests |
-| JavaScript/TS | `npm install` | lodash, axios, @types/node |
-| Rust | `cargo add` | serde, tokio, anyhow |
-| Go | `go get` | github.com/gin-gonic/gin |
-| Ruby | `gem install` | rails, sinatra |
+```env
+PISTON_API_URL="http://127.0.0.1:2000/api/v2"
+```
 
-## Why not Vercel Serverless?
+## Optional: full Docker stack (upstream Piston)
 
-Vercel serverless functions cannot run arbitrary user code safely and have restrictive resource limits. Piston provides true isolation with cgroup v2.
-
-## Local development
+The original `docker-compose.yml` and `fly.toml` are kept here for teams
+that need cgroup-isolated multi-tenant execution. To use it:
 
 ```bash
 cd infra/piston
-docker compose up -d
-# First boot downloads runtimes (~2GB). Subsequent boots are instant.
-curl http://localhost:2000/api/v2/runtimes
-```
-
-## Production deployment (Fly.io)
-
-```bash
-curl -L https://fly.io/install.sh | sh
-fly apps create onlinecode-piston
-fly volumes create piston_cache --size 10
-fly secrets set PISTON_KEY=$(openssl rand -hex 32)
-fly deploy
+docker compose up -d             # first boot downloads ~2 GB of runtimes
+# then point DocForge at it:
+#   PISTON_API_URL="http://localhost:2000/api/v2"
 ```
 
 ## API connection
 
-Set in OnlineCode's `.env`:
-```env
-PISTON_API_URL=http://localhost:2000/api/v2     # local
-PISTON_API_URL=https://onlinecode-piston.fly.dev/api/v2  # Fly.io
-PISTON_API_KEY=<your-secret>
-```
-
-The `/api/execute` route already supports these env vars.
+Both backends expose the exact same Piston v3 API. DocForge's
+[`src/lib/execution/piston.ts`](../../src/lib/execution/piston.ts) reads
+`PISTON_API_URL` (and optional `PISTON_API_KEY`) at request time, so
+swapping backends is just a config change.
 
 ## Security notes
 
-- Network is **enabled** to support package installation at runtime
-- CPU/memory/wall time limits apply per execution
-- Each execution runs in a fresh sub-namespace
-- Use `PISTON_KEY` authentication in production
-- For sensitive deployments, consider a separate package pre-warming step
+- The shim **does not** provide kernel-level isolation. Don't expose it
+  to untrusted internet traffic without a reverse proxy that enforces
+  authentication.
+- For multi-tenant / untrusted workloads, deploy the Docker stack above
+  (or the upstream hosted Piston) and use `PISTON_API_KEY` for auth.
+- All execution paths in DocForge already rate-limit via Redis
+  (`RATE_LIMIT_EXECUTE_PER_MIN`, default 20 req/min/IP).

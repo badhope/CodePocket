@@ -14,7 +14,7 @@
 ## Features
 
 - **Document conversion** — DOCX ⇄ PDF ⇄ Markdown ⇄ HTML ⇄ XLSX ⇄ CSV ⇄ JSON ⇄ XML ⇄ PPTX, with magic-byte validation and rate limiting.
-- **Code playground** — 40+ languages via [Piston](https://github.com/engineer-man/piston) on the server, with a browser fallback (Web Workers for JS, TypeScript transpile, Pyodide for Python, sandboxed iframe for HTML) when the backend is unavailable.
+- **Code playground** — 14+ runtimes (Python 3.14, Node 24, TypeScript 5, C/C++ 13, Go 1.25, Rust, Java 25, Ruby 3.4, PHP, Perl, Swift 6, SQLite, Bash) via a **local Piston shim** ([`infra/piston-shim`](./infra/piston-shim)). A browser fallback (Web Workers for JS, TypeScript transpile, Pyodide for Python, sandboxed iframe for HTML) kicks in when the backend is unavailable.
 - **Auth** — NextAuth v5 (credentials + GitHub/Google OAuth).
 - **Persistence** — Postgres 16 via Drizzle ORM (14 tables: users, sessions, accounts, executions, projects, snippets, shares, teams, etc.).
 - **Rate limiting** — sliding-window via Redis 7 (local) or Upstash REST (production). No silent fallbacks — the route surfaces a 503 when no Redis backend is configured.
@@ -31,7 +31,7 @@ sudo apt-get install -y postgresql redis-server
 # 2. Install Node deps
 pnpm install
 
-# 3. Start Postgres + Redis and apply migrations
+# 3. Start Postgres + Redis + Piston-shim, then apply migrations
 make up
 
 # 4. Run the dev server
@@ -43,24 +43,52 @@ That's it. `make up` will:
 
 - start the `main` Postgres 16 cluster on 5432
 - start `redis-server` on 6379
+- start the local **Piston shim** on `127.0.0.1:2000` (see below)
 - create the `docforge` and `docforge_shadow` databases with the `docforge` role
 - apply every SQL file in `drizzle/` (idempotent via `drizzle.__drizzle_migrations`)
 
+### Why a local Piston shim?
+
+The public Piston API at `https://emkc.org/api/v2/piston` has been
+**whitelist-only since 2026-02-15** — unauthenticated traffic gets a 401.
+To keep `/api/execute` working offline and self-hosted, DocForge ships a
+small Piston-compatible service in [`infra/piston-shim/`](./infra/piston-shim).
+It speaks the exact same two endpoints (`/api/v2/runtimes` and
+`/api/execute`) using the system toolchains that are already on your
+`PATH` (Python 3, Node 24, GCC 13, Go 1.25, Rust, Java 25, Ruby, PHP,
+Perl, Swift, SQLite, TypeScript). 14 runtimes in 200 lines of Node — no
+Docker, no `isolate(1)`, no cgroup v2 setup.
+
+Manage it with `make`:
+
+```bash
+make piston-up      # start the shim (idempotent, pidfile-tracked)
+make piston-down    # stop the shim
+make piston-status  # print process state + runtime catalog
+make piston-logs    # tail the log file
+```
+
+For real production-grade isolation (cgroups, seccomp, network
+namespaces), point `PISTON_API_URL` at a self-hosted instance of
+[engineer-man/piston](https://github.com/engineer-man/piston) or the
+official hosted endpoint if you have a whitelist key.
+
 ## The `make` cheat sheet
 
-| target          | what it does                                                    |
-| --------------- | --------------------------------------------------------------- |
-| `make up`       | start Postgres + Redis, apply migrations                        |
-| `make down`     | stop Postgres + Redis                                           |
-| `make status`   | print cluster / redis status                                    |
-| `make dev`      | `pnpm dev`                                                      |
-| `make build`    | `pnpm build` (production)                                       |
-| `make test`     | `pnpm test`                                                     |
-| `make lint`     | `pnpm lint`                                                     |
-| `make typecheck`| `tsc --noEmit`                                                  |
-| `make db-reset` | **destructive** — drop and re-create the local databases        |
-| `make db-studio`| open Drizzle Studio against the local DB                        |
-| `make bootstrap`| first-time setup: create role/dbs + apply migrations + install  |
+| target           | what it does                                                    |
+| ---------------- | --------------------------------------------------------------- |
+| `make up`        | start Postgres + Redis + Piston-shim, apply migrations          |
+| `make down`      | stop Postgres + Redis + Piston-shim                             |
+| `make status`    | print cluster / redis / Piston status                           |
+| `make dev`       | `pnpm dev`                                                      |
+| `make build`     | `pnpm build` (production)                                       |
+| `make test`      | `pnpm test`                                                     |
+| `make lint`      | `pnpm lint`                                                     |
+| `make typecheck` | `tsc --noEmit`                                                  |
+| `make smoke`     | end-to-end Python venv + Postgres + Redis + Next.js + Piston check |
+| `make db-reset`  | **destructive** — drop and re-create the local databases        |
+| `make db-studio` | open Drizzle Studio against the local DB                        |
+| `make bootstrap` | first-time setup: create role/dbs + apply migrations + install  |
 
 There is also a small CLI wrapper:
 
@@ -80,7 +108,7 @@ There is also a small CLI wrapper:
 │  src/lib/auth          — NextAuth v5                             │
 │  src/lib/db            — Drizzle ORM + Postgres 16               │
 │  src/lib/convert/**    — DOCX/PDF/MD/HTML/XLSX/CSV engine        │
-│  src/lib/execution/**  — Piston (cloud) + frontend-runner (WASM) │
+│  src/lib/execution/**  — Piston-shim (local) + frontend-runner (WASM) │
 │  src/lib/storage/redis — Upstash or local ioredis (sliding win)  │
 └────────────┬────────────────────────┬────────────────────────────┘
              │                        │
@@ -90,8 +118,8 @@ There is also a small CLI wrapper:
              │              └──────────────────────┘
              ▼
    ┌──────────────────────┐         ┌──────────────────────┐
-   │  PostgreSQL 16 (14   │         │  Piston (cloud) or   │
-   │  tables) via Drizzle │         │  localhost:2000      │
+   │  PostgreSQL 16 (14   │         │  Piston-shim         │
+   │  tables) via Drizzle │         │  (127.0.0.1:2000)    │
    └──────────────────────┘         └──────────────────────┘
 ```
 

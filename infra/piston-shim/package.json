@@ -1,0 +1,18 @@
+{
+  "name": "piston-shim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lightweight Piston-compatible code execution API (shim for emkc.org 401 fallback)",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
