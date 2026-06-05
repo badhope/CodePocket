@@ -258,25 +258,43 @@
     "needHelp": "도움이 필요하신가요?"
   },
   "playground": {
-    "title": "title",
-    "subtitle": "subtitle",
-    "run": "run",
-    "stop": "stop",
-    "clear": "clear",
-    "share": "share",
-    "copy": "copy",
-    "downloaded": "downloaded",
-    "stdinPlaceholder": "stdinPlaceholder",
-    "languagePicker": "languagePicker",
-    "versionPicker": "versionPicker",
-    "frontendMode": "frontendMode",
-    "backendMode": "backendMode",
-    "packageManager": "packageManager",
-    "packagePlaceholder": "packagePlaceholder",
-    "output": "output",
-    "code": "code",
-    "console": "console",
-    "packages": "Packages"
+    "title": "코드 플레이그라운드",
+    "subtitle": "브라우저에서 14개 이상의 언어로 코드를 실행하세요.",
+    "run": "실행",
+    "stop": "중지",
+    "clear": "지우기",
+    "share": "공유",
+    "copy": "복사",
+    "downloaded": "다운로드됨",
+    "stdinPlaceholder": "표준 입력 (stdin)...",
+    "languagePicker": "언어",
+    "versionPicker": "버전",
+    "frontendMode": "브라우저 실행",
+    "backendMode": "서버 실행",
+    "packageManager": "패키지",
+    "packagePlaceholder": "numpy, requests, ...",
+    "output": "출력",
+    "code": "코드",
+    "console": "콘솔",
+    "packages": "패키지",
+    "newFile": "새 파일",
+    "templates": "템플릿",
+    "selectTemplate": "템플릿 선택",
+    "executing": "실행 중",
+    "stdin": "표준 입력",
+    "installing": "설치 중",
+    "success": "성공",
+    "failed": "실패",
+    "languageNotSupported": "브라우저에서 지원되지 않는 언어입니다",
+    "clearOutput": "출력 지우기",
+    "copyLink": "링크 복사",
+    "linkCopied": "링크가 클립보드에 복사되었습니다",
+    "shareUrlError": "공유 링크를 만들 수 없습니다",
+    "replace": "바꾸기",
+    "confirmTemplate": "현재 코드를 바꾸시겠습니까? 계속하시겠습니까?",
+    "addPackage": "패키지 추가",
+    "noPackages": "설치된 패키지 없음",
+    "needsBackendOrBrowser": "이 언어는 백엔드가 필요합니다. JS/TS/Python/HTML 등 브라우저에서 실행 가능한 언어로 전환하거나 백엔드를 시작하세요."
   },
   "editor": {
     "save": "save",
@@ -286,7 +304,16 @@
     "format": "format",
     "find": "find",
     "replace": "replace",
-    "settings": "settings"
+    "settings": "settings",
+    "ready": "준비됨",
+    "fontSize": "글꼴 크기",
+    "tabSize": "탭 크기",
+    "wordWrap": "자동 줄 바꿈",
+    "minimap": "미니맵",
+    "theme": "테마",
+    "light": "라이트",
+    "dark": "다크",
+    "auto": "자동"
   },
   "backendStatus": {
     "checking": "백엔드 확인 중…",
@@ -321,7 +348,10 @@
       "parse": "파싱"
     },
     "items": {
-      "json-format": { "name": "JSON 포맷터", "description": "JSON beautify / minify / validate / tree 탐색" },
+      "json-format": {
+        "name": "JSON 포맷터",
+        "description": "JSON beautify / minify / validate / tree 탐색"
+      },
       "css-format": { "name": "CSS 포맷터", "description": "CSS beautify / minify" },
       "sql-format": { "name": "SQL 포맷터", "description": "SQL beautify / minify / 키워드 대문자" },
       "html-format": { "name": "HTML 포맷터", "description": "HTML beautify / minify" },
@@ -332,7 +362,10 @@
       "base64": { "name": "Base64 인코더", "description": "텍스트와 파일을 Base64로 인코딩 / 디코딩" },
       "url": { "name": "URL 인코더", "description": "URL 인코딩 / 디코딩" },
       "hash": { "name": "해시 계산기", "description": "MD5 / SHA-1 / SHA-256 / SHA-512" },
-      "jwt": { "name": "JWT 디코더", "description": "비밀 키 없이 JWT 디코딩 — header, payload, signature 확인" },
+      "jwt": {
+        "name": "JWT 디코더",
+        "description": "비밀 키 없이 JWT 디코딩 — header, payload, signature 확인"
+      },
       "uuid": { "name": "UUID / 키 생성기", "description": "UUID v1 / v4 / v7, Nano ID, 랜덤 비밀번호" },
       "color": { "name": "색상 변환기", "description": "HEX / RGB / HSL / HSV / CMYK 변환" },
       "number-base": { "name": "진법 변환기", "description": "2진 / 8진 / 10진 / 16진" },
@@ -342,5 +375,35 @@
       "lorem": { "name": "Lorem Ipsum", "description": "자리 표시자 텍스트 생성" },
       "qrcode": { "name": "QR 코드", "description": "임의의 텍스트 / URL을 QR 코드로 인코딩" }
     }
+  },
+  "execution": {
+    "console": "콘솔",
+    "graphics": "그래픽",
+    "canvas3d": "3D 캔버스"
+  },
+  "packages": {
+    "title": "패키지"
+  },
+  "projectEditor": {
+    "folderDeleteNotSupported": "폴더 삭제는 아직 지원되지 않습니다",
+    "deleteFailed": "삭제 실패",
+    "fileDeleted": "파일이 삭제되었습니다",
+    "renameFailed": "이름 변경 실패",
+    "saved": "저장됨",
+    "saveFailed": "저장 실패",
+    "noLanguageDetected": "언어가 감지되지 않음",
+    "projectNotFound": "프로젝트를 찾을 수 없음",
+    "accessDenied": "접근 거부됨",
+    "loadFailed": "프로젝트 로드 실패",
+    "back": "뒤로",
+    "noDescription": "설명 없음",
+    "saveTooltip": "저장 (Ctrl+S)",
+    "stop": "중지",
+    "run": "실행",
+    "noFileOpen": "열린 파일 없음",
+    "selectFileToEdit": "사이드바에서 파일을 선택하여 편집을 시작하세요",
+    "noOutput": "출력 없음",
+    "deleteFileConfirm": "이 파일을 삭제하시겠습니까?",
+    "deleteFileWarning": "{path} 을(를) 영구적으로 삭제합니다. 실행 취소가 불가능합니다."
   }
 }

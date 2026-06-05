@@ -1,11 +1,33 @@
 "use client";
-// @ts-nocheck
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-const SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "cpp", "c", "java", "rust", "go", "csharp", "php", "ruby", "kotlin", "swift", "scala", "bash", "lua", "sql", "html", "css"] as const
-type Language = (typeof SUPPORTED_LANGUAGES)[number]
+const SUPPORTED_LANGUAGES = [
+  "python",
+  "javascript",
+  "typescript",
+  "cpp",
+  "c",
+  "java",
+  "rust",
+  "go",
+  "csharp",
+  "php",
+  "ruby",
+  "kotlin",
+  "swift",
+  "scala",
+  "bash",
+  "lua",
+  "sql",
+  "html",
+  "css",
+] as const;
+type Language = (typeof SUPPORTED_LANGUAGES)[number];
+// Force a value-side use so the no-unused-vars rule doesn't complain
+// about the array. We only need it for the `Language` type.
+void SUPPORTED_LANGUAGES;
 
 export interface EditorTab {
   id: string;

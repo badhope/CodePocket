@@ -258,25 +258,43 @@
     "needHelp": "ヘルプが必要ですか？"
   },
   "playground": {
-    "title": "title",
-    "subtitle": "subtitle",
-    "run": "run",
-    "stop": "stop",
-    "clear": "clear",
-    "share": "share",
-    "copy": "copy",
-    "downloaded": "downloaded",
-    "stdinPlaceholder": "stdinPlaceholder",
-    "languagePicker": "languagePicker",
-    "versionPicker": "versionPicker",
-    "frontendMode": "frontendMode",
-    "backendMode": "backendMode",
-    "packageManager": "packageManager",
-    "packagePlaceholder": "packagePlaceholder",
-    "output": "output",
-    "code": "code",
-    "console": "console",
-    "packages": "Packages"
+    "title": "コードプレイグラウンド",
+    "subtitle": "ブラウザで 14 種類以上の言語のコードを実行できます。",
+    "run": "実行",
+    "stop": "停止",
+    "clear": "クリア",
+    "share": "共有",
+    "copy": "コピー",
+    "downloaded": "ダウンロード済み",
+    "stdinPlaceholder": "標準入力 (stdin)...",
+    "languagePicker": "言語",
+    "versionPicker": "バージョン",
+    "frontendMode": "ブラウザで実行",
+    "backendMode": "サーバーで実行",
+    "packageManager": "パッケージ",
+    "packagePlaceholder": "numpy, requests, ...",
+    "output": "出力",
+    "code": "コード",
+    "console": "コンソール",
+    "packages": "パッケージ",
+    "newFile": "新規ファイル",
+    "templates": "テンプレート",
+    "selectTemplate": "テンプレートを選択",
+    "executing": "実行中",
+    "stdin": "標準入力",
+    "installing": "インストール中",
+    "success": "成功",
+    "failed": "失敗",
+    "languageNotSupported": "ブラウザでサポートされていない言語です",
+    "clearOutput": "出力をクリア",
+    "copyLink": "リンクをコピー",
+    "linkCopied": "リンクをクリップボードにコピーしました",
+    "shareUrlError": "共有リンクを作成できませんでした",
+    "replace": "置き換え",
+    "confirmTemplate": "現在のコードを置き換えます。続行しますか？",
+    "addPackage": "パッケージを追加",
+    "noPackages": "インストール済みのパッケージはありません",
+    "needsBackendOrBrowser": "この言語を実行するにはバックエンドが必要です。JS/TS/Python/HTML などのブラウザで実行可能な言語に切り替えるか、バックエンドを起動してください。"
   },
   "editor": {
     "save": "save",
@@ -286,7 +304,16 @@
     "format": "format",
     "find": "find",
     "replace": "replace",
-    "settings": "settings"
+    "settings": "settings",
+    "ready": "準備完了",
+    "fontSize": "フォントサイズ",
+    "tabSize": "タブサイズ",
+    "wordWrap": "折り返し",
+    "minimap": "ミニマップ",
+    "theme": "テーマ",
+    "light": "ライト",
+    "dark": "ダーク",
+    "auto": "自動"
   },
   "backendStatus": {
     "checking": "バックエンドを確認中…",
@@ -321,7 +348,10 @@
       "parse": "解析"
     },
     "items": {
-      "json-format": { "name": "JSON フォーマッター", "description": "JSON の整形 / 圧縮 / 検証 / ツリー表示" },
+      "json-format": {
+        "name": "JSON フォーマッター",
+        "description": "JSON の整形 / 圧縮 / 検証 / ツリー表示"
+      },
       "css-format": { "name": "CSS フォーマッター", "description": "CSS の整形 / 圧縮" },
       "sql-format": { "name": "SQL フォーマッター", "description": "SQL の整形 / 圧縮 / キーワード大文字化" },
       "html-format": { "name": "HTML フォーマッター", "description": "HTML の整形 / 圧縮" },
@@ -329,18 +359,57 @@
       "toml-json": { "name": "TOML ↔ JSON", "description": "TOML と JSON の相互変換" },
       "csv-json": { "name": "CSV ↔ JSON", "description": "CSV と JSON の相互変換" },
       "md-html": { "name": "Markdown ↔ HTML", "description": "Markdown と HTML の相互変換" },
-      "base64": { "name": "Base64 エンコーダー", "description": "テキストとファイルを Base64 でエンコード / デコード" },
+      "base64": {
+        "name": "Base64 エンコーダー",
+        "description": "テキストとファイルを Base64 でエンコード / デコード"
+      },
       "url": { "name": "URL エンコーダー", "description": "URL のエンコード / デコード" },
       "hash": { "name": "ハッシュ計算機", "description": "MD5 / SHA-1 / SHA-256 / SHA-512" },
-      "jwt": { "name": "JWT デコーダー", "description": "シークレットなしで JWT をデコード — ヘッダー、ペイロード、署名を表示" },
+      "jwt": {
+        "name": "JWT デコーダー",
+        "description": "シークレットなしで JWT をデコード — ヘッダー、ペイロード、署名を表示"
+      },
       "uuid": { "name": "UUID / キー生成", "description": "UUID v1 / v4 / v7、Nano ID、ランダムパスワード" },
       "color": { "name": "カラー変換", "description": "HEX / RGB / HSL / HSV / CMYK の変換" },
       "number-base": { "name": "基数変換", "description": "2 進 / 8 進 / 10 進 / 16 進" },
       "cron": { "name": "Cron パーサー", "description": "cron 式を解析して次回実行時刻を表示" },
-      "regex": { "name": "正規表現テスター", "description": "グループハイライト付き正規表現をライブでテスト" },
+      "regex": {
+        "name": "正規表現テスター",
+        "description": "グループハイライト付き正規表現をライブでテスト"
+      },
       "diff": { "name": "テキスト差分", "description": "2 つのテキストブロックを行ごとに比較" },
       "lorem": { "name": "Lorem Ipsum", "description": "プレースホルダーテキストを生成" },
       "qrcode": { "name": "QRコード", "description": "任意のテキスト / URL を QR コードにエンコード" }
     }
+  },
+  "execution": {
+    "console": "コンソール",
+    "graphics": "グラフィックス",
+    "canvas3d": "3D キャンバス"
+  },
+  "packages": {
+    "title": "パッケージ"
+  },
+  "projectEditor": {
+    "folderDeleteNotSupported": "フォルダの削除はまだサポートされていません",
+    "deleteFailed": "削除に失敗しました",
+    "fileDeleted": "ファイルを削除しました",
+    "renameFailed": "名前変更に失敗しました",
+    "saved": "保存しました",
+    "saveFailed": "保存に失敗しました",
+    "noLanguageDetected": "言語が検出されませんでした",
+    "projectNotFound": "プロジェクトが見つかりません",
+    "accessDenied": "アクセス拒否",
+    "loadFailed": "プロジェクトの読み込みに失敗しました",
+    "back": "戻る",
+    "noDescription": "説明なし",
+    "saveTooltip": "保存 (Ctrl+S)",
+    "stop": "停止",
+    "run": "実行",
+    "noFileOpen": "ファイルが開かれていません",
+    "selectFileToEdit": "サイドバーからファイルを選択して編集を開始してください",
+    "noOutput": "出力なし",
+    "deleteFileConfirm": "このファイルを削除しますか？",
+    "deleteFileWarning": "{path} を完全に削除します。元に戻せません。"
   }
 }

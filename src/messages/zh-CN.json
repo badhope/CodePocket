@@ -55,6 +55,8 @@
     "home": "首页",
     "dashboard": "仪表盘",
     "convert": "转换",
+    "playground": "演练场",
+    "tools": "工具",
     "history": "历史记录",
     "settings": "设置",
     "docs": "文档",
@@ -417,6 +419,45 @@
     "format": "format",
     "find": "find",
     "replace": "replace",
-    "settings": "settings"
+    "settings": "settings",
+    "ready": "就绪",
+    "fontSize": "字号",
+    "tabSize": "缩进宽度",
+    "wordWrap": "自动换行",
+    "minimap": "迷你地图",
+    "theme": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "auto": "跟随系统"
+  },
+  "execution": {
+    "console": "控制台",
+    "graphics": "图形",
+    "canvas3d": "3D 画布"
+  },
+  "packages": {
+    "title": "包"
+  },
+  "projectEditor": {
+    "folderDeleteNotSupported": "暂不支持删除文件夹",
+    "deleteFailed": "删除失败",
+    "fileDeleted": "文件已删除",
+    "renameFailed": "重命名失败",
+    "saved": "已保存",
+    "saveFailed": "保存失败",
+    "noLanguageDetected": "未检测到语言",
+    "projectNotFound": "项目不存在",
+    "accessDenied": "访问被拒绝",
+    "loadFailed": "加载项目失败",
+    "back": "返回",
+    "noDescription": "无描述",
+    "saveTooltip": "保存 (Ctrl+S)",
+    "stop": "停止",
+    "run": "运行",
+    "noFileOpen": "未打开文件",
+    "selectFileToEdit": "从侧栏选择文件开始编辑",
+    "noOutput": "无输出",
+    "deleteFileConfirm": "确认删除此文件？",
+    "deleteFileWarning": "将永久删除 {path}，且不可撤销。"
   }
 }

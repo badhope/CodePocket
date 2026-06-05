@@ -258,25 +258,43 @@
     "needHelp": "Besoin d'aide ?"
   },
   "playground": {
-    "title": "title",
-    "subtitle": "subtitle",
-    "run": "run",
-    "stop": "stop",
-    "clear": "clear",
-    "share": "share",
-    "copy": "copy",
-    "downloaded": "downloaded",
-    "stdinPlaceholder": "stdinPlaceholder",
-    "languagePicker": "languagePicker",
-    "versionPicker": "versionPicker",
-    "frontendMode": "frontendMode",
-    "backendMode": "backendMode",
-    "packageManager": "packageManager",
-    "packagePlaceholder": "packagePlaceholder",
-    "output": "output",
-    "code": "code",
-    "console": "console",
-    "packages": "Packages"
+    "title": "Code Playground",
+    "subtitle": "Exécutez du code dans plus de 14 langages directement depuis votre navigateur.",
+    "run": "Exécuter",
+    "stop": "Arrêter",
+    "clear": "Effacer",
+    "share": "Partager",
+    "copy": "Copier",
+    "downloaded": "Téléchargé",
+    "stdinPlaceholder": "Entrée standard (stdin)...",
+    "languagePicker": "Langage",
+    "versionPicker": "Version",
+    "frontendMode": "Exécution navigateur",
+    "backendMode": "Exécution serveur",
+    "packageManager": "Paquets",
+    "packagePlaceholder": "numpy, requests, ...",
+    "output": "Sortie",
+    "code": "Code",
+    "console": "Console",
+    "packages": "Paquets",
+    "newFile": "Nouveau fichier",
+    "templates": "Modèles",
+    "selectTemplate": "Sélectionner un modèle",
+    "executing": "En cours d'exécution",
+    "stdin": "Stdin",
+    "installing": "Installation",
+    "success": "Succès",
+    "failed": "Échec",
+    "languageNotSupported": "Langage non pris en charge dans le navigateur",
+    "clearOutput": "Effacer la sortie",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié dans le presse-papiers",
+    "shareUrlError": "Impossible de créer le lien de partage",
+    "replace": "Remplacer",
+    "confirmTemplate": "Cela remplacera votre code actuel. Continuer ?",
+    "addPackage": "Ajouter un paquet",
+    "noPackages": "Aucun paquet installé",
+    "needsBackendOrBrowser": "Ce langage nécessite le backend. Basculez vers un langage du navigateur comme JS/TS/Python/HTML, ou démarrez le backend."
   },
   "editor": {
     "save": "save",
@@ -286,7 +304,16 @@
     "format": "format",
     "find": "find",
     "replace": "replace",
-    "settings": "settings"
+    "settings": "settings",
+    "ready": "Prêt",
+    "fontSize": "Taille de police",
+    "tabSize": "Taille d'indentation",
+    "wordWrap": "Retour à la ligne",
+    "minimap": "Mini-carte",
+    "theme": "Thème",
+    "light": "Clair",
+    "dark": "Sombre",
+    "auto": "Auto"
   },
   "backendStatus": {
     "checking": "Vérification du backend…",
@@ -321,26 +348,83 @@
       "parse": "Analyser"
     },
     "items": {
-      "json-format": { "name": "Formateur JSON", "description": "Embellir / minifier / valider / parcourir en arbre JSON" },
+      "json-format": {
+        "name": "Formateur JSON",
+        "description": "Embellir / minifier / valider / parcourir en arbre JSON"
+      },
       "css-format": { "name": "Formateur CSS", "description": "Embellir / minifier CSS" },
-      "sql-format": { "name": "Formateur SQL", "description": "Embellir / minifier / mettre en majuscules les mots-clés SQL" },
+      "sql-format": {
+        "name": "Formateur SQL",
+        "description": "Embellir / minifier / mettre en majuscules les mots-clés SQL"
+      },
       "html-format": { "name": "Formateur HTML", "description": "Embellir / minifier HTML" },
       "yaml-json": { "name": "YAML ↔ JSON", "description": "Convertir entre YAML et JSON" },
       "toml-json": { "name": "TOML ↔ JSON", "description": "Convertir entre TOML et JSON" },
       "csv-json": { "name": "CSV ↔ JSON", "description": "Convertir entre CSV et JSON" },
       "md-html": { "name": "Markdown ↔ HTML", "description": "Convertir entre Markdown et HTML" },
-      "base64": { "name": "Encodeur Base64", "description": "Encoder / décoder du texte et des fichiers en Base64" },
+      "base64": {
+        "name": "Encodeur Base64",
+        "description": "Encoder / décoder du texte et des fichiers en Base64"
+      },
       "url": { "name": "Encodeur URL", "description": "Encoder / décoder des URL" },
       "hash": { "name": "Calculateur de Hash", "description": "MD5 / SHA-1 / SHA-256 / SHA-512" },
-      "jwt": { "name": "Décodeur JWT", "description": "Décoder les JWT sans secret — voir header, payload, signature" },
-      "uuid": { "name": "Générateur UUID / Clés", "description": "UUID v1 / v4 / v7, Nano ID, mots de passe aléatoires" },
-      "color": { "name": "Convertisseur de Couleur", "description": "Conversions HEX / RGB / HSL / HSV / CMYK" },
-      "number-base": { "name": "Convertisseur de Base Numérique", "description": "Binaire / Octal / Décimal / Hexadécimal" },
-      "cron": { "name": "Parseur Cron", "description": "Parser les expressions cron et afficher les prochaines exécutions" },
-      "regex": { "name": "Testeur de Regex", "description": "Tester des regex en direct avec surlignage des groupes" },
+      "jwt": {
+        "name": "Décodeur JWT",
+        "description": "Décoder les JWT sans secret — voir header, payload, signature"
+      },
+      "uuid": {
+        "name": "Générateur UUID / Clés",
+        "description": "UUID v1 / v4 / v7, Nano ID, mots de passe aléatoires"
+      },
+      "color": {
+        "name": "Convertisseur de Couleur",
+        "description": "Conversions HEX / RGB / HSL / HSV / CMYK"
+      },
+      "number-base": {
+        "name": "Convertisseur de Base Numérique",
+        "description": "Binaire / Octal / Décimal / Hexadécimal"
+      },
+      "cron": {
+        "name": "Parseur Cron",
+        "description": "Parser les expressions cron et afficher les prochaines exécutions"
+      },
+      "regex": {
+        "name": "Testeur de Regex",
+        "description": "Tester des regex en direct avec surlignage des groupes"
+      },
       "diff": { "name": "Diff de Texte", "description": "Comparer deux blocs de texte ligne par ligne" },
       "lorem": { "name": "Lorem Ipsum", "description": "Générer du texte de remplissage" },
       "qrcode": { "name": "Code QR", "description": "Encoder n'importe quel texte / URL dans un code QR" }
     }
+  },
+  "execution": {
+    "console": "Console",
+    "graphics": "Graphiques",
+    "canvas3d": "Canvas 3D"
+  },
+  "packages": {
+    "title": "Paquets"
+  },
+  "projectEditor": {
+    "folderDeleteNotSupported": "La suppression de dossiers n'est pas encore prise en charge",
+    "deleteFailed": "Échec de la suppression",
+    "fileDeleted": "Fichier supprimé",
+    "renameFailed": "Échec du renommage",
+    "saved": "Enregistré",
+    "saveFailed": "Échec de l'enregistrement",
+    "noLanguageDetected": "Aucun langage détecté",
+    "projectNotFound": "Projet non trouvé",
+    "accessDenied": "Accès refusé",
+    "loadFailed": "Échec du chargement du projet",
+    "back": "Retour",
+    "noDescription": "Pas de description",
+    "saveTooltip": "Enregistrer (Ctrl+S)",
+    "stop": "Arrêter",
+    "run": "Exécuter",
+    "noFileOpen": "Aucun fichier ouvert",
+    "selectFileToEdit": "Sélectionnez un fichier dans la barre latérale pour commencer à éditer",
+    "noOutput": "Aucune sortie",
+    "deleteFileConfirm": "Supprimer ce fichier ?",
+    "deleteFileWarning": "Cela supprimera définitivement {path}. Action irréversible."
   }
 }

@@ -48,79 +48,79 @@ export default function NewProjectPage() {
 
   return (
     <BackendGate feature="projects.create">
-    <div className="container mx-auto max-w-2xl space-y-6 p-4 md:p-8">
-      <div>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/${locale}/projects`}>
-            <ArrowLeft className="mr-2 size-4" /> Back
-          </Link>
-        </Button>
+      <div className="container mx-auto max-w-2xl space-y-6 p-4 md:p-8">
+        <div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/${locale}/projects`}>
+              <ArrowLeft className="mr-2 size-4" /> Back
+            </Link>
+          </Button>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>New project</CardTitle>
+            <CardDescription>Create a new multi-file code project</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Project name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="my-awesome-project"
+                  required
+                  minLength={1}
+                  maxLength={255}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (optional)</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What does this project do?"
+                  maxLength={2000}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Language</Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGE_LIST.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.icon} {l.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Visibility</Label>
+                <Select value={visibility} onValueChange={(v) => setVisibility(v as never)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="private">🔒 Private</SelectItem>
+                    <SelectItem value="unlisted">🔗 Unlisted</SelectItem>
+                    <SelectItem value="public">🌍 Public</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" disabled={submitting || !name.trim()} className="w-full">
+                {submitting ? "Creating..." : "Create project"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>New project</CardTitle>
-          <CardDescription>Create a new multi-file code project</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Project name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="my-awesome-project"
-                required
-                minLength={1}
-                maxLength={255}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What does this project do?"
-                maxLength={2000}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Language</Label>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LANGUAGE_LIST.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.icon} {l.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Visibility</Label>
-              <Select value={visibility} onValueChange={(v) => setVisibility(v as never)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="private">🔒 Private</SelectItem>
-                  <SelectItem value="unlisted">🔗 Unlisted</SelectItem>
-                  <SelectItem value="public">🌍 Public</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" disabled={submitting || !name.trim()} className="w-full">
-              {submitting ? "Creating..." : "Create project"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
     </BackendGate>
   );
 }

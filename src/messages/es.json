@@ -258,25 +258,43 @@
     "needHelp": "¿Necesitas ayuda?"
   },
   "playground": {
-    "title": "title",
-    "subtitle": "subtitle",
-    "run": "run",
-    "stop": "stop",
-    "clear": "clear",
-    "share": "share",
-    "copy": "copy",
-    "downloaded": "downloaded",
-    "stdinPlaceholder": "stdinPlaceholder",
-    "languagePicker": "languagePicker",
-    "versionPicker": "versionPicker",
-    "frontendMode": "frontendMode",
-    "backendMode": "backendMode",
-    "packageManager": "packageManager",
-    "packagePlaceholder": "packagePlaceholder",
-    "output": "output",
-    "code": "code",
-    "console": "console",
-    "packages": "Packages"
+    "title": "Code Playground",
+    "subtitle": "Ejecuta código en más de 14 lenguajes directamente desde tu navegador.",
+    "run": "Ejecutar",
+    "stop": "Detener",
+    "clear": "Limpiar",
+    "share": "Compartir",
+    "copy": "Copiar",
+    "downloaded": "Descargado",
+    "stdinPlaceholder": "Entrada estándar (stdin)...",
+    "languagePicker": "Lenguaje",
+    "versionPicker": "Versión",
+    "frontendMode": "Ejecutar en navegador",
+    "backendMode": "Ejecutar en servidor",
+    "packageManager": "Paquetes",
+    "packagePlaceholder": "numpy, requests, ...",
+    "output": "Salida",
+    "code": "Código",
+    "console": "Consola",
+    "packages": "Paquetes",
+    "newFile": "Nuevo archivo",
+    "templates": "Plantillas",
+    "selectTemplate": "Seleccionar una plantilla",
+    "executing": "Ejecutando",
+    "stdin": "Stdin",
+    "installing": "Instalando",
+    "success": "Éxito",
+    "failed": "Falló",
+    "languageNotSupported": "Lenguaje no soportado en el navegador",
+    "clearOutput": "Limpiar salida",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "Enlace copiado al portapapeles",
+    "shareUrlError": "No se pudo crear el enlace para compartir",
+    "replace": "Reemplazar",
+    "confirmTemplate": "Esto reemplazará tu código actual. ¿Continuar?",
+    "addPackage": "Añadir paquete",
+    "noPackages": "No hay paquetes instalados",
+    "needsBackendOrBrowser": "Este lenguaje necesita el backend para ejecutarse. Cambia a un lenguaje del navegador como JS/TS/Python/HTML, o inicia el backend."
   },
   "editor": {
     "save": "save",
@@ -286,7 +304,16 @@
     "format": "format",
     "find": "find",
     "replace": "replace",
-    "settings": "settings"
+    "settings": "settings",
+    "ready": "Listo",
+    "fontSize": "Tamaño de fuente",
+    "tabSize": "Tamaño de tabulación",
+    "wordWrap": "Ajuste de línea",
+    "minimap": "Minimapa",
+    "theme": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "auto": "Auto"
   },
   "backendStatus": {
     "checking": "Comprobando el backend…",
@@ -321,26 +348,77 @@
       "parse": "Analizar"
     },
     "items": {
-      "json-format": { "name": "Formateador JSON", "description": "Embellecer / minificar / validar / explorar en árbol JSON" },
+      "json-format": {
+        "name": "Formateador JSON",
+        "description": "Embellecer / minificar / validar / explorar en árbol JSON"
+      },
       "css-format": { "name": "Formateador CSS", "description": "Embellecer / minificar CSS" },
-      "sql-format": { "name": "Formateador SQL", "description": "Embellecer / minificar / poner en mayúsculas las palabras clave SQL" },
+      "sql-format": {
+        "name": "Formateador SQL",
+        "description": "Embellecer / minificar / poner en mayúsculas las palabras clave SQL"
+      },
       "html-format": { "name": "Formateador HTML", "description": "Embellecer / minificar HTML" },
       "yaml-json": { "name": "YAML ↔ JSON", "description": "Convertir entre YAML y JSON" },
       "toml-json": { "name": "TOML ↔ JSON", "description": "Convertir entre TOML y JSON" },
       "csv-json": { "name": "CSV ↔ JSON", "description": "Convertir entre CSV y JSON" },
       "md-html": { "name": "Markdown ↔ HTML", "description": "Convertir entre Markdown y HTML" },
-      "base64": { "name": "Codificador Base64", "description": "Codificar / decodificar texto y archivos en Base64" },
+      "base64": {
+        "name": "Codificador Base64",
+        "description": "Codificar / decodificar texto y archivos en Base64"
+      },
       "url": { "name": "Codificador URL", "description": "Codificar / decodificar URL" },
       "hash": { "name": "Calculadora de Hash", "description": "MD5 / SHA-1 / SHA-256 / SHA-512" },
-      "jwt": { "name": "Decodificador JWT", "description": "Decodificar JWT sin secreto — ver header, payload, signature" },
-      "uuid": { "name": "Generador UUID / Claves", "description": "UUID v1 / v4 / v7, Nano ID, contraseñas aleatorias" },
+      "jwt": {
+        "name": "Decodificador JWT",
+        "description": "Decodificar JWT sin secreto — ver header, payload, signature"
+      },
+      "uuid": {
+        "name": "Generador UUID / Claves",
+        "description": "UUID v1 / v4 / v7, Nano ID, contraseñas aleatorias"
+      },
       "color": { "name": "Conversor de Color", "description": "Conversiones HEX / RGB / HSL / HSV / CMYK" },
-      "number-base": { "name": "Conversor de Base Numérica", "description": "Binario / Octal / Decimal / Hexadecimal" },
-      "cron": { "name": "Parser de Cron", "description": "Parsear expresiones cron y mostrar próximas ejecuciones" },
+      "number-base": {
+        "name": "Conversor de Base Numérica",
+        "description": "Binario / Octal / Decimal / Hexadecimal"
+      },
+      "cron": {
+        "name": "Parser de Cron",
+        "description": "Parsear expresiones cron y mostrar próximas ejecuciones"
+      },
       "regex": { "name": "Probador de Regex", "description": "Probar regex en vivo con resaltado de grupos" },
       "diff": { "name": "Diff de Texto", "description": "Comparar dos bloques de texto línea por línea" },
       "lorem": { "name": "Lorem Ipsum", "description": "Generar texto de marcador de posición" },
       "qrcode": { "name": "Código QR", "description": "Codificar cualquier texto / URL en un código QR" }
     }
+  },
+  "execution": {
+    "console": "Consola",
+    "graphics": "Gráficos",
+    "canvas3d": "Lienzo 3D"
+  },
+  "packages": {
+    "title": "Paquetes"
+  },
+  "projectEditor": {
+    "folderDeleteNotSupported": "La eliminación de carpetas aún no es compatible",
+    "deleteFailed": "Error al eliminar",
+    "fileDeleted": "Archivo eliminado",
+    "renameFailed": "Error al renombrar",
+    "saved": "Guardado",
+    "saveFailed": "Error al guardar",
+    "noLanguageDetected": "No se detectó ningún idioma",
+    "projectNotFound": "Proyecto no encontrado",
+    "accessDenied": "Acceso denegado",
+    "loadFailed": "Error al cargar el proyecto",
+    "back": "Volver",
+    "noDescription": "Sin descripción",
+    "saveTooltip": "Guardar (Ctrl+S)",
+    "stop": "Detener",
+    "run": "Ejecutar",
+    "noFileOpen": "Ningún archivo abierto",
+    "selectFileToEdit": "Selecciona un archivo de la barra lateral para empezar a editar",
+    "noOutput": "Sin salida",
+    "deleteFileConfirm": "¿Eliminar este archivo?",
+    "deleteFileWarning": "Esto eliminará permanentemente {path}. No se puede deshacer."
   }
 }

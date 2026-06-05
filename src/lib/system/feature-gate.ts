@@ -4,22 +4,19 @@
  * Per-feature gating. A "feature" is anything that has a clear backend
  * requirement (e.g. "convert DOCX to PDF"). Features that work entirely
  * in the browser MUST NOT be in this list — they should be always-on.
+ *
+ * `FeatureId` is the union of "things that have a gate". Backend-required
+ * features are listed in `REQUIRES_BACKEND`; the rest are always-on.
  */
-import { useBackendStatus } from "./backend-status"
+import { useBackendStatus } from "./backend-status";
 
 export type FeatureId =
-  // playground
+  // playground (Piston-backed)
   | "playground.piston"
   | "playground.python-packages"
   // converters
   | "convert.local"
   | "convert.server"
-  | "convert.docx"
-  | "convert.pdf"
-  | "convert.xlsx"
-  | "convert.pptx"
-  | "convert.image-ocr"
-  | "convert.batch-upload"
   // user data
   | "auth.sign-in"
   | "auth.sign-up"
@@ -29,10 +26,9 @@ export type FeatureId =
   | "projects.persist"
   | "history.view"
   | "dashboard.view"
-  // collab
-  | "collab.live"
+  // sharing
   | "share.create"
-  | "share.resolve"
+  | "share.resolve";
 
 /**
  * A feature is "requires backend" if it has to hit any `/api/*`
@@ -42,12 +38,6 @@ const REQUIRES_BACKEND: ReadonlySet<FeatureId> = new Set<FeatureId>([
   "playground.piston",
   "playground.python-packages",
   "convert.server",
-  "convert.docx",
-  "convert.pdf",
-  "convert.xlsx",
-  "convert.pptx",
-  "convert.image-ocr",
-  "convert.batch-upload",
   "auth.sign-in",
   "auth.sign-up",
   "snippets.create",
@@ -56,30 +46,29 @@ const REQUIRES_BACKEND: ReadonlySet<FeatureId> = new Set<FeatureId>([
   "projects.persist",
   "history.view",
   "dashboard.view",
-  "collab.live",
   "share.create",
   "share.resolve",
-])
+]);
 
 export interface FeatureGate {
   /** Does the feature need a live backend? */
-  requiresBackend: boolean
+  requiresBackend: boolean;
   /** Can the user click it right now? */
-  enabled: boolean
+  enabled: boolean;
   /** If locked, the reason */
-  reason?: "backend_offline" | "backend_unsupported" | "backend_checking"
+  reason?: "backend_offline" | "backend_unsupported" | "backend_checking";
   /** Human-readable explanation, suitable for tooltips/banners */
-  message?: string
+  message?: string;
 }
 
 export function useFeatureGate(id: FeatureId): FeatureGate {
-  const { status, backendAvailable } = useBackendStatus()
-  const requiresBackend = REQUIRES_BACKEND.has(id)
+  const { status, backendAvailable } = useBackendStatus();
+  const requiresBackend = REQUIRES_BACKEND.has(id);
   if (!requiresBackend) {
-    return { requiresBackend: false, enabled: true }
+    return { requiresBackend: false, enabled: true };
   }
-  if (status.state === "online" || status.state === "degraded") {
-    return { requiresBackend: true, enabled: true }
+  if (backendAvailable) {
+    return { requiresBackend: true, enabled: true };
   }
   if (status.state === "checking") {
     return {
@@ -87,7 +76,7 @@ export function useFeatureGate(id: FeatureId): FeatureGate {
       enabled: false,
       reason: "backend_checking",
       message: "Checking backend…",
-    }
+    };
   }
   if (status.state === "unsupported") {
     return {
@@ -96,7 +85,7 @@ export function useFeatureGate(id: FeatureId): FeatureGate {
       reason: "backend_unsupported",
       message:
         "This feature needs the DocForge backend, but you're viewing the static-export build. To unlock it, run the project locally: `git clone … && pnpm install && make up && make dev`.",
-    }
+    };
   }
   return {
     requiresBackend: true,
@@ -104,5 +93,5 @@ export function useFeatureGate(id: FeatureId): FeatureGate {
     reason: "backend_offline",
     message:
       "Backend is offline. Start the server with `make up` (or `pnpm dev` with Postgres + Redis + Piston-shim running).",
-  }
+  };
 }

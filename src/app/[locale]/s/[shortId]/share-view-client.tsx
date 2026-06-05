@@ -140,7 +140,8 @@ export default function ShareViewClient({ shortId }: ShareViewClientProps) {
             </p>
           )}
           <p className="text-muted-foreground text-xs">
-            {data.share.viewCount} view{data.share.viewCount === 1 ? "" : "s"} · {isProject ? "Project" : "Snippet"}
+            {data.share.viewCount} view{data.share.viewCount === 1 ? "" : "s"} ·{" "}
+            {isProject ? "Project" : "Snippet"}
           </p>
         </CardHeader>
         <CardContent>

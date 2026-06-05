@@ -33,12 +33,22 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const { fontSize, setFontSize, wordWrap, setWordWrap, minimap, setMinimap, autoSave, setAutoSave, theme, setTheme } =
-    useEditorStore();
+  const {
+    fontSize,
+    setFontSize,
+    wordWrap,
+    setWordWrap,
+    minimap,
+    setMinimap,
+    autoSave,
+    setAutoSave,
+    theme,
+    setTheme,
+  } = useEditorStore();
   const gate = useFeatureGate("auth.sign-in");
 
   useEffect(() => {
-    if (!gate.enabled) return
+    if (!gate.enabled) return;
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
@@ -64,7 +74,7 @@ export default function SettingsPage() {
       <div className="container mx-auto max-w-3xl px-4 py-8 md:py-12">
         <LockedOverlay feature="auth.sign-in" />
       </div>
-    )
+    );
   }
 
   if (loading) {
@@ -125,12 +135,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4">
             {user.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.image}
-                alt=""
-                className="size-16 rounded-full"
-                referrerPolicy="no-referrer"
-              />
+              <img src={user.image} alt="" className="size-16 rounded-full" referrerPolicy="no-referrer" />
             ) : (
               <div className="bg-muted flex size-16 items-center justify-center rounded-full text-2xl font-bold">
                 {user.name?.[0] ?? user.email[0]?.toUpperCase()}
@@ -267,11 +272,7 @@ export default function SettingsPage() {
               <p className="font-medium">Minimap</p>
               <p className="text-muted-foreground text-sm">Show code overview</p>
             </div>
-            <Button
-              variant={minimap ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMinimap(!minimap)}
-            >
+            <Button variant={minimap ? "default" : "outline"} size="sm" onClick={() => setMinimap(!minimap)}>
               {minimap ? "On" : "Off"}
             </Button>
           </div>

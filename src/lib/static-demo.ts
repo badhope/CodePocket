@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 /**
  * Hook that returns `true` when the bundle is being served from a static
  * host (e.g. GitHub Pages) where the server-side API routes are not

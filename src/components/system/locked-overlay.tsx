@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link"
-import { useLocale } from "next-intl"
-import { CloudOff, ExternalLink, Lock, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useFeatureGate, type FeatureId } from "@/lib/system/feature-gate"
-import { cn } from "@/lib/utils"
+import Link from "next/link";
+import { useLocale } from "next-intl";
+import { CloudOff, ExternalLink, Lock, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFeatureGate, type FeatureId } from "@/lib/system/feature-gate";
+import { cn } from "@/lib/utils";
 
-const REPO_URL = "https://github.com/badhope/DocForge"
+const REPO_URL = "https://github.com/badhope/DocForge";
 
 const COPY = {
   zh: {
@@ -39,7 +39,7 @@ const COPY = {
     retry: "Retry",
     ctaBrowse: "Browse offline tools",
   },
-}
+};
 
 export function LockedOverlay({
   feature,
@@ -47,17 +47,17 @@ export function LockedOverlay({
   inline = false,
   children,
 }: {
-  feature: FeatureId
-  className?: string
+  feature: FeatureId;
+  className?: string;
   /** inline mode disables the full overlay chrome and just renders a pill */
-  inline?: boolean
+  inline?: boolean;
   /** children shown under the lock message (e.g. preview) */
-  children?: React.ReactNode
+  children?: React.ReactNode;
 }) {
-  const locale = useLocale()
-  const gate = useFeatureGate(feature)
-  if (gate.enabled) return null
-  const copy = COPY[locale === "zh-CN" ? "zh" : "en"]
+  const locale = useLocale();
+  const gate = useFeatureGate(feature);
+  if (gate.enabled) return null;
+  const copy = COPY[locale === "zh-CN" ? "zh" : "en"];
 
   if (inline) {
     return (
@@ -70,7 +70,7 @@ export function LockedOverlay({
         <Lock className="size-3" />
         <span>{copy.title}</span>
       </div>
-    )
+    );
   }
 
   return (
@@ -89,7 +89,7 @@ export function LockedOverlay({
       <CardContent className="space-y-4">
         {children && <div className="pointer-events-none opacity-50">{children}</div>}
         <div className="bg-muted/60 rounded-md border p-3 font-mono text-xs leading-relaxed">
-          <pre className="whitespace-pre-wrap break-all">{copy.steps.join("\n")}</pre>
+          <pre className="break-all whitespace-pre-wrap">{copy.steps.join("\n")}</pre>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm">
@@ -108,7 +108,7 @@ export function LockedOverlay({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function RetryButton({ label }: { label: string }) {
@@ -122,11 +122,11 @@ function RetryButton({ label }: { label: string }) {
         // store will observe on the next status emit
         fetch("/api/health", { cache: "no-store" })
           .catch(() => undefined)
-          .finally(() => window.dispatchEvent(new Event("online")))
+          .finally(() => window.dispatchEvent(new Event("online")));
       }}
     >
       <RefreshCw className="mr-1.5 size-3.5" />
       {label}
     </Button>
-  )
+  );
 }

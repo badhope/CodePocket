@@ -12,11 +12,7 @@ export function generateStaticParams() {
   return [{ id: "_" }];
 }
 
-export default async function ProjectPage({
-  params,
-}: {
-  params: Promise<{ locale: string; id: string }>;
-}) {
+export default async function ProjectPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("nav");

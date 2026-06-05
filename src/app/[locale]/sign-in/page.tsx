@@ -128,11 +128,11 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <BackendGate feature="auth.sign-in">
-    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
-      <Suspense fallback={<div className="text-muted-foreground">Loading…</div>}>
-        <SignInForm />
-      </Suspense>
-    </div>
+      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+        <Suspense fallback={<div className="text-muted-foreground">Loading…</div>}>
+          <SignInForm />
+        </Suspense>
+      </div>
     </BackendGate>
   );
 }

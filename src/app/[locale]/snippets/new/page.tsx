@@ -18,13 +18,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BackendGate } from "@/components/system/backend-gate";
 import { toast } from "sonner";
 
-const CodeEditor = dynamic(
-  () => import("@/components/editor/code-editor").then((m) => m.CodeEditor),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-64 w-full" />,
-  },
-);
+const CodeEditor = dynamic(() => import("@/components/editor/code-editor").then((m) => m.CodeEditor), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full" />,
+});
 
 export default function NewSnippetPage() {
   const locale = useLocale();
@@ -73,98 +70,98 @@ export default function NewSnippetPage() {
 
   return (
     <BackendGate feature="snippets.create">
-    <div className="container mx-auto max-w-4xl space-y-6 p-4 md:p-8">
-      <Button variant="ghost" size="sm" asChild>
-        <Link href={`/${locale}/snippets`}>
-          <ArrowLeft className="mr-2 size-4" /> Back
-        </Link>
-      </Button>
-      <Card>
-        <CardHeader>
-          <CardTitle>New snippet</CardTitle>
-          <CardDescription>Save reusable code</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Quick sort"
-                maxLength={200}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                maxLength={2000}
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
+      <div className="container mx-auto max-w-4xl space-y-6 p-4 md:p-8">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/${locale}/snippets`}>
+            <ArrowLeft className="mr-2 size-4" /> Back
+          </Link>
+        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>New snippet</CardTitle>
+            <CardDescription>Save reusable code</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>Language</Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGE_LIST.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.icon} {l.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Visibility</Label>
-                <Select value={visibility} onValueChange={(v) => setVisibility(v as never)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="private">🔒 Private</SelectItem>
-                    <SelectItem value="unlisted">🔗 Unlisted</SelectItem>
-                    <SelectItem value="public">🌍 Public</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tags">Tags (comma separated)</Label>
-              <Input
-                id="tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="sort, algorithm, python"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Code</Label>
-              <div className="overflow-hidden rounded-md border">
-                <CodeEditor
-                  value={code}
-                  onChange={setCode}
-                  language={language}
-                  height="320px"
-                  fontSize={14}
-                  wordWrap="on"
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Quick sort"
+                  maxLength={200}
                 />
               </div>
-            </div>
-            <Button type="submit" disabled={submitting || !code.trim()} className="w-full">
-              {submitting ? "Saving..." : "Save snippet"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Language</Label>
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGE_LIST.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.icon} {l.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Visibility</Label>
+                  <Select value={visibility} onValueChange={(v) => setVisibility(v as never)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="private">🔒 Private</SelectItem>
+                      <SelectItem value="unlisted">🔗 Unlisted</SelectItem>
+                      <SelectItem value="public">🌍 Public</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags (comma separated)</Label>
+                <Input
+                  id="tags"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="sort, algorithm, python"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Code</Label>
+                <div className="overflow-hidden rounded-md border">
+                  <CodeEditor
+                    value={code}
+                    onChange={setCode}
+                    language={language}
+                    height="320px"
+                    fontSize={14}
+                    wordWrap="on"
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={submitting || !code.trim()} className="w-full">
+                {submitting ? "Saving..." : "Save snippet"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </BackendGate>
   );
 }

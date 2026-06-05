@@ -7,23 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,10 +45,10 @@ import { LockedOverlay } from "@/components/system/locked-overlay";
 
 // ─── Dynamic imports ────────────────────────────────────────────
 
-const CodeEditor = dynamic(
-  () => import("@/components/editor/code-editor").then((m) => m.CodeEditor),
-  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
-);
+const CodeEditor = dynamic(() => import("@/components/editor/code-editor").then((m) => m.CodeEditor), {
+  ssr: false,
+  loading: () => <Skeleton className="h-full w-full" />,
+});
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -146,33 +132,78 @@ function decodeShare(hash: string): { code: string; lang: string } | null {
 const TEMPLATES: Record<string, { label: string; code: string }[]> = {
   python: [
     { label: "Hello World", code: 'print("Hello, OnlineCode!")' },
-    { label: "Fibonacci", code: "def fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        print(a)\n        a, b = b, a + b\n\nfib(10)" },
-    { label: "Prime Check", code: "def is_prime(n):\n    if n < 2:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True\n\nfor n in range(1, 51):\n    if is_prime(n):\n        print(n)" },
-    { label: "List Comprehension", code: 'evens = [x for x in range(20) if x % 2 == 0]\nprint("Even numbers:", evens)\n\nsquares = {x: x**2 for x in range(6)}\nprint("Squares:", squares)' },
-    { label: "File Read", code: 'with open("data.txt", "w") as f:\n    f.write("Hello\\nWorld\\nPython")\n\nwith open("data.txt", "r") as f:\n    for line in f:\n        print(line.strip())' },
+    {
+      label: "Fibonacci",
+      code: "def fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        print(a)\n        a, b = b, a + b\n\nfib(10)",
+    },
+    {
+      label: "Prime Check",
+      code: "def is_prime(n):\n    if n < 2:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True\n\nfor n in range(1, 51):\n    if is_prime(n):\n        print(n)",
+    },
+    {
+      label: "List Comprehension",
+      code: 'evens = [x for x in range(20) if x % 2 == 0]\nprint("Even numbers:", evens)\n\nsquares = {x: x**2 for x in range(6)}\nprint("Squares:", squares)',
+    },
+    {
+      label: "File Read",
+      code: 'with open("data.txt", "w") as f:\n    f.write("Hello\\nWorld\\nPython")\n\nwith open("data.txt", "r") as f:\n    for line in f:\n        print(line.strip())',
+    },
   ],
   javascript: [
     { label: "Hello World", code: 'console.log("Hello, OnlineCode!");' },
-    { label: "Array Methods", code: 'const nums = [1, 2, 3, 4, 5];\nconst doubled = nums.map(n => n * 2);\nconst sum = nums.reduce((a, b) => a + b, 0);\nconsole.log("Doubled:", doubled);\nconsole.log("Sum:", sum);' },
-    { label: "Async/Await", code: 'async function fetchData() {\n  const data = await Promise.resolve({ id: 1, name: "test" });\n  console.log("Data:", data);\n}\nfetchData();' },
-    { label: "Class Example", code: 'class Calculator {\n  add(a, b) { return a + b; }\n  multiply(a, b) { return a * b; }\n}\nconst calc = new Calculator();\nconsole.log(calc.add(5, 3));\nconsole.log(calc.multiply(5, 3));' },
+    {
+      label: "Array Methods",
+      code: 'const nums = [1, 2, 3, 4, 5];\nconst doubled = nums.map(n => n * 2);\nconst sum = nums.reduce((a, b) => a + b, 0);\nconsole.log("Doubled:", doubled);\nconsole.log("Sum:", sum);',
+    },
+    {
+      label: "Async/Await",
+      code: 'async function fetchData() {\n  const data = await Promise.resolve({ id: 1, name: "test" });\n  console.log("Data:", data);\n}\nfetchData();',
+    },
+    {
+      label: "Class Example",
+      code: "class Calculator {\n  add(a, b) { return a + b; }\n  multiply(a, b) { return a * b; }\n}\nconst calc = new Calculator();\nconsole.log(calc.add(5, 3));\nconsole.log(calc.multiply(5, 3));",
+    },
   ],
   typescript: [
-    { label: "Hello World", code: 'const greet = (name: string): string => `Hello, ${name}!`;\nconsole.log(greet("OnlineCode"));' },
-    { label: "Interface", code: 'interface User {\n  id: number;\n  name: string;\n  email?: string;\n}\nconst user: User = { id: 1, name: "Alice" };\nconsole.log(user);' },
-    { label: "Generic Function", code: 'function first<T>(arr: T[]): T | undefined {\n  return arr[0];\n}\nconsole.log(first([1, 2, 3]));\nconsole.log(first(["a", "b"]));' },
+    {
+      label: "Hello World",
+      code: 'const greet = (name: string): string => `Hello, ${name}!`;\nconsole.log(greet("OnlineCode"));',
+    },
+    {
+      label: "Interface",
+      code: 'interface User {\n  id: number;\n  name: string;\n  email?: string;\n}\nconst user: User = { id: 1, name: "Alice" };\nconsole.log(user);',
+    },
+    {
+      label: "Generic Function",
+      code: 'function first<T>(arr: T[]): T | undefined {\n  return arr[0];\n}\nconsole.log(first([1, 2, 3]));\nconsole.log(first(["a", "b"]));',
+    },
   ],
   cpp: [
-    { label: "Hello World", code: '#include <iostream>\nint main() {\n    std::cout << "Hello, OnlineCode!" << std::endl;\n    return 0;\n}' },
-    { label: "Vector Sort", code: '#include <iostream>\n#include <vector>\n#include <algorithm>\nint main() {\n    std::vector<int> v = {3, 1, 4, 1, 5, 9};\n    std::sort(v.begin(), v.end());\n    for (int x : v) std::cout << x << " ";\n    return 0;\n}' },
+    {
+      label: "Hello World",
+      code: '#include <iostream>\nint main() {\n    std::cout << "Hello, OnlineCode!" << std::endl;\n    return 0;\n}',
+    },
+    {
+      label: "Vector Sort",
+      code: '#include <iostream>\n#include <vector>\n#include <algorithm>\nint main() {\n    std::vector<int> v = {3, 1, 4, 1, 5, 9};\n    std::sort(v.begin(), v.end());\n    for (int x : v) std::cout << x << " ";\n    return 0;\n}',
+    },
   ],
   rust: [
     { label: "Hello World", code: 'fn main() {\n    println!("Hello, OnlineCode!");\n}' },
-    { label: "Struct + impl", code: 'struct Point { x: f64, y: f64 }\nimpl Point {\n    fn distance(&self, other: &Point) -> f64 {\n        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()\n    }\n}\nfn main() {\n    let a = Point { x: 0.0, y: 0.0 };\n    let b = Point { x: 3.0, y: 4.0 };\n    println!("Distance: {}", a.distance(&b));\n}' },
+    {
+      label: "Struct + impl",
+      code: 'struct Point { x: f64, y: f64 }\nimpl Point {\n    fn distance(&self, other: &Point) -> f64 {\n        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()\n    }\n}\nfn main() {\n    let a = Point { x: 0.0, y: 0.0 };\n    let b = Point { x: 3.0, y: 4.0 };\n    println!("Distance: {}", a.distance(&b));\n}',
+    },
   ],
   go: [
-    { label: "Hello World", code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, OnlineCode!")\n}' },
-    { label: "Goroutine", code: 'package main\n\nimport ("fmt"; "time")\n\nfunc worker(id int) {\n    for i := 0; i < 3; i++ {\n        fmt.Printf("Worker %d: %d\\n", id, i)\n        time.Sleep(100 * time.Millisecond)\n    }\n}\nfunc main() {\n    go worker(1)\n    go worker(2)\n    time.Sleep(500 * time.Millisecond)\n}' },
+    {
+      label: "Hello World",
+      code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, OnlineCode!")\n}',
+    },
+    {
+      label: "Goroutine",
+      code: 'package main\n\nimport ("fmt"; "time")\n\nfunc worker(id int) {\n    for i := 0; i < 3; i++ {\n        fmt.Printf("Worker %d: %d\\n", id, i)\n        time.Sleep(100 * time.Millisecond)\n    }\n}\nfunc main() {\n    go worker(1)\n    go worker(2)\n    time.Sleep(500 * time.Millisecond)\n}',
+    },
   ],
 };
 
@@ -189,7 +220,6 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
   const tc = useTranslations("common");
 
   // ─── Backend status / feature gates ───
-  const { backendAvailable } = useBackendStatus();
   const pistonGate = useFeatureGate("playground.piston");
   const pkgGate = useFeatureGate("playground.python-packages");
 
@@ -197,7 +227,10 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
   const [languageId, setLanguageId] = useState(initialLanguage ?? "python");
   const [version, setVersion] = useState<string | undefined>(undefined);
   const [files, setFiles] = useState<PlaygroundFile[]>([
-    { name: getDefaultFilename(LANGUAGES[initialLanguage as never] ?? LANGUAGES.python), content: initialCode ?? LANGUAGES.python.defaultCode },
+    {
+      name: getDefaultFilename(LANGUAGES[initialLanguage as never] ?? LANGUAGES.python),
+      content: initialCode ?? LANGUAGES.python.defaultCode,
+    },
   ]);
   const [activeFileIndex, setActiveFileIndex] = useState(0);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -239,7 +272,9 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
       try {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setFiles([{ name: getDefaultFilename(meta!), content: saved }]);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [languageId]);
@@ -271,17 +306,21 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
     setActiveFileIndex(files.length);
   }, [files, meta]);
 
-  const removeFile = useCallback((idx: number) => {
-    if (files.length <= 1) return;
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
-    setActiveFileIndex((prev) => (prev >= idx ? Math.max(0, prev - 1) : prev));
-  }, [files.length]);
+  const removeFile = useCallback(
+    (idx: number) => {
+      if (files.length <= 1) return;
+      setFiles((prev) => prev.filter((_, i) => i !== idx));
+      setActiveFileIndex((prev) => (prev >= idx ? Math.max(0, prev - 1) : prev));
+    },
+    [files.length],
+  );
 
-  const updateFileContent = useCallback((content: string) => {
-    setFiles((prev) =>
-      prev.map((f, i) => (i === activeFileIndex ? { ...f, content } : f)),
-    );
-  }, [activeFileIndex]);
+  const updateFileContent = useCallback(
+    (content: string) => {
+      setFiles((prev) => prev.map((f, i) => (i === activeFileIndex ? { ...f, content } : f)));
+    },
+    [activeFileIndex],
+  );
 
   // ─── Output helpers ───
   const appendOutput = useCallback((line: OutputLine) => {
@@ -389,7 +428,10 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
         sessionId: string;
         success: boolean;
         durationMs?: number;
-        result?: { run?: { stdout: string; stderr: string; code: number; signal: string | null }; compile?: { stdout: string; stderr: string; code: number; signal: string | null } };
+        result?: {
+          run?: { stdout: string; stderr: string; code: number; signal: string | null };
+          compile?: { stdout: string; stderr: string; code: number; signal: string | null };
+        };
         error?: string;
         message?: string;
         component?: string;
@@ -397,13 +439,19 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
       const startMs = Date.now();
 
       // ── Backend unavailable → switch to in-browser runner ──
-      if (res.status === 503 || (data.error === "backend_unavailable")) {
+      if (res.status === 503 || data.error === "backend_unavailable") {
         const { frontendRunnerFor } = await import("@/lib/execution/frontend-runner");
         const feRunner = frontendRunnerFor(executeLanguage);
         if (!feRunner) {
-          appendOutput({ type: "err", text: `Backend is unavailable and ${executeLanguage} cannot run in the browser.` });
+          appendOutput({
+            type: "err",
+            text: `Backend is unavailable and ${executeLanguage} cannot run in the browser.`,
+          });
           appendOutput({ type: "err", text: data.message ?? data.error ?? "no backend" });
-          appendOutput({ type: "err", text: `Configure UPSTASH_REDIS_REST_URL/TOKEN (and Piston), or pick JS/TS/HTML/Python for browser-side execution.` });
+          appendOutput({
+            type: "err",
+            text: `Configure UPSTASH_REDIS_REST_URL/TOKEN (and Piston), or pick JS/TS/HTML/Python for browser-side execution.`,
+          });
           return;
         }
         appendOutput({ type: "info", text: "→ Backend unavailable, running in browser sandbox" });
@@ -462,7 +510,19 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
     } finally {
       setIsExecuting(false);
     }
-  }, [meta, isExecuting, version, files, stdinInput, packages, ecosystem, t, appendOutput, pistonGate.enabled, languageId]);
+  }, [
+    meta,
+    isExecuting,
+    version,
+    files,
+    stdinInput,
+    packages,
+    ecosystem,
+    t,
+    appendOutput,
+    pistonGate.enabled,
+    languageId,
+  ]);
 
   const stop = useCallback(() => {
     setIsExecuting(false);
@@ -537,7 +597,7 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
   // ─── Render ───
   if (!meta) {
     return (
-      <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex h-[calc(100vh-3.5rem)] items-center justify-center text-sm">
         {t("languageNotSupported")}
       </div>
     );
@@ -548,9 +608,9 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* ─── Toolbar ─── */}
-      <div className="flex items-center gap-1.5 border-b bg-background px-3 py-1.5">
+      <div className="bg-background flex items-center gap-1.5 border-b px-3 py-1.5">
         <Select value={languageId} onValueChange={changeLanguage}>
-          <SelectTrigger className="w-40 h-8 text-xs">
+          <SelectTrigger className="h-8 w-40 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -563,14 +623,12 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
         </Select>
 
         <Select value={version ?? meta.defaultVersion} onValueChange={setVersion}>
-          <SelectTrigger className="w-28 h-8 text-xs">
+          <SelectTrigger className="h-8 w-28 text-xs">
             <SelectValue placeholder={meta.defaultVersion} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={meta.defaultVersion}>{meta.defaultVersion}</SelectItem>
-            {version && version !== meta.defaultVersion && (
-              <SelectItem value={version}>{version}</SelectItem>
-            )}
+            {version && version !== meta.defaultVersion && <SelectItem value={version}>{version}</SelectItem>}
           </SelectContent>
         </Select>
 
@@ -581,14 +639,20 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
             <Square className="size-3.5" /> {t("stop")}
           </Button>
         ) : (
-          <Button size="sm" onClick={run} className="h-8 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700">
+          <Button size="sm" onClick={run} className="h-8 gap-1 bg-emerald-600 text-xs hover:bg-emerald-700">
             <Play className="size-3.5" /> {t("run")}
           </Button>
         )}
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" className="size-8" onClick={clearOutput} aria-label={t("clearOutput")}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8"
+              onClick={clearOutput}
+              aria-label={t("clearOutput")}
+            >
               <Trash2 className="size-3.5" />
             </Button>
           </TooltipTrigger>
@@ -615,7 +679,13 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" className="size-8" onClick={saveLocal} aria-label={tc("save")}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8"
+              onClick={saveLocal}
+              aria-label={tc("save")}
+            >
               <Download className="size-3.5" />
             </Button>
           </TooltipTrigger>
@@ -629,15 +699,15 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
         <ResizablePanel defaultSize={65} minSize={35}>
           <div className="flex h-full flex-col">
             {/* File tabs */}
-            <div className="flex items-center gap-0.5 border-b bg-muted/30 px-1 py-0.5">
+            <div className="bg-muted/30 flex items-center gap-0.5 border-b px-1 py-0.5">
               {files.map((f, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "group flex items-center gap-1 rounded-t-sm px-2.5 py-1 text-xs cursor-pointer border-b-2 transition-colors",
+                    "group flex cursor-pointer items-center gap-1 rounded-t-sm border-b-2 px-2.5 py-1 text-xs transition-colors",
                     i === activeFileIndex
                       ? "bg-background border-primary text-foreground"
-                      : "border-transparent text-muted-foreground hover:bg-background/50",
+                      : "text-muted-foreground hover:bg-background/50 border-transparent",
                   )}
                   onClick={() => setActiveFileIndex(i)}
                 >
@@ -646,7 +716,10 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
                   {files.length > 1 && (
                     <button
                       className="ml-0.5 opacity-0 group-hover:opacity-100"
-                      onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFile(i);
+                      }}
                       aria-label="Close"
                     >
                       <X className="size-3" />
@@ -656,7 +729,7 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
               ))}
               <button
                 onClick={addFile}
-                className="flex items-center gap-0.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-background/50"
+                className="text-muted-foreground hover:bg-background/50 flex items-center gap-0.5 rounded px-1.5 py-1 text-xs"
                 aria-label={t("newFile")}
               >
                 <Plus className="size-3" /> {t("newFile")}
@@ -684,14 +757,14 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
         <ResizablePanel defaultSize={35} minSize={20} maxSize={45}>
           <div className="flex h-full flex-col border-l">
             {/* Side panel tabs */}
-            <div className="flex items-center border-b bg-muted/30 px-2">
+            <div className="bg-muted/30 flex items-center border-b px-2">
               <button
                 onClick={() => setSidePanel("templates")}
                 className={cn(
                   "flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
                   sidePanel === "templates"
                     ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground",
+                    : "text-muted-foreground border-transparent",
                 )}
               >
                 <FileCode2 className="size-3.5" /> {t("templates")}
@@ -702,7 +775,7 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
                   "flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
                   sidePanel === "packages"
                     ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground",
+                    : "text-muted-foreground border-transparent",
                 )}
               >
                 <Package className="size-3.5" /> {t("packages")}
@@ -715,15 +788,13 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
                 <div className="space-y-2">
                   <p className="text-muted-foreground px-1 text-xs">{t("selectTemplate")}</p>
                   {langTemplates.length === 0 ? (
-                    <p className="text-muted-foreground px-1 py-4 text-center text-xs">
-                      {tc("comingSoon")}
-                    </p>
+                    <p className="text-muted-foreground px-1 py-4 text-center text-xs">{tc("comingSoon")}</p>
                   ) : (
                     langTemplates.map((tpl) => (
                       <button
                         key={tpl.label}
                         onClick={() => applyTemplate(tpl)}
-                        className="w-full rounded-md border px-3 py-2 text-left text-xs transition-colors hover:bg-accent"
+                        className="hover:bg-accent w-full rounded-md border px-3 py-2 text-left text-xs transition-colors"
                       >
                         <div className="font-medium">{tpl.label}</div>
                         <div className="text-muted-foreground mt-0.5 truncate font-mono text-[10px]">
@@ -739,52 +810,48 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
                     <LockedOverlay feature="playground.python-packages" inline className="my-2" />
                   )}
                   <div className={cn(!pkgGate.enabled && "pointer-events-none opacity-50")}>
-                  {ecosystem ? (
-                    <>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          value={pkgInput}
-                          onChange={(e) => setPkgInput(e.target.value)}
-                          onKeyDown={handlePkgKeyDown}
-                          placeholder={ecosystem.placeholder}
-                          className="h-7 flex-1 text-xs"
-                        />
-                        <Button size="sm" onClick={addPackage} className="h-7 text-xs">
-                          {t("addPackage")}
-                        </Button>
-                      </div>
-                      <p className="text-muted-foreground text-[10px]">
-                        {ecosystem.installCmd} {packages.join(" ")}
-                      </p>
-                      {packages.length === 0 ? (
-                        <p className="text-muted-foreground py-3 text-center text-xs">
-                          {t("noPackages")}
-                        </p>
-                      ) : (
-                        <div className="space-y-1">
-                          {packages.map((p) => (
-                            <div
-                              key={p}
-                              className="flex items-center justify-between rounded border px-2 py-1"
-                            >
-                              <span className="font-mono text-xs">{p}</span>
-                              <button
-                                onClick={() => removePackage(p)}
-                                className="text-muted-foreground hover:text-foreground"
-                                aria-label="Remove"
-                              >
-                                <X className="size-3" />
-                              </button>
-                            </div>
-                          ))}
+                    {ecosystem ? (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            value={pkgInput}
+                            onChange={(e) => setPkgInput(e.target.value)}
+                            onKeyDown={handlePkgKeyDown}
+                            placeholder={ecosystem.placeholder}
+                            className="h-7 flex-1 text-xs"
+                          />
+                          <Button size="sm" onClick={addPackage} className="h-7 text-xs">
+                            {t("addPackage")}
+                          </Button>
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground py-3 text-center text-xs">
-                      {t("noPackages")}
-                    </p>
-                  )}
+                        <p className="text-muted-foreground text-[10px]">
+                          {ecosystem.installCmd} {packages.join(" ")}
+                        </p>
+                        {packages.length === 0 ? (
+                          <p className="text-muted-foreground py-3 text-center text-xs">{t("noPackages")}</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {packages.map((p) => (
+                              <div
+                                key={p}
+                                className="flex items-center justify-between rounded border px-2 py-1"
+                              >
+                                <span className="font-mono text-xs">{p}</span>
+                                <button
+                                  onClick={() => removePackage(p)}
+                                  className="text-muted-foreground hover:text-foreground"
+                                  aria-label="Remove"
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground py-3 text-center text-xs">{t("noPackages")}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -794,19 +861,21 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
       </ResizablePanelGroup>
 
       {/* ─── Output panel ─── */}
-      <div className="border-t bg-background">
+      <div className="bg-background border-t">
         <div className="flex items-center gap-1 border-b px-3 py-1">
           <Terminal className="text-muted-foreground size-3" />
           <span className="text-xs font-medium">{t("output")}</span>
-          {isExecuting && <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">{t("executing")}</Badge>}
+          {isExecuting && (
+            <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">
+              {t("executing")}
+            </Badge>
+          )}
         </div>
         <div className="flex flex-col">
           {/* Output */}
           <div className="h-[28vh] overflow-auto p-3 font-mono text-xs">
             {output.length === 0 ? (
-              <p className="text-muted-foreground p-2 text-center text-xs">
-                {te("ready")}
-              </p>
+              <p className="text-muted-foreground p-2 text-center text-xs">{te("ready")}</p>
             ) : (
               output.map((line, i) => (
                 <div
@@ -828,14 +897,14 @@ export function Playground({ initialCode, initialLanguage }: PlaygroundProps) {
           </div>
           {/* Stdin input */}
           <div className="border-t px-3 py-2">
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="mb-1 flex items-center gap-1.5">
               <span className="text-muted-foreground text-[10px] font-medium">{t("stdin")}</span>
             </div>
             <textarea
               value={stdinInput}
               onChange={(e) => setStdinInput(e.target.value)}
               placeholder={t("stdinPlaceholder")}
-              className="w-full resize-none rounded-md border bg-background px-2 py-1.5 font-mono text-xs outline-none min-h-[40px] max-h-[80px]"
+              className="bg-background max-h-[80px] min-h-[40px] w-full resize-none rounded-md border px-2 py-1.5 font-mono text-xs outline-none"
               rows={2}
             />
           </div>

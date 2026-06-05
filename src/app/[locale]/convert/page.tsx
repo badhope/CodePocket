@@ -1,27 +1,21 @@
-"use client"
+"use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react"
-import { useTranslations, useLocale } from "next-intl"
-import { Link } from "@/lib/i18n/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Separator } from "@/components/ui/separator"
-import { LockedOverlay } from "@/components/system/locked-overlay"
-import { useBackendStatus } from "@/lib/system/backend-status"
-import { formatBytes } from "@/lib/utils"
-import { toast } from "sonner"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { Link } from "@/lib/i18n/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import { LockedOverlay } from "@/components/system/locked-overlay";
+import { useBackendStatus } from "@/lib/system/backend-status";
+import { formatBytes } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   jsonToCsv,
   csvToJson,
@@ -35,7 +29,7 @@ import {
   decodeBase64,
   encodeUrl,
   decodeUrl,
-} from "@/lib/tools/client-tools"
+} from "@/lib/tools/client-tools";
 import {
   Upload,
   X,
@@ -58,12 +52,12 @@ import {
   Wand2,
   CloudOff,
   Zap,
-} from "lucide-react"
+} from "lucide-react";
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024
-const MAX_CONVERT_DURATION_MS = 60_000
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_CONVERT_DURATION_MS = 60_000;
 const ACCEPT_ATTR =
-  ".docx,.doc,.pdf,.md,.markdown,.html,.htm,.txt,.text,.xlsx,.xls,.csv,.json,.xml,.pptx,.ppt"
+  ".docx,.doc,.pdf,.md,.markdown,.html,.htm,.txt,.text,.xlsx,.xls,.csv,.json,.xml,.pptx,.ppt";
 
 const FORMAT_LABELS: Record<string, string> = {
   docx: "Word (DOCX)",
@@ -76,7 +70,7 @@ const FORMAT_LABELS: Record<string, string> = {
   json: "JSON",
   xml: "XML",
   pptx: "PowerPoint (PPTX)",
-}
+};
 
 const FORMAT_ICONS: Record<string, string> = {
   docx: "📄",
@@ -89,7 +83,7 @@ const FORMAT_ICONS: Record<string, string> = {
   json: "🔧",
   xml: "📰",
   pptx: "🎞️",
-}
+};
 
 const INPUT_EXTENSIONS: Record<string, string[]> = {
   docx: [".docx", ".doc"],
@@ -102,7 +96,7 @@ const INPUT_EXTENSIONS: Record<string, string[]> = {
   json: [".json"],
   xml: [".xml"],
   pptx: [".pptx", ".ppt"],
-}
+};
 
 const EXT_MAP: Record<string, string> = {
   docx: "docx",
@@ -121,24 +115,24 @@ const EXT_MAP: Record<string, string> = {
   xml: "xml",
   pptx: "pptx",
   ppt: "pptx",
-}
+};
 
-type Stage = "upload" | "selecting" | "converting" | "done" | "error"
+type Stage = "upload" | "selecting" | "converting" | "done" | "error";
 
 interface ConvertState {
-  stage: Stage
-  file: File | null
-  inputFormat: string | null
-  outputFormat: string | null
-  availableOutputs: string[]
-  progress: number
-  progressLabel: string
-  errorMessage: string | null
-  errorCode: string | null
-  resultBlob: Blob | null
-  resultFilename: string | null
-  startedAt: number | null
-  durationMs: number | null
+  stage: Stage;
+  file: File | null;
+  inputFormat: string | null;
+  outputFormat: string | null;
+  availableOutputs: string[];
+  progress: number;
+  progressLabel: string;
+  errorMessage: string | null;
+  errorCode: string | null;
+  resultBlob: Blob | null;
+  resultFilename: string | null;
+  startedAt: number | null;
+  durationMs: number | null;
 }
 
 const INITIAL_STATE: ConvertState = {
@@ -155,7 +149,7 @@ const INITIAL_STATE: ConvertState = {
   resultFilename: null,
   startedAt: null,
   durationMs: null,
-}
+};
 
 // ─── Client-side conversion catalog ──────────────────────────────────
 // Each entry is a (input → output) transformation that runs entirely in
@@ -164,29 +158,132 @@ const INITIAL_STATE: ConvertState = {
 // the output area updates instantly.
 
 type ClientConv = {
-  id: string
-  from: string
-  to: string
-  run: (input: string) => { ok: true; output: string } | { ok: false; error: string }
-  toolSlug: string
-  inputLabel: string
-  outputLabel: string
-}
+  id: string;
+  from: string;
+  to: string;
+  // May be async (e.g. html→md lazy-loads Turndown); the result is
+  // always unwrapped via Promise.resolve() in the caller.
+  run: (
+    input: string,
+  ) =>
+    | { ok: true; output: string }
+    | { ok: false; error: string }
+    | Promise<{ ok: true; output: string } | { ok: false; error: string }>;
+  toolSlug: string;
+  inputLabel: string;
+  outputLabel: string;
+};
 
 const CLIENT_CONVERSIONS: ClientConv[] = [
-  { id: "json-yaml", from: "json", to: "yaml", run: jsonToYaml, toolSlug: "yaml-json", inputLabel: "JSON", outputLabel: "YAML" },
-  { id: "json-toml", from: "json", to: "toml", run: jsonToToml, toolSlug: "toml-json", inputLabel: "JSON", outputLabel: "TOML" },
-  { id: "json-csv", from: "json", to: "csv", run: jsonToCsv, toolSlug: "csv-json", inputLabel: "JSON", outputLabel: "CSV" },
-  { id: "yaml-json", from: "yaml", to: "json", run: yamlToJson, toolSlug: "yaml-json", inputLabel: "YAML", outputLabel: "JSON" },
-  { id: "toml-json", from: "toml", to: "json", run: tomlToJson, toolSlug: "toml-json", inputLabel: "TOML", outputLabel: "JSON" },
-  { id: "csv-json", from: "csv", to: "json", run: csvToJson, toolSlug: "csv-json", inputLabel: "CSV", outputLabel: "JSON" },
-  { id: "md-html", from: "md", to: "html", run: (i) => ({ ok: true as const, output: markdownToHtml(i) }), toolSlug: "md-html", inputLabel: "Markdown", outputLabel: "HTML" },
-  { id: "html-md", from: "html", to: "md", run: (i) => ({ ok: true as const, output: htmlToMarkdown(i) }), toolSlug: "md-html", inputLabel: "HTML", outputLabel: "Markdown" },
-  { id: "text-base64", from: "text", to: "base64", run: (i) => ({ ok: true as const, output: encodeBase64(i) }), toolSlug: "base64", inputLabel: "Text", outputLabel: "Base64" },
-  { id: "base64-text", from: "base64", to: "text", run: decodeBase64, toolSlug: "base64", inputLabel: "Base64", outputLabel: "Text" },
-  { id: "text-url", from: "text", to: "url", run: (i) => ({ ok: true as const, output: encodeUrl(i) }), toolSlug: "url", inputLabel: "Text", outputLabel: "URL-encoded" },
-  { id: "url-text", from: "url", to: "text", run: decodeUrl, toolSlug: "url", inputLabel: "URL-encoded", outputLabel: "Text" },
-]
+  {
+    id: "json-yaml",
+    from: "json",
+    to: "yaml",
+    run: jsonToYaml,
+    toolSlug: "yaml-json",
+    inputLabel: "JSON",
+    outputLabel: "YAML",
+  },
+  {
+    id: "json-toml",
+    from: "json",
+    to: "toml",
+    run: jsonToToml,
+    toolSlug: "toml-json",
+    inputLabel: "JSON",
+    outputLabel: "TOML",
+  },
+  {
+    id: "json-csv",
+    from: "json",
+    to: "csv",
+    run: jsonToCsv,
+    toolSlug: "csv-json",
+    inputLabel: "JSON",
+    outputLabel: "CSV",
+  },
+  {
+    id: "yaml-json",
+    from: "yaml",
+    to: "json",
+    run: yamlToJson,
+    toolSlug: "yaml-json",
+    inputLabel: "YAML",
+    outputLabel: "JSON",
+  },
+  {
+    id: "toml-json",
+    from: "toml",
+    to: "json",
+    run: tomlToJson,
+    toolSlug: "toml-json",
+    inputLabel: "TOML",
+    outputLabel: "JSON",
+  },
+  {
+    id: "csv-json",
+    from: "csv",
+    to: "json",
+    run: csvToJson,
+    toolSlug: "csv-json",
+    inputLabel: "CSV",
+    outputLabel: "JSON",
+  },
+  {
+    id: "md-html",
+    from: "md",
+    to: "html",
+    run: (i) => ({ ok: true as const, output: markdownToHtml(i) }),
+    toolSlug: "md-html",
+    inputLabel: "Markdown",
+    outputLabel: "HTML",
+  },
+  {
+    id: "html-md",
+    from: "html",
+    to: "md",
+    run: async (i) => ({ ok: true as const, output: await htmlToMarkdown(i) }),
+    toolSlug: "md-html",
+    inputLabel: "HTML",
+    outputLabel: "Markdown",
+  },
+  {
+    id: "text-base64",
+    from: "text",
+    to: "base64",
+    run: (i) => ({ ok: true as const, output: encodeBase64(i) }),
+    toolSlug: "base64",
+    inputLabel: "Text",
+    outputLabel: "Base64",
+  },
+  {
+    id: "base64-text",
+    from: "base64",
+    to: "text",
+    run: decodeBase64,
+    toolSlug: "base64",
+    inputLabel: "Base64",
+    outputLabel: "Text",
+  },
+  {
+    id: "text-url",
+    from: "text",
+    to: "url",
+    run: (i) => ({ ok: true as const, output: encodeUrl(i) }),
+    toolSlug: "url",
+    inputLabel: "Text",
+    outputLabel: "URL-encoded",
+  },
+  {
+    id: "url-text",
+    from: "url",
+    to: "text",
+    run: decodeUrl,
+    toolSlug: "url",
+    inputLabel: "URL-encoded",
+    outputLabel: "Text",
+  },
+];
 
 const CLIENT_INPUT_PLACEHOLDERS: Record<string, string> = {
   json: '[{"name":"Ada","age":36},{"name":"Bo","age":24}]',
@@ -198,121 +295,131 @@ const CLIENT_INPUT_PLACEHOLDERS: Record<string, string> = {
   text: "Hello world!",
   base64: "SGVsbG8gd29ybGQh",
   url: "Hello%20world%21",
-}
+};
 
-type TabId = "document" | "spreadsheet" | "text" | "ocr"
+type TabId = "document" | "spreadsheet" | "text" | "ocr";
 
 export default function ConvertPage() {
-  const t = useTranslations("nav")
-  const tc = useTranslations("convert")
-  const locale = useLocale()
-  const { backendAvailable } = useBackendStatus()
-  const [tab, setTab] = useState<TabId>("text")
-  const [state, setState] = useState<ConvertState>(INITIAL_STATE)
+  const t = useTranslations("nav");
+  const tc = useTranslations("convert");
+  const locale = useLocale();
+  const { backendAvailable } = useBackendStatus();
+  const [tab, setTab] = useState<TabId>("text");
+  const [state, setState] = useState<ConvertState>(INITIAL_STATE);
   const [formats, setFormats] = useState<{
-    conversionMap: Record<string, string[]>
-    inputFormats: string[]
-  } | null>(null)
-  const [recentFormats, setRecentFormats] = useState<string[]>([])
-  const [retryCount, setRetryCount] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const abortRef = useRef<AbortController | null>(null)
-  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    conversionMap: Record<string, string[]>;
+    inputFormats: string[];
+  } | null>(null);
+  const [recentFormats, setRecentFormats] = useState<string[]>([]);
+  const [retryCount, setRetryCount] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Client-side tool state
-  const [clientConvId, setClientConvId] = useState<string>(
-    CLIENT_CONVERSIONS[0]?.id ?? "json-yaml",
-  )
-  const [clientInput, setClientInput] = useState<string>("")
+  const [clientConvId, setClientConvId] = useState<string>(CLIENT_CONVERSIONS[0]?.id ?? "json-yaml");
+  const [clientInput, setClientInput] = useState<string>("");
 
   const clientConv = useMemo(
     () => CLIENT_CONVERSIONS.find((c) => c.id === clientConvId) ?? CLIENT_CONVERSIONS[0]!,
     [clientConvId],
-  )
+  );
 
-  // Derive the client output synchronously from input + selection. Doing
-  // it via useMemo instead of useEffect avoids a cascading render.
-  const clientResult = useMemo<
+  // Derive the client output from input + selection. `run` may be async
+  // (e.g. html→md needs to lazy-load Turndown), so we resolve via effect
+  // and cancel in-flight results when the input/converter changes.
+  const [clientResult, setClientResult] = useState<
     { ok: true; output: string } | { ok: false; error: string }
-  >(() => {
-    if (!clientInput) return { ok: true, output: "" }
-    return clientConv.run(clientInput)
-  }, [clientInput, clientConv])
+  >({ ok: true, output: "" });
+  useEffect(() => {
+    if (!clientInput) return;
+    let cancelled = false;
+    Promise.resolve(clientConv.run(clientInput)).then((r) => {
+      if (!cancelled) setClientResult(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientInput, clientConv]);
 
-  const clientOutput = clientResult.ok ? clientResult.output : ""
-  const clientError = clientResult.ok ? null : clientResult.error
+  // When the input is empty the result is the empty-success object; render
+  // that directly so we don't have to setState in the effect above.
+  const resolvedResult = clientInput ? clientResult : { ok: true as const, output: "" };
+
+  const clientOutput = resolvedResult.ok ? resolvedResult.output : "";
+  const clientError = resolvedResult.ok ? null : resolvedResult.error;
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     fetch("/api/convert/formats")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setFormats(data)
+        if (!cancelled) setFormats(data);
       })
       .catch((err) => {
-        console.error("Failed to load formats:", err)
+        console.error("Failed to load formats:", err);
         if (!cancelled) {
           // Non-fatal: server-required tabs show their own locked state
         }
-      })
+      });
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("docforge:recent-formats")
+      const stored = localStorage.getItem("docforge:recent-formats");
       if (stored) {
         // Reading localStorage on mount and hydrating state is the canonical
         // SSR-safe pattern; React's "cascading render" warning does not apply
         // because the effect has an empty dep array.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRecentFormats(JSON.parse(stored))
+        setRecentFormats(JSON.parse(stored));
       }
     } catch {
       // localStorage unavailable
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     return () => {
-      if (abortRef.current) abortRef.current.abort()
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current)
-    }
-  }, [])
+      if (abortRef.current) abortRef.current.abort();
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, []);
 
   // Reset both client and server state when the user switches tabs so a
   // half-finished conversion never leaks across categories.
   const handleTabChange = useCallback((next: string) => {
-    if (abortRef.current) abortRef.current.abort()
+    if (abortRef.current) abortRef.current.abort();
     if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current)
-      progressTimerRef.current = null
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
     }
-    setState(INITIAL_STATE)
-    setRetryCount(0)
-    setClientInput("")
-    setTab(next as TabId)
-  }, [])
+    setState(INITIAL_STATE);
+    setRetryCount(0);
+    setClientInput("");
+    setTab(next as TabId);
+  }, []);
 
   const detectInputFormat = useCallback((filename: string): string | null => {
-    const ext = filename.split(".").pop()?.toLowerCase()
-    if (!ext) return null
-    return EXT_MAP[ext] ?? null
-  }, [])
+    const ext = filename.split(".").pop()?.toLowerCase();
+    if (!ext) return null;
+    return EXT_MAP[ext] ?? null;
+  }, []);
 
   const rememberFormat = useCallback((format: string) => {
     setRecentFormats((prev) => {
-      const next = [format, ...prev.filter((f) => f !== format)].slice(0, 3)
+      const next = [format, ...prev.filter((f) => f !== format)].slice(0, 3);
       try {
-        localStorage.setItem("docforge:recent-formats", JSON.stringify(next))
+        localStorage.setItem("docforge:recent-formats", JSON.stringify(next));
       } catch {
         // localStorage unavailable
       }
-      return next
-    })
-  }, [])
+      return next;
+    });
+  }, []);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -324,8 +431,8 @@ export default function ConvertPage() {
           errorCode: "EMPTY_FILE",
           file: null,
           inputFormat: null,
-        }))
-        return
+        }));
+        return;
       }
 
       if (file.size > MAX_FILE_SIZE) {
@@ -336,11 +443,11 @@ export default function ConvertPage() {
           errorCode: "FILE_TOO_LARGE",
           file: null,
           inputFormat: null,
-        }))
-        return
+        }));
+        return;
       }
 
-      const format = detectInputFormat(file.name)
+      const format = detectInputFormat(file.name);
       if (!format) {
         setState((prev) => ({
           ...prev,
@@ -349,11 +456,11 @@ export default function ConvertPage() {
           errorCode: "UNSUPPORTED_FORMAT",
           file: null,
           inputFormat: null,
-        }))
-        return
+        }));
+        return;
       }
 
-      const available = formats?.conversionMap[format] ?? []
+      const available = formats?.conversionMap[format] ?? [];
       if (available.length === 0) {
         setState((prev) => ({
           ...prev,
@@ -362,8 +469,8 @@ export default function ConvertPage() {
           errorCode: "NO_TARGETS",
           file: null,
           inputFormat: null,
-        }))
-        return
+        }));
+        return;
       }
 
       setState({
@@ -372,45 +479,45 @@ export default function ConvertPage() {
         file,
         inputFormat: format,
         availableOutputs: available,
-      })
+      });
 
-      rememberFormat(format)
+      rememberFormat(format);
     },
     [detectInputFormat, formats, rememberFormat],
-  )
+  );
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files
+      const files = e.target.files;
       if (files && files[0]) {
-        handleFile(files[0])
-        if (fileInputRef.current) fileInputRef.current.value = ""
+        handleFile(files[0]);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     },
     [handleFile],
-  )
+  );
 
   const startProgressSimulation = useCallback(() => {
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current)
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     progressTimerRef.current = setInterval(() => {
       setState((prev) => {
-        if (prev.stage !== "converting") return prev
-        const elapsed = Date.now() - (prev.startedAt ?? Date.now())
+        if (prev.stage !== "converting") return prev;
+        const elapsed = Date.now() - (prev.startedAt ?? Date.now());
         const stages = [
           { until: 2000, max: 30, label: "Uploading..." },
           { until: 4000, max: 70, label: "Processing document..." },
           { until: 8000, max: 90, label: "Converting formats..." },
-        ]
-        const stage = stages.find((s) => elapsed < s.until) ?? stages[stages.length - 1]!
-        const increment = Math.random() * 4 + 1
-        const next = Math.min(prev.progress + increment, stage.max)
-        return { ...prev, progress: next, progressLabel: stage.label }
-      })
-    }, 200)
-  }, [])
+        ];
+        const stage = stages.find((s) => elapsed < s.until) ?? stages[stages.length - 1]!;
+        const increment = Math.random() * 4 + 1;
+        const next = Math.min(prev.progress + increment, stage.max);
+        return { ...prev, progress: next, progressLabel: stage.label };
+      });
+    }, 200);
+  }, []);
 
   const handleConvert = useCallback(async () => {
-    if (!state.file || !state.outputFormat) return
+    if (!state.file || !state.outputFormat) return;
 
     setState((prev) => ({
       ...prev,
@@ -421,63 +528,63 @@ export default function ConvertPage() {
       errorCode: null,
       startedAt: Date.now(),
       durationMs: null,
-    }))
+    }));
 
-    const formData = new FormData()
-    formData.append("file", state.file)
-    formData.append("outputFormat", state.outputFormat)
+    const formData = new FormData();
+    formData.append("file", state.file);
+    formData.append("outputFormat", state.outputFormat);
 
-    const controller = new AbortController()
-    abortRef.current = controller
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const timeoutId = setTimeout(() => {
-      controller.abort("timeout")
-    }, MAX_CONVERT_DURATION_MS)
+      controller.abort("timeout");
+    }, MAX_CONVERT_DURATION_MS);
 
-    startProgressSimulation()
+    startProgressSimulation();
 
     try {
       const res = await fetch("/api/convert", {
         method: "POST",
         body: formData,
         signal: controller.signal,
-      })
+      });
 
-      clearTimeout(timeoutId)
+      clearTimeout(timeoutId);
       if (progressTimerRef.current) {
-        clearInterval(progressTimerRef.current)
-        progressTimerRef.current = null
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
 
       if (!res.ok) {
         const errData = (await res.json().catch(() => ({}))) as {
-          error?: { message?: string; code?: string } | string
-          message?: string
-        }
-        let msg = "Conversion failed"
-        let code = "UNKNOWN_ERROR"
+          error?: { message?: string; code?: string } | string;
+          message?: string;
+        };
+        let msg = "Conversion failed";
+        let code = "UNKNOWN_ERROR";
         if (typeof errData.error === "string") {
-          msg = errData.error
+          msg = errData.error;
         } else if (errData.error && typeof errData.error === "object") {
-          msg = errData.error.message ?? msg
-          code = errData.error.code ?? code
+          msg = errData.error.message ?? msg;
+          code = errData.error.code ?? code;
         } else if (typeof errData.message === "string") {
-          msg = errData.message
+          msg = errData.message;
         }
 
         if (res.status === 413) {
-          msg = "File is too large for the server. Please use a smaller file."
-          code = "FILE_TOO_LARGE"
+          msg = "File is too large for the server. Please use a smaller file.";
+          code = "FILE_TOO_LARGE";
         } else if (res.status === 429) {
-          msg = "Rate limit exceeded. Please wait a moment before trying again."
-          code = "RATE_LIMITED"
+          msg = "Rate limit exceeded. Please wait a moment before trying again.";
+          code = "RATE_LIMITED";
         } else if (res.status === 400) {
-          code = "BAD_REQUEST"
+          code = "BAD_REQUEST";
         } else if (res.status === 500) {
-          code = "SERVER_ERROR"
+          code = "SERVER_ERROR";
         }
 
-        const duration = Date.now() - (state.startedAt ?? Date.now())
+        const duration = Date.now() - (state.startedAt ?? Date.now());
         setState((prev) => ({
           ...prev,
           stage: "error",
@@ -485,20 +592,20 @@ export default function ConvertPage() {
           errorCode: code,
           progress: 0,
           durationMs: duration,
-        }))
-        toast.error("Conversion failed", { description: msg })
-        return
+        }));
+        toast.error("Conversion failed", { description: msg });
+        return;
       }
 
-      const blob = await res.blob()
-      const disposition = res.headers.get("Content-Disposition")
-      let filename = "converted"
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition");
+      let filename = "converted";
       if (disposition) {
-        const match = disposition.match(/filename="?([^"]+)"?/)
-        if (match && match[1]) filename = match[1]
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
       }
 
-      const duration = Date.now() - (state.startedAt ?? Date.now())
+      const duration = Date.now() - (state.startedAt ?? Date.now());
       setState((prev) => ({
         ...prev,
         stage: "done",
@@ -507,105 +614,105 @@ export default function ConvertPage() {
         resultBlob: blob,
         resultFilename: filename,
         durationMs: duration,
-      }))
+      }));
       toast.success("Conversion complete!", {
         description: `${filename} is ready to download.`,
-      })
+      });
     } catch (err) {
-      clearTimeout(timeoutId)
+      clearTimeout(timeoutId);
       if (progressTimerRef.current) {
-        clearInterval(progressTimerRef.current)
-        progressTimerRef.current = null
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
-      const error = err as Error
+      const error = err as Error;
       if (error.name === "AbortError" || controller.signal.aborted) {
         if (state.startedAt && Date.now() - state.startedAt > MAX_CONVERT_DURATION_MS - 1000) {
           toast.error("Conversion timed out", {
             description: "The file took too long to process. Try a smaller file.",
-          })
+          });
           setState((prev) => ({
             ...prev,
             stage: "error",
             errorMessage: "Conversion timed out. Please try with a smaller file.",
             errorCode: "TIMEOUT",
-          }))
+          }));
         }
-        return
+        return;
       }
-      const msg = error.message || "Network error. Please check your connection and try again."
+      const msg = error.message || "Network error. Please check your connection and try again.";
       setState((prev) => ({
         ...prev,
         stage: "error",
         errorMessage: msg,
         errorCode: "NETWORK_ERROR",
-      }))
-      toast.error("Network error", { description: msg })
+      }));
+      toast.error("Network error", { description: msg });
     }
-  }, [state.file, state.outputFormat, state.startedAt, startProgressSimulation])
+  }, [state.file, state.outputFormat, state.startedAt, startProgressSimulation]);
 
   const handleDownload = useCallback(() => {
-    if (!state.resultBlob || !state.resultFilename) return
-    const url = URL.createObjectURL(state.resultBlob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = state.resultFilename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 100)
-    toast.success("Download started", { description: state.resultFilename })
-  }, [state.resultBlob, state.resultFilename])
+    if (!state.resultBlob || !state.resultFilename) return;
+    const url = URL.createObjectURL(state.resultBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = state.resultFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    toast.success("Download started", { description: state.resultFilename });
+  }, [state.resultBlob, state.resultFilename]);
 
   const handleReset = useCallback(() => {
-    if (abortRef.current) abortRef.current.abort()
+    if (abortRef.current) abortRef.current.abort();
     if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current)
-      progressTimerRef.current = null
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
     }
-    setRetryCount(0)
-    setState(INITIAL_STATE)
-  }, [])
+    setRetryCount(0);
+    setState(INITIAL_STATE);
+  }, []);
 
   const handleRetry = useCallback(() => {
     if (retryCount >= 3) {
       toast.error("Maximum retry attempts reached", {
         description: "Please start over with a new file.",
-      })
-      return
+      });
+      return;
     }
-    setRetryCount((c) => c + 1)
-    handleConvert()
-  }, [retryCount, handleConvert])
+    setRetryCount((c) => c + 1);
+    handleConvert();
+  }, [retryCount, handleConvert]);
 
   const handleCopyFilename = useCallback(() => {
-    if (!state.resultFilename) return
+    if (!state.resultFilename) return;
     navigator.clipboard
       .writeText(state.resultFilename)
       .then(() => toast.success("Filename copied"))
-      .catch(() => toast.error("Failed to copy"))
-  }, [state.resultFilename])
+      .catch(() => toast.error("Failed to copy"));
+  }, [state.resultFilename]);
 
   const acceptExtensions = useMemo(() => {
-    if (!formats?.inputFormats) return ACCEPT_ATTR
-    return formats.inputFormats.flatMap((f) => INPUT_EXTENSIONS[f] ?? []).join(",")
-  }, [formats])
+    if (!formats?.inputFormats) return ACCEPT_ATTR;
+    return formats.inputFormats.flatMap((f) => INPUT_EXTENSIONS[f] ?? []).join(",");
+  }, [formats]);
 
   const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`
-    return `${(ms / 1000).toFixed(1)}s`
-  }
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
 
   const copyClientOutput = useCallback(() => {
-    if (!clientOutput) return
+    if (!clientOutput) return;
     navigator.clipboard
       .writeText(clientOutput)
       .then(() => toast.success("Copied to clipboard"))
-      .catch(() => toast.error("Failed to copy"))
-  }, [clientOutput])
+      .catch(() => toast.error("Failed to copy"));
+  }, [clientOutput]);
 
   const downloadClientOutput = useCallback(() => {
-    if (!clientOutput) return
-    const ext = clientConv.to === "text" ? "txt" : clientConv.to
+    if (!clientOutput) return;
+    const ext = clientConv.to === "text" ? "txt" : clientConv.to;
     const mime =
       clientConv.to === "json"
         ? "application/json"
@@ -613,17 +720,17 @@ export default function ConvertPage() {
           ? "text/html"
           : clientConv.to === "csv"
             ? "text/csv"
-            : "text/plain"
-    const blob = new Blob([clientOutput], { type: mime })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `converted.${ext}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 100)
-  }, [clientOutput, clientConv])
+            : "text/plain";
+    const blob = new Blob([clientOutput], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `converted.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  }, [clientOutput, clientConv]);
 
   const docServerProps = {
     state,
@@ -638,10 +745,9 @@ export default function ConvertPage() {
     onDownload: handleDownload,
     onCopyFilename: handleCopyFilename,
     onRetry: handleRetry,
-    onSelectOutput: (v: string) =>
-      setState((prev) => ({ ...prev, outputFormat: v })),
+    onSelectOutput: (v: string) => setState((prev) => ({ ...prev, outputFormat: v })),
     retryCount,
-  }
+  };
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8 md:py-12">
@@ -702,18 +808,14 @@ export default function ConvertPage() {
             jsonToCsvInput={clientConv.id === "json-csv" ? clientInput : ""}
             csvOutput={clientConv.id === "csv-json" ? clientOutput : ""}
             jsonToCsvOutput={clientConv.id === "json-csv" ? clientOutput : ""}
-            csvError={
-              clientConv.id === "csv-json" || clientConv.id === "json-csv"
-                ? clientError
-                : null
-            }
+            csvError={clientConv.id === "csv-json" || clientConv.id === "json-csv" ? clientError : null}
             onCsvInputChange={(v) => {
-              setClientConvId("csv-json")
-              setClientInput(v)
+              setClientConvId("csv-json");
+              setClientInput(v);
             }}
             onJsonToCsvInputChange={(v) => {
-              setClientConvId("json-csv")
-              setClientInput(v)
+              setClientConvId("json-csv");
+              setClientInput(v);
             }}
             onCopyClient={copyClientOutput}
             onDownloadClient={downloadClientOutput}
@@ -728,9 +830,7 @@ export default function ConvertPage() {
             onServerDownload={handleDownload}
             onServerCopyFilename={handleCopyFilename}
             onServerRetry={handleRetry}
-            onServerSelectOutput={(v) =>
-              setState((prev) => ({ ...prev, outputFormat: v }))
-            }
+            onServerSelectOutput={(v) => setState((prev) => ({ ...prev, outputFormat: v }))}
             retryCount={retryCount}
           />
         </TabsContent>
@@ -775,29 +875,29 @@ export default function ConvertPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
 
 // ─── Sub-components ────────────────────────────────────────────────
 
 function DocumentTabContent(props: {
-  state: ConvertState
-  recentFormats: string[]
-  formats: { conversionMap: Record<string, string[]>; inputFormats: string[] } | null
-  acceptExtensions: string
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  formatDuration: (ms: number) => string
-  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onReset: () => void
-  onConvert: () => void
-  onDownload: () => void
-  onCopyFilename: () => void
-  onRetry: () => void
-  onSelectOutput: (v: string) => void
-  retryCount: number
-  disabled?: boolean
+  state: ConvertState;
+  recentFormats: string[];
+  formats: { conversionMap: Record<string, string[]>; inputFormats: string[] } | null;
+  acceptExtensions: string;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  formatDuration: (ms: number) => string;
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onReset: () => void;
+  onConvert: () => void;
+  onDownload: () => void;
+  onCopyFilename: () => void;
+  onRetry: () => void;
+  onSelectOutput: (v: string) => void;
+  retryCount: number;
+  disabled?: boolean;
 }) {
-  const tc = useTranslations("convert")
+  const tc = useTranslations("convert");
   return (
     <>
       {props.recentFormats.length > 0 && props.state.stage === "upload" && (
@@ -825,9 +925,7 @@ function DocumentTabContent(props: {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <span className="text-2xl">
-                {FORMAT_ICONS[props.state.inputFormat ?? ""] ?? "📄"}
-              </span>
+              <span className="text-2xl">{FORMAT_ICONS[props.state.inputFormat ?? ""] ?? "📄"}</span>
               <span className="flex-1 truncate">{props.state.file.name}</span>
               <Button variant="ghost" size="icon" onClick={props.onReset} aria-label="Remove file">
                 <X className="size-4" />
@@ -883,7 +981,7 @@ function DocumentTabContent(props: {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <Loader2 className="size-6 animate-spin text-primary" />
+              <Loader2 className="text-primary size-6 animate-spin" />
               {tc("converting")}
             </CardTitle>
             <CardDescription>
@@ -895,9 +993,7 @@ function DocumentTabContent(props: {
             <Progress value={props.state.progress} className="h-2" />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">{props.state.progressLabel}</span>
-              <span className="font-medium tabular-nums">
-                {Math.round(props.state.progress)}%
-              </span>
+              <span className="font-medium tabular-nums">{Math.round(props.state.progress)}%</span>
             </div>
             <div className="flex justify-center">
               <Button variant="outline" size="sm" onClick={props.onReset}>
@@ -920,24 +1016,16 @@ function DocumentTabContent(props: {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="bg-muted/30 rounded-lg border p-4">
               <div className="flex items-center justify-between gap-2">
-                <code
-                  className="flex-1 truncate text-sm"
-                  title={props.state.resultFilename ?? ""}
-                >
+                <code className="flex-1 truncate text-sm" title={props.state.resultFilename ?? ""}>
                   {props.state.resultFilename}
                 </code>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={props.onCopyFilename}
-                  aria-label="Copy filename"
-                >
+                <Button variant="ghost" size="icon" onClick={props.onCopyFilename} aria-label="Copy filename">
                   <Copy className="size-3.5" />
                 </Button>
               </div>
-              <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="text-muted-foreground mt-2 flex items-center gap-3 text-xs">
                 <span>Size: {formatBytes(props.state.resultBlob.size)}</span>
                 {props.state.durationMs && (
                   <>
@@ -967,12 +1055,10 @@ function DocumentTabContent(props: {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <AlertCircle className="size-6 text-destructive" />
+              <AlertCircle className="text-destructive size-6" />
               {tc("failed")}
             </CardTitle>
-            <CardDescription className="text-destructive">
-              {props.state.errorMessage}
-            </CardDescription>
+            <CardDescription className="text-destructive">{props.state.errorMessage}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {props.state.errorCode && (
@@ -1001,36 +1087,36 @@ function DocumentTabContent(props: {
         </Card>
       )}
     </>
-  )
+  );
 }
 
 function SpreadsheetTab(props: {
-  locale: string
-  clientConvId: string
-  csvInput: string
-  jsonToCsvInput: string
-  csvOutput: string
-  jsonToCsvOutput: string
-  csvError: string | null
-  onCsvInputChange: (v: string) => void
-  onJsonToCsvInputChange: (v: string) => void
-  onCopyClient: () => void
-  onDownloadClient: () => void
-  serverState: ConvertState
-  serverAccept: string
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  serverLocked: boolean
-  formatDuration: (ms: number) => string
-  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onServerReset: () => void
-  onServerConvert: () => void
-  onServerDownload: () => void
-  onServerCopyFilename: () => void
-  onServerRetry: () => void
-  onServerSelectOutput: (v: string) => void
-  retryCount: number
+  locale: string;
+  clientConvId: string;
+  csvInput: string;
+  jsonToCsvInput: string;
+  csvOutput: string;
+  jsonToCsvOutput: string;
+  csvError: string | null;
+  onCsvInputChange: (v: string) => void;
+  onJsonToCsvInputChange: (v: string) => void;
+  onCopyClient: () => void;
+  onDownloadClient: () => void;
+  serverState: ConvertState;
+  serverAccept: string;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  serverLocked: boolean;
+  formatDuration: (ms: number) => string;
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onServerReset: () => void;
+  onServerConvert: () => void;
+  onServerDownload: () => void;
+  onServerCopyFilename: () => void;
+  onServerRetry: () => void;
+  onServerSelectOutput: (v: string) => void;
+  retryCount: number;
 }) {
-  const tc = useTranslations("convert")
+  const tc = useTranslations("convert");
   return (
     <div className="space-y-4">
       {/* CSV client-side block */}
@@ -1052,11 +1138,7 @@ function SpreadsheetTab(props: {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">CSV</label>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => props.onCsvInputChange("")}
-                >
+                <Button size="sm" variant="ghost" onClick={() => props.onCsvInputChange("")}>
                   {tc("clear")}
                 </Button>
               </div>
@@ -1094,11 +1176,7 @@ function SpreadsheetTab(props: {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">JSON</label>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => props.onJsonToCsvInputChange("")}
-                >
+                <Button size="sm" variant="ghost" onClick={() => props.onJsonToCsvInputChange("")}>
                   {tc("clear")}
                 </Button>
               </div>
@@ -1213,23 +1291,23 @@ function SpreadsheetTab(props: {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function TextTab(props: {
-  conv: ClientConv
-  convs: ClientConv[]
-  input: string
-  setInput: (v: string) => void
-  output: string
-  error: string | null
-  placeholder: string
-  onPickConv: (id: string) => void
-  onCopy: () => void
-  onDownload: () => void
-  locale: string
+  conv: ClientConv;
+  convs: ClientConv[];
+  input: string;
+  setInput: (v: string) => void;
+  output: string;
+  error: string | null;
+  placeholder: string;
+  onPickConv: (id: string) => void;
+  onCopy: () => void;
+  onDownload: () => void;
+  locale: string;
 }) {
-  const tc = useTranslations("convert")
+  const tc = useTranslations("convert");
   return (
     <div className="space-y-4">
       <Card>
@@ -1247,9 +1325,7 @@ function TextTab(props: {
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
             <div className="space-y-1">
-              <label className="text-muted-foreground text-xs font-medium">
-                {tc("inputFormat")}
-              </label>
+              <label className="text-muted-foreground text-xs font-medium">{tc("inputFormat")}</label>
               <Select value={props.conv.id} onValueChange={props.onPickConv}>
                 <SelectTrigger>
                   <SelectValue />
@@ -1265,9 +1341,7 @@ function TextTab(props: {
             </div>
             <ArrowLeftRight className="text-muted-foreground mx-auto hidden size-4 sm:block" />
             <div className="space-y-1">
-              <label className="text-muted-foreground text-xs font-medium">
-                {tc("outputFormat")}
-              </label>
+              <label className="text-muted-foreground text-xs font-medium">{tc("outputFormat")}</label>
               <div className="border-input bg-muted/30 flex h-9 items-center rounded-md border px-3 text-sm font-medium">
                 {props.conv.outputLabel}
               </div>
@@ -1342,24 +1416,24 @@ function TextTab(props: {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function OcrTab(props: {
-  state: ConvertState
-  acceptExtensions: string
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  formatDuration: (ms: number) => string
-  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onReset: () => void
-  onConvert: () => void
-  onDownload: () => void
-  onCopyFilename: () => void
-  onRetry: () => void
-  onSelectOutput: (v: string) => void
-  retryCount: number
+  state: ConvertState;
+  acceptExtensions: string;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  formatDuration: (ms: number) => string;
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onReset: () => void;
+  onConvert: () => void;
+  onDownload: () => void;
+  onCopyFilename: () => void;
+  onRetry: () => void;
+  onSelectOutput: (v: string) => void;
+  retryCount: number;
 }) {
-  const tc = useTranslations("convert")
+  const tc = useTranslations("convert");
   return (
     <Card>
       <CardHeader>
@@ -1412,56 +1486,54 @@ function OcrTab(props: {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function ServerUploadDrop(props: {
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  accept: string
-  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  disabled?: boolean
-  label?: string
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  accept: string;
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
+  label?: string;
 }) {
-  const [dragActive, setDragActive] = useState(false)
+  const [dragActive, setDragActive] = useState(false);
   return (
     <div
       className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-10 transition-colors ${
-        dragActive
-          ? "border-primary bg-primary/5"
-          : "border-muted-foreground/25 hover:border-primary/50"
+        dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
       } ${props.disabled ? "pointer-events-none" : ""}`}
       onDragEnter={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (!props.disabled) setDragActive(true)
+        e.preventDefault();
+        e.stopPropagation();
+        if (!props.disabled) setDragActive(true);
       }}
       onDragLeave={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setDragActive(false)
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
       }}
       onDragOver={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (!props.disabled) setDragActive(true)
+        e.preventDefault();
+        e.stopPropagation();
+        if (!props.disabled) setDragActive(true);
       }}
       onDrop={(e) => {
-        e.preventDefault()
-        setDragActive(false)
-        if (props.disabled) return
-        const files = e.dataTransfer.files
+        e.preventDefault();
+        setDragActive(false);
+        if (props.disabled) return;
+        const files = e.dataTransfer.files;
         if (files && files[0]) {
-          const dt = new DataTransfer()
-          dt.items.add(files[0])
-          const input = props.fileInputRef.current
+          const dt = new DataTransfer();
+          dt.items.add(files[0]);
+          const input = props.fileInputRef.current;
           if (input) {
             // Mutating the FileList of a hidden <input> from a drop handler is
             // the canonical way to forward a drag-and-dropped file to the
             // input's onChange event. The react-hooks lint rules flag it but
             // it is correct.
             // eslint-disable-next-line react-hooks/immutability
-            input.files = dt.files
-            input.dispatchEvent(new Event("change", { bubbles: true }))
+            input.files = dt.files;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
           }
         }
       }}
@@ -1469,10 +1541,8 @@ function ServerUploadDrop(props: {
       role="button"
       tabIndex={0}
     >
-      <Upload className="mb-3 size-10 text-muted-foreground" />
-      <p className="text-sm font-medium">
-        {props.label ?? "Drag & drop your file here, or click to browse"}
-      </p>
+      <Upload className="text-muted-foreground mb-3 size-10" />
+      <p className="text-sm font-medium">{props.label ?? "Drag & drop your file here, or click to browse"}</p>
       {/* eslint-disable react-hooks/refs */}
       <input
         ref={props.fileInputRef}
@@ -1484,22 +1554,20 @@ function ServerUploadDrop(props: {
       />
       {/* eslint-enable react-hooks/refs */}
     </div>
-  )
+  );
 }
 
 function ServerSelectStage(props: {
-  state: ConvertState
-  onSelectOutput: (v: string) => void
-  onReset: () => void
-  onConvert: () => void
+  state: ConvertState;
+  onSelectOutput: (v: string) => void;
+  onReset: () => void;
+  onConvert: () => void;
 }) {
-  const tc = useTranslations("convert")
+  const tc = useTranslations("convert");
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <span className="text-2xl">
-          {FORMAT_ICONS[props.state.inputFormat ?? ""] ?? "📄"}
-        </span>
+        <span className="text-2xl">{FORMAT_ICONS[props.state.inputFormat ?? ""] ?? "📄"}</span>
         <div className="flex-1 truncate text-sm">
           <div className="font-medium">{props.state.file?.name}</div>
           <div className="text-muted-foreground text-xs">
@@ -1515,10 +1583,7 @@ function ServerSelectStage(props: {
         <label htmlFor="server-output-format" className="mb-2 block text-sm font-medium">
           {tc("outputFormat")}
         </label>
-        <Select
-          value={props.state.outputFormat ?? ""}
-          onValueChange={props.onSelectOutput}
-        >
+        <Select value={props.state.outputFormat ?? ""} onValueChange={props.onSelectOutput}>
           <SelectTrigger id="server-output-format">
             <SelectValue placeholder="Select output format..." />
           </SelectTrigger>
@@ -1542,14 +1607,14 @@ function ServerSelectStage(props: {
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 function ServerProgressStage(props: { state: ConvertState; onReset: () => void }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <Loader2 className="size-5 animate-spin text-primary" />
+        <Loader2 className="text-primary size-5 animate-spin" />
         <span className="text-sm font-medium">Converting…</span>
       </div>
       <Progress value={props.state.progress} className="h-2" />
@@ -1563,15 +1628,15 @@ function ServerProgressStage(props: { state: ConvertState; onReset: () => void }
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 function ServerDoneStage(props: {
-  state: ConvertState
-  formatDuration: (ms: number) => string
-  onDownload: () => void
-  onCopy: () => void
-  onReset: () => void
+  state: ConvertState;
+  formatDuration: (ms: number) => string;
+  onDownload: () => void;
+  onCopy: () => void;
+  onReset: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -1584,19 +1649,16 @@ function ServerDoneStage(props: {
           </div>
         </div>
       </div>
-      <div className="rounded-lg border bg-muted/30 p-4">
+      <div className="bg-muted/30 rounded-lg border p-4">
         <div className="flex items-center justify-between gap-2">
-          <code
-            className="flex-1 truncate text-sm"
-            title={props.state.resultFilename ?? ""}
-          >
+          <code className="flex-1 truncate text-sm" title={props.state.resultFilename ?? ""}>
             {props.state.resultFilename}
           </code>
           <Button variant="ghost" size="icon" onClick={props.onCopy} aria-label="Copy filename">
             <Copy className="size-3.5" />
           </Button>
         </div>
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="text-muted-foreground mt-2 flex items-center gap-3 text-xs">
           <span>Size: {props.state.resultBlob ? formatBytes(props.state.resultBlob.size) : ""}</span>
           {props.state.durationMs && (
             <>
@@ -1619,22 +1681,22 @@ function ServerDoneStage(props: {
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 function ServerErrorStage(props: {
-  state: ConvertState
-  formatDuration: (ms: number) => string
-  onRetry: () => void
-  onReset: () => void
-  retryCount: number
+  state: ConvertState;
+  formatDuration: (ms: number) => string;
+  onRetry: () => void;
+  onReset: () => void;
+  retryCount: number;
 }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <AlertCircle className="size-6 text-destructive" />
+        <AlertCircle className="text-destructive size-6" />
         <div className="flex-1 truncate text-sm">
-          <div className="font-medium text-destructive">Conversion Failed</div>
+          <div className="text-destructive font-medium">Conversion Failed</div>
           <div className="text-muted-foreground text-xs">{props.state.errorMessage}</div>
         </div>
       </div>
@@ -1643,9 +1705,7 @@ function ServerErrorStage(props: {
           <FileWarning className="size-4" />
           <AlertTitle>Error code: {props.state.errorCode}</AlertTitle>
           {props.state.durationMs && (
-            <AlertDescription>
-              Failed after {props.formatDuration(props.state.durationMs)}
-            </AlertDescription>
+            <AlertDescription>Failed after {props.formatDuration(props.state.durationMs)}</AlertDescription>
           )}
         </Alert>
       )}
@@ -1661,5 +1721,5 @@ function ServerErrorStage(props: {
         </Button>
       </div>
     </div>
-  )
+  );
 }
