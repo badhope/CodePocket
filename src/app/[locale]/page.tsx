@@ -3,7 +3,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { FileText, ArrowRight, Upload, Download, Shield, Zap, Globe, FileJson, FileSpreadsheet, FileType, Sparkles } from "lucide-react"
+import { FileText, ArrowRight, Upload, Download, Shield, Zap, Globe, FileJson, FileSpreadsheet, FileType, Sparkles, Wrench } from "lucide-react"
+import { BackendStatusOverview } from "@/components/system/backend-status-overview"
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
@@ -65,6 +66,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
       </section>
 
+      {/* Backend status overview */}
+      <section className="border-b bg-muted/20 py-12">
+        <div className="container mx-auto max-w-7xl px-4">
+          <div className="mx-auto max-w-3xl">
+            <BackendStatusOverview />
+          </div>
+        </div>
+      </section>
+
       {/* Formats */}
       <section className="border-b py-16">
         <div className="container mx-auto max-w-7xl px-4">
@@ -78,6 +88,44 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Quick links */}
+      <section className="border-b py-12">
+        <div className="container mx-auto max-w-7xl px-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Link href="/tools" className="block">
+              <Card className="hover:border-primary/50 h-full transition-colors">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-muted text-foreground/80 inline-flex size-8 items-center justify-center rounded-md">
+                      <Wrench className="size-4" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-base">Online Tools</CardTitle>
+                      <CardDescription>20+ tools that work 100% in your browser — JSON formatter, Base64, JWT decoder, QR, etc.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/playground" className="block">
+              <Card className="hover:border-primary/50 h-full transition-colors">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-muted text-foreground/80 inline-flex size-8 items-center justify-center rounded-md">
+                      <FileType className="size-4" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-base">Code Playground</CardTitle>
+                      <CardDescription>Run JS / TS / Python / SQL / Lua / Bash right in the browser. No backend required.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            </Link>
           </div>
         </div>
       </section>

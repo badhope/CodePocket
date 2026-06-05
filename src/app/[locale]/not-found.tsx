@@ -1,24 +1,56 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FileQuestion } from "lucide-react";
-import { getTranslations } from "next-intl/server";
-import { Link } from "@/lib/i18n/navigation";
+"use client"
 
-export default async function NotFound() {
-  const t = await getTranslations("errors");
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Home, Wrench, Search, ExternalLink } from "lucide-react"
+import { useBackendStatus } from "@/lib/system/backend-status"
+import { useTranslations } from "next-intl"
+import { Link } from "@/lib/i18n/navigation"
+
+export default function NotFound() {
+  const { status } = useBackendStatus()
+  const t = useTranslations("errors")
+  const tBs = useTranslations("backendStatus")
+
   return (
-    <div className="flex min-h-[60vh] items-center justify-center p-4">
-      <Card className="w-full max-w-md text-center">
-        <CardContent className="flex flex-col items-center gap-4 py-10">
-          <FileQuestion className="text-muted-foreground size-12" />
-          <h1 className="text-2xl font-bold">404</h1>
-          <p className="text-muted-foreground text-sm">{t("notFound")}</p>
-          <p className="text-muted-foreground text-xs">{t("notFoundDescription")}</p>
-          <Button asChild>
-            <Link href="/">{t("goHome")}</Link>
-          </Button>
+    <div className="container mx-auto max-w-2xl px-4 py-10 md:py-16">
+      <Card>
+        <CardHeader>
+          <div className="mb-2 flex items-center gap-3">
+            <span className="bg-muted inline-flex size-10 items-center justify-center rounded-md">
+              <Search className="text-muted-foreground size-5" />
+            </span>
+            <div>
+              <CardTitle>{t("notFoundTitle")}</CardTitle>
+              <CardDescription className="mt-1">{t("notFoundBody")}</CardDescription>
+            </div>
+            {status.state !== "online" && (
+              <Badge variant="destructive" className="ml-auto">{status.state}</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(status.state === "offline" || status.state === "unsupported") && (
+            <div className="bg-muted/30 text-muted-foreground rounded-md border p-3 text-xs">
+              {tBs("offlineBody")} — {t("pageMayBeLocked")}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="sm">
+              <Link href="/"><Home className="mr-1.5 size-3.5" />{t("home")}</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/tools"><Wrench className="mr-1.5 size-3.5" />{t("offlineTools")}</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <a href="https://github.com/badhope/DocForge/issues" target="_blank" rel="noreferrer">
+                <ExternalLink className="mr-1.5 size-3.5" />{t("reportIssue")}
+              </a>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

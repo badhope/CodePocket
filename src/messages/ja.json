@@ -10,6 +10,8 @@
     "create": "作成",
     "submit": "送信",
     "back": "戻る",
+    "backendRecoveredTitle": "バックエンド復帰",
+    "backendRecoveredBody": "DocForge バックエンドに再度接続できました。すべての機能がアンロックされました。",
     "next": "次へ",
     "previous": "前へ",
     "search": "検索",
@@ -124,8 +126,35 @@
     "status": "Status",
     "pending": "Pending",
     "processing": "Processing",
-    "completed": "Completed",
-    "cancelled": "Cancelled"
+    "completed": "完了",
+    "cancelled": "キャンセル済み",
+    "cancel": "キャンセル",
+    "offlineBannerTitle": "オフライン対応のコンバーター",
+    "offlineBannerBody": "20 以上のクライアントサイドツールはオフラインで動作します。サーバー変換（DOCX、PDF、PPTX、XLSX、OCR）はバックエンドが必要です。",
+    "clientSide": "クライアントサイド",
+    "serverSide": "サーバーサイド",
+    "openInTools": "/tools で開く",
+    "instantClientHint": "ブラウザで実行 — データは端末から出ません。",
+    "clear": "クリア",
+    "conversionError": "変換エラー",
+    "tabs": {
+      "document": "ドキュメント",
+      "spreadsheet": "スプレッドシート",
+      "text": "テキストとデータ",
+      "ocr": "OCR"
+    },
+    "spreadsheet": {
+      "csvTitle": "CSV ↔ JSON",
+      "csvDescription": "ブラウザで CSV と JSON を即座に変換します。",
+      "xlsxTitle": "Excel (XLSX) 変換",
+      "xlsxDescription": "XLSX ファイルはサーバーバックエンドが必要です。"
+    },
+    "textTabTitle": "ブラウザでデータを変換",
+    "textTabDescription": "アップロードもサーバーも待ち時間もありません。左に入力すれば右に結果が出ます。",
+    "ocrTitle": "OCR — 画像からテキストを抽出",
+    "ocrDescription": "サーバーサイド OCR エンジン搭載。画像をドロップしてテキストを抽出します。",
+    "ocrUploadHint": "画像（PNG、JPG など）をドロップしてテキストを抽出",
+    "documentServerHint": "ドキュメント変換はサーバーバックエンドで実行されます。"
   },
   "history": {
     "title": "Conversion History",
@@ -216,7 +245,17 @@
     "forbidden": "You don't have access to this resource",
     "serverError": "Server error. Please try again later.",
     "networkError": "Network error. Please check your connection.",
-    "validation": "Please fix the errors above"
+    "validation": "Please fix the errors above",
+    "notFoundTitle": "見つかりません",
+    "notFoundBody": "お探しのページは存在しません。",
+    "pageMayBeLocked": "バックエンドがオフラインのためロックされている可能性があります。",
+    "title": "問題が発生しました",
+    "body": "予期しないエラーが発生しました。再試行するか、バックエンドがオフラインのときはブラウザで動くツールをお試しください。",
+    "retry": "再試行",
+    "home": "ホーム",
+    "offlineTools": "オフラインツール",
+    "reportIssue": "問題を報告",
+    "needHelp": "ヘルプが必要ですか？"
   },
   "playground": {
     "title": "title",
@@ -266,7 +305,10 @@
     "openRepo": "リポジトリを開く",
     "retry": "再試行",
     "dismiss": "閉じる",
-    "lastChecked": "{when} に確認"
+    "lastChecked": "{when} に確認",
+    "featuresAvailable": "{total} 中 {count} 機能が利用可能",
+    "featuresLocked": "{count} 件ロック中",
+    "latency": "レイテンシ"
   },
   "tools": {
     "title": "オンラインツール",

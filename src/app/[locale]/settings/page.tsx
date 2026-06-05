@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { useEditorStore } from "@/stores/editor";
 import { toast } from "sonner";
 import { User, Lock, Palette, Code2, Settings as SettingsIcon } from "lucide-react";
+import { useFeatureGate } from "@/lib/system/feature-gate";
+import { LockedOverlay } from "@/components/system/locked-overlay";
 
 interface UserData {
   id: string;
@@ -33,8 +35,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const { fontSize, setFontSize, wordWrap, setWordWrap, minimap, setMinimap, autoSave, setAutoSave, theme, setTheme } =
     useEditorStore();
+  const gate = useFeatureGate("auth.sign-in");
 
   useEffect(() => {
+    if (!gate.enabled) return
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
@@ -53,7 +57,15 @@ export default function SettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [gate.enabled]);
+
+  if (!gate.enabled) {
+    return (
+      <div className="container mx-auto max-w-3xl px-4 py-8 md:py-12">
+        <LockedOverlay feature="auth.sign-in" />
+      </div>
+    )
+  }
 
   if (loading) {
     return (

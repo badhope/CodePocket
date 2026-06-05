@@ -12,6 +12,8 @@ export type FeatureId =
   | "playground.piston"
   | "playground.python-packages"
   // converters
+  | "convert.local"
+  | "convert.server"
   | "convert.docx"
   | "convert.pdf"
   | "convert.xlsx"
@@ -39,6 +41,7 @@ export type FeatureId =
 const REQUIRES_BACKEND: ReadonlySet<FeatureId> = new Set<FeatureId>([
   "playground.piston",
   "playground.python-packages",
+  "convert.server",
   "convert.docx",
   "convert.pdf",
   "convert.xlsx",

@@ -10,6 +10,8 @@
     "create": "만들기",
     "submit": "제출",
     "back": "뒤로",
+    "backendRecoveredTitle": "백엔드 복구",
+    "backendRecoveredBody": "DocForge 백엔드에 다시 연결되었습니다. 모든 기능이 잠금 해제되었습니다.",
     "next": "다음",
     "previous": "이전",
     "search": "검색",
@@ -124,8 +126,35 @@
     "status": "Status",
     "pending": "Pending",
     "processing": "Processing",
-    "completed": "Completed",
-    "cancelled": "Cancelled"
+    "completed": "완료",
+    "cancelled": "취소됨",
+    "cancel": "취소",
+    "offlineBannerTitle": "오프라인 지원 컨버터",
+    "offlineBannerBody": "20개 이상의 클라이언트 측 도구가 오프라인에서 작동합니다. 서버 변환(DOCX, PDF, PPTX, XLSX, OCR)은 백엔드가 필요합니다.",
+    "clientSide": "클라이언트",
+    "serverSide": "서버",
+    "openInTools": "/tools 에서 열기",
+    "instantClientHint": "브라우저에서 실행 — 데이터가 기기를 떠나지 않습니다.",
+    "clear": "지우기",
+    "conversionError": "변환 오류",
+    "tabs": {
+      "document": "문서",
+      "spreadsheet": "스프레드시트",
+      "text": "텍스트 및 데이터",
+      "ocr": "OCR"
+    },
+    "spreadsheet": {
+      "csvTitle": "CSV ↔ JSON",
+      "csvDescription": "브라우저에서 CSV와 JSON을 즉시 변환하세요.",
+      "xlsxTitle": "Excel (XLSX) 변환",
+      "xlsxDescription": "XLSX 파일은 서버 백엔드가 필요합니다."
+    },
+    "textTabTitle": "브라우저에서 데이터 변환",
+    "textTabDescription": "업로드도, 서버도, 대기 시간도 없습니다. 왼쪽에 입력하면 오른쪽에 결과가 표시됩니다.",
+    "ocrTitle": "OCR — 이미지에서 텍스트 추출",
+    "ocrDescription": "서버 측 OCR 엔진 사용. 이미지를 드롭하여 텍스트를 추출하세요.",
+    "ocrUploadHint": "텍스트를 추출할 이미지(PNG, JPG 등)를 드롭하세요",
+    "documentServerHint": "문서 변환은 서버 백엔드에서 실행됩니다."
   },
   "history": {
     "title": "Conversion History",
@@ -216,7 +245,17 @@
     "forbidden": "You don't have access to this resource",
     "serverError": "Server error. Please try again later.",
     "networkError": "Network error. Please check your connection.",
-    "validation": "Please fix the errors above"
+    "validation": "Please fix the errors above",
+    "notFoundTitle": "찾을 수 없음",
+    "notFoundBody": "찾으시는 페이지가 존재하지 않습니다.",
+    "pageMayBeLocked": "백엔드가 오프라인이라 잠겨 있을 수 있습니다.",
+    "title": "문제가 발생했습니다",
+    "body": "예기치 못한 오류가 발생했습니다. 재시도하거나 백엔드가 오프라인일 때 브라우저에서 동작하는 도구를 사용해보세요.",
+    "retry": "다시 시도",
+    "home": "홈",
+    "offlineTools": "오프라인 도구",
+    "reportIssue": "문제 보고",
+    "needHelp": "도움이 필요하신가요?"
   },
   "playground": {
     "title": "title",
@@ -266,7 +305,10 @@
     "openRepo": "저장소 열기",
     "retry": "재시도",
     "dismiss": "닫기",
-    "lastChecked": "{when} 에 확인"
+    "lastChecked": "{when} 에 확인",
+    "featuresAvailable": "전체 {total} 중 {count}개 기능 사용 가능",
+    "featuresLocked": "{count}개 잠김",
+    "latency": "지연 시간"
   },
   "tools": {
     "title": "온라인 도구",

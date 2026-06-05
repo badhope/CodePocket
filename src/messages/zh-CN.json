@@ -10,6 +10,8 @@
     "create": "创建",
     "submit": "提交",
     "back": "返回",
+    "backendRecoveredTitle": "后端已恢复",
+    "backendRecoveredBody": "DocForge 后端已可访问 — 所有功能解锁。",
     "next": "下一步",
     "previous": "上一步",
     "search": "搜索",
@@ -123,7 +125,34 @@
     "pending": "等待中",
     "processing": "处理中",
     "completed": "已完成",
-    "cancelled": "已取消"
+    "cancelled": "已取消",
+    "cancel": "取消",
+    "offlineBannerTitle": "离线可用的文档转换",
+    "offlineBannerBody": "20+ 客户端工具无需后端即可使用。服务器端转换（DOCX、PDF、PPTX、XLSX、OCR）需要后端在线。",
+    "clientSide": "客户端",
+    "serverSide": "服务端",
+    "openInTools": "在 /tools 中打开",
+    "instantClientHint": "在浏览器中运行——数据不会离开您的设备。",
+    "clear": "清空",
+    "conversionError": "转换错误",
+    "tabs": {
+      "document": "文档",
+      "spreadsheet": "电子表格",
+      "text": "文本与数据",
+      "ocr": "OCR"
+    },
+    "spreadsheet": {
+      "csvTitle": "CSV ↔ JSON",
+      "csvDescription": "在浏览器中即时转换 CSV 与 JSON。",
+      "xlsxTitle": "Excel (XLSX) 转换",
+      "xlsxDescription": "XLSX 文件需要服务端后端支持。"
+    },
+    "textTabTitle": "在浏览器中转换数据",
+    "textTabDescription": "无需上传、无需服务器、无需等待。左侧输入，右侧立即得到结果。",
+    "ocrTitle": "OCR — 从图片中提取文字",
+    "ocrDescription": "由服务端 OCR 引擎驱动。拖入图片即可提取文字。",
+    "ocrUploadHint": "拖入图片（PNG、JPG 等）以提取文字",
+    "documentServerHint": "文档转换需要服务端后端。"
   },
   "history": {
     "title": "转换历史",
@@ -209,12 +238,22 @@
   "errors": {
     "notFound": "页面未找到",
     "notFoundDescription": "您访问的页面不存在",
+    "notFoundTitle": "未找到",
+    "notFoundBody": "您要访问的页面不存在。",
+    "pageMayBeLocked": "可能因后端离线而被锁定。",
     "goHome": "返回首页",
     "unauthorized": "请先登录",
     "forbidden": "您没有权限访问",
     "serverError": "服务器错误，请稍后重试",
     "networkError": "网络错误，请检查连接",
-    "validation": "请修复上方错误"
+    "validation": "请修复上方错误",
+    "title": "出错了",
+    "body": "发生了意外错误。可以重试，或在后端离线时使用浏览器可跑的工具。",
+    "retry": "重试",
+    "home": "首页",
+    "offlineTools": "离线工具",
+    "reportIssue": "报告问题",
+    "needHelp": "需要帮助？"
   },
   "playground": {
     "title": "代码游乐场",
@@ -272,7 +311,10 @@
     "openRepo": "打开仓库",
     "retry": "重试",
     "dismiss": "关闭",
-    "lastChecked": "{when} 检查过"
+    "lastChecked": "{when} 检查过",
+    "featuresAvailable": "{count} / {total} 项功能可用",
+    "featuresLocked": "{count} 项已锁定",
+    "latency": "延迟"
   },
   "tools": {
     "title": "在线工具集",

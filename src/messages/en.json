@@ -10,6 +10,8 @@
     "create": "Create",
     "submit": "Submit",
     "back": "Back",
+    "backendRecoveredTitle": "Backend is back",
+    "backendRecoveredBody": "The DocForge backend is reachable again — every feature is now unlocked.",
     "next": "Next",
     "previous": "Previous",
     "search": "Search",
@@ -125,7 +127,34 @@
     "pending": "Pending",
     "processing": "Processing",
     "completed": "Completed",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "cancel": "Cancel",
+    "offlineBannerTitle": "Offline-friendly converter",
+    "offlineBannerBody": "20+ client-side tools work offline. Server conversions (DOCX, PDF, PPTX, XLSX, OCR) require the backend.",
+    "clientSide": "Client-side",
+    "serverSide": "Server-side",
+    "openInTools": "Open in /tools",
+    "instantClientHint": "Runs in your browser — nothing leaves your device.",
+    "clear": "Clear",
+    "conversionError": "Conversion error",
+    "tabs": {
+      "document": "Document",
+      "spreadsheet": "Spreadsheet",
+      "text": "Text & Data",
+      "ocr": "OCR"
+    },
+    "spreadsheet": {
+      "csvTitle": "CSV ↔ JSON",
+      "csvDescription": "Convert between CSV and JSON instantly in your browser.",
+      "xlsxTitle": "Excel (XLSX) conversions",
+      "xlsxDescription": "XLSX files need the server backend."
+    },
+    "textTabTitle": "Convert data in your browser",
+    "textTabDescription": "No upload, no server, no waiting. Type on the left, get results on the right.",
+    "ocrTitle": "OCR — extract text from images",
+    "ocrDescription": "Powered by the server-side OCR engine. Drop an image to extract text.",
+    "ocrUploadHint": "Drop an image (PNG, JPG, etc.) to extract text",
+    "documentServerHint": "Document conversions run on the server backend."
   },
   "history": {
     "title": "Conversion History",
@@ -211,12 +240,22 @@
   "errors": {
     "notFound": "Page not found",
     "notFoundDescription": "The page you are looking for does not exist",
+    "notFoundTitle": "Not found",
+    "notFoundBody": "The page you were looking for does not exist.",
+    "pageMayBeLocked": "It may be locked because the backend is offline.",
     "goHome": "Go home",
     "unauthorized": "Please sign in to continue",
     "forbidden": "You don't have access to this resource",
     "serverError": "Server error. Please try again later.",
     "networkError": "Network error. Please check your connection.",
-    "validation": "Please fix the errors above"
+    "validation": "Please fix the errors above",
+    "title": "Something went wrong",
+    "body": "An unexpected error occurred. You can retry, or try a browser-runnable tool while the backend is offline.",
+    "retry": "Try again",
+    "home": "Home",
+    "offlineTools": "Offline tools",
+    "reportIssue": "Report issue",
+    "needHelp": "Need help?"
   },
   "playground": {
     "title": "Code Playground",
@@ -291,7 +330,10 @@
     "openRepo": "Open repository",
     "retry": "Retry",
     "dismiss": "Dismiss",
-    "lastChecked": "checked {when}"
+    "lastChecked": "checked {when}",
+    "featuresAvailable": "{count} of {total} features available",
+    "featuresLocked": "{count} locked",
+    "latency": "Latency"
   },
   "tools": {
     "title": "Online Tools",

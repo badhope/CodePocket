@@ -10,6 +10,8 @@
     "create": "Créer",
     "submit": "Envoyer",
     "back": "Retour",
+    "backendRecoveredTitle": "Backend de retour",
+    "backendRecoveredBody": "Le backend DocForge est à nouveau accessible — toutes les fonctionnalités sont débloquées.",
     "next": "Suivant",
     "previous": "Précédent",
     "search": "Rechercher",
@@ -124,8 +126,35 @@
     "status": "Status",
     "pending": "Pending",
     "processing": "Processing",
-    "completed": "Completed",
-    "cancelled": "Cancelled"
+    "completed": "Terminé",
+    "cancelled": "Annulé",
+    "cancel": "Annuler",
+    "offlineBannerTitle": "Convertisseur hors ligne",
+    "offlineBannerBody": "Plus de 20 outils côté client fonctionnent hors ligne. Les conversions serveur (DOCX, PDF, PPTX, XLSX, OCR) nécessitent le backend.",
+    "clientSide": "Côté client",
+    "serverSide": "Côté serveur",
+    "openInTools": "Ouvrir dans /tools",
+    "instantClientHint": "S'exécute dans votre navigateur — rien ne quitte votre appareil.",
+    "clear": "Effacer",
+    "conversionError": "Erreur de conversion",
+    "tabs": {
+      "document": "Document",
+      "spreadsheet": "Tableur",
+      "text": "Texte & données",
+      "ocr": "OCR"
+    },
+    "spreadsheet": {
+      "csvTitle": "CSV ↔ JSON",
+      "csvDescription": "Convertissez entre CSV et JSON instantanément dans votre navigateur.",
+      "xlsxTitle": "Conversions Excel (XLSX)",
+      "xlsxDescription": "Les fichiers XLSX nécessitent le backend du serveur."
+    },
+    "textTabTitle": "Convertissez des données dans votre navigateur",
+    "textTabDescription": "Pas de téléversement, pas de serveur, pas d'attente. Tapez à gauche, obtenez le résultat à droite.",
+    "ocrTitle": "OCR — extraire le texte des images",
+    "ocrDescription": "Propulsé par le moteur OCR du serveur. Déposez une image pour extraire le texte.",
+    "ocrUploadHint": "Déposez une image (PNG, JPG, etc.) pour extraire le texte",
+    "documentServerHint": "Les conversions de documents s'exécutent sur le backend du serveur."
   },
   "history": {
     "title": "Conversion History",
@@ -216,7 +245,17 @@
     "forbidden": "You don't have access to this resource",
     "serverError": "Server error. Please try again later.",
     "networkError": "Network error. Please check your connection.",
-    "validation": "Please fix the errors above"
+    "validation": "Please fix the errors above",
+    "notFoundTitle": "Introuvable",
+    "notFoundBody": "La page que vous cherchez n'existe pas.",
+    "pageMayBeLocked": "Elle peut être verrouillée car le backend est hors ligne.",
+    "title": "Une erreur est survenue",
+    "body": "Une erreur inattendue s'est produite. Vous pouvez réessayer, ou utiliser un outil du navigateur pendant que le backend est hors ligne.",
+    "retry": "Réessayer",
+    "home": "Accueil",
+    "offlineTools": "Outils hors ligne",
+    "reportIssue": "Signaler un problème",
+    "needHelp": "Besoin d'aide ?"
   },
   "playground": {
     "title": "title",
@@ -266,7 +305,10 @@
     "openRepo": "Ouvrir le dépôt",
     "retry": "Réessayer",
     "dismiss": "Ignorer",
-    "lastChecked": "Vérifié {when}"
+    "lastChecked": "Vérifié {when}",
+    "featuresAvailable": "{count} sur {total} fonctionnalités disponibles",
+    "featuresLocked": "{count} verrouillées",
+    "latency": "Latence"
   },
   "tools": {
     "title": "Outils en ligne",

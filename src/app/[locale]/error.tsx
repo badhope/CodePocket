@@ -1,63 +1,76 @@
 "use client"
 
 import { useEffect } from "react"
-import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle, Home, RefreshCw, Bug } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { AlertTriangle, RefreshCw, Home, Wrench, ExternalLink } from "lucide-react"
+import { useBackendStatus } from "@/lib/system/backend-status"
+import { useTranslations } from "next-intl"
+import { Link } from "@/lib/i18n/navigation"
 
-export default function GlobalError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const { status, recheck } = useBackendStatus()
+  const t = useTranslations("errors")
+  const tBs = useTranslations("backendStatus")
+
   useEffect(() => {
-    console.error("App-level error:", error)
+    // eslint-disable-next-line no-console
+    console.error("[docforge:error-boundary]", error)
   }, [error])
 
-  const isDev = process.env.NODE_ENV === "development"
-
   return (
-    <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-      <Card className="max-w-lg">
+    <div className="container mx-auto max-w-2xl px-4 py-10 md:py-16">
+      <Card>
         <CardHeader>
-          <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-destructive/10">
-            <AlertTriangle className="size-6 text-destructive" />
+          <div className="mb-2 flex items-center gap-3">
+            <span className="bg-muted inline-flex size-10 items-center justify-center rounded-md">
+              <AlertTriangle className="text-red-600 dark:text-red-400 size-5" />
+            </span>
+            <div>
+              <CardTitle>{t("title")}</CardTitle>
+              <CardDescription className="mt-1">{t("body")}</CardDescription>
+            </div>
+            {status.state !== "online" && (
+              <Badge variant="destructive" className="ml-auto">{status.state}</Badge>
+            )}
           </div>
-          <CardTitle>Something went wrong</CardTitle>
-          <CardDescription>
-            We&apos;ve been notified. You can try again or head back home.
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {isDev && (
-            <Alert variant="destructive">
-              <Bug className="size-4" />
-              <AlertTitle>Development error</AlertTitle>
-              <AlertDescription className="break-all font-mono text-xs">
-                {error.message}
-                {error.digest && (
-                  <span className="mt-1 block opacity-70">Digest: {error.digest}</span>
-                )}
-              </AlertDescription>
-            </Alert>
+        <CardContent className="space-y-4">
+          {error.message && (
+            <pre className="bg-muted/40 max-h-48 overflow-auto rounded-md border p-3 font-mono text-xs">
+{error.message}
+            </pre>
           )}
+          {error.digest && (
+            <p className="text-muted-foreground font-mono text-xs">digest: {error.digest}</p>
+          )}
+          {(status.state === "offline" || status.state === "unsupported") && (
+            <div className="bg-muted/30 text-muted-foreground rounded-md border p-3 text-xs">
+              {tBs("offlineBody")}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={reset} size="sm">
+              <RefreshCw className="mr-1.5 size-3.5" />
+              {t("retry")}
+            </Button>
+            <Button onClick={recheck} variant="outline" size="sm">
+              {tBs("retry")}
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/"><Home className="mr-1.5 size-3.5" />{t("home")}</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/tools"><Wrench className="mr-1.5 size-3.5" />{t("offlineTools")}</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <a href="https://github.com/badhope/DocForge/issues" target="_blank" rel="noreferrer">
+                <ExternalLink className="mr-1.5 size-3.5" />{t("reportIssue")}
+              </a>
+            </Button>
+          </div>
         </CardContent>
-        <CardFooter className="flex justify-end gap-2">
-          <Button asChild variant="outline">
-            <Link href="/">
-              <Home className="mr-2 size-4" />
-              Go home
-            </Link>
-          </Button>
-          <Button onClick={reset}>
-            <RefreshCw className="mr-2 size-4" />
-            Try again
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   )

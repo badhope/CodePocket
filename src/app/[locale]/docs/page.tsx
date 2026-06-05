@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BookOpen, FileText, Upload, Download, Shield, Settings, Search, FileOutput } from "lucide-react"
+import { BackendStatusOverview } from "@/components/system/backend-status-overview"
 
 export default async function DocsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
@@ -57,6 +58,10 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
           <p className="text-lg text-muted-foreground">
             Everything you need to know about DocForge — from uploading your first document to advanced API integration.
           </p>
+        </div>
+
+        <div className="mb-8">
+          <BackendStatusOverview />
         </div>
 
         <div className="relative mb-8">
