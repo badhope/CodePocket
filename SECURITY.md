@@ -1,40 +1,35 @@
-# Security Policy
+# Security
 
-## Reporting a Vulnerability
+Found a hole? **Don't file a public issue.** Open a private security
+advisory or email me (the address is in `CITATION.cff` if there's one;
+otherwise it's on my profile page). I prefer the advisory form because
+GitHub handles the disclosure timeline.
 
-If you find a security vulnerability, **do not open a public issue**. Instead:
+What I'll do:
 
-1. Go to [GitHub Security Advisories](https://github.com/badhope/OnlineCode/security/advisories/new)
-2. Submit a private vulnerability report
+- Reply within 3 business days.
+- Triage and try to reproduce within 10 business days.
+- Ship a fix, or at least a documented mitigation, as soon as I can.
+- Credit you in the advisory if you want it. Say "anonymous" if you don't.
 
-We will respond within 48 hours and keep you updated on the fix progress.
+I follow responsible disclosure: please keep the report private until I
+publish a fix and (if needed) a CVE / advisory. I won't sue you for
+security research done in good faith, and I won't go after security
+researchers for things that are obviously bugs.
 
-## What counts as a security issue
+## What I patch
 
-- Leaked secrets (API keys, tokens, passwords) in the codebase or git history
-- Authentication or authorization bypass
-- Remote code execution via the Piston-shim or code execution endpoints
-- SQL injection or other database attacks
-- XSS in the document conversion pipeline
-- Rate limit bypass
+Only the latest commit on `main`. I don't backport. If you're on an
+older version, the right fix is to upgrade.
 
-## What does NOT count
+## In scope
 
-- Features working as designed (e.g., the Piston-shim intentionally does not provide kernel-level isolation — this is documented)
-- Dependency CVEs that are already patched via `pnpm.overrides`
-- Issues that require already-authenticated access
+- Code in this repository.
+- Official container images and release artifacts that came from this
+  repo (when they exist).
 
-## Secret scanning
+## Out of scope
 
-This repository uses [gitleaks](https://github.com/gitleaks/gitleaks) in CI to scan for accidentally committed secrets. The scan runs on every push and PR to `main`, plus a weekly scheduled scan.
-
-If you accidentally commit a secret:
-
-1. **Revoke the secret immediately** — rotating it is the only safe response
-2. Do NOT just delete it from the file; it stays in git history
-3. Use `git filter-repo` or BFG Repo Cleaner to rewrite history if needed
-4. Force-push the cleaned history (acceptable for secret removal)
-
-## Environment variables
-
-All secrets live in `.env` files, which are git-ignored. The `.env.example` file contains only placeholder values and is safe to commit. Never put real credentials in `.env.example`.
+- Third-party dependencies. Report upstream unless I pinned and shipped
+  a vulnerable version myself.
+- Scanners, social engineering, DoS, or "you used a default port".
