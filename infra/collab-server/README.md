@@ -1,7 +1,7 @@
-# OnlineCode Collab Server
+# DocForge Collab Server
 
 Standalone Yjs/Hocuspocus WebSocket server for real-time multi-user
-editing in the OnlineCode project editor and snippet view.
+editing in the DocForge project editor and snippet view.
 
 ## Why separate from Vercel?
 
@@ -46,7 +46,7 @@ fly deploy
 In Vercel project settings:
 
 ```
-NEXT_PUBLIC_COLLAB_URL=wss://onlinecode-collab.fly.dev
+NEXT_PUBLIC_COLLAB_URL=wss://docforge-collab.fly.dev
 COLLAB_REQUIRE_AUTH=true
 COLLAB_SHARED_SECRET=<same value as fly secrets>
 ```

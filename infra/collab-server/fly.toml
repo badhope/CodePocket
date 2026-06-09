@@ -1,4 +1,4 @@
-# Fly.io config for the OnlineCode collab server.
+# Fly.io config for the DocForge collab server.
 # Requires the flyctl CLI: https://fly.io/docs/hands-on/install-flyctl/
 #
 #   fly launch --copy-config --name onlinecode-collab

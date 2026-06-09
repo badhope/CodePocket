@@ -1,4 +1,4 @@
-// OnlineCode real-time collaboration server (Hocuspocus).
+// DocForge real-time collaboration server (Hocuspocus).
 // Listens on PORT (default 1234) and bridges Y.Doc updates between
 // concurrent WebSocket clients in the same room.
 //

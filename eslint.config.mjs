@@ -32,8 +32,7 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "miniprogram/**",
-    "fix-pkg.js", // one-off migration script, not part of the app source
-    "scripts/**", // ad-hoc dev scripts (db-migrate, db-meta, dev.sh)
+    "scripts/**",
   ]),
 ]);
 

@@ -1,8 +1,8 @@
 {
-  "name": "@onlinecode/collab-server",
+  "name": "@docforge/collab-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Yjs/Hocuspocus real-time collaboration WebSocket server for OnlineCode",
+  "description": "Yjs/Hocuspocus real-time collaboration WebSocket server for DocForge",
   "type": "module",
   "main": "server.mjs",
   "scripts": {

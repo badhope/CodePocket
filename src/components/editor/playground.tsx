@@ -131,7 +131,7 @@ function decodeShare(hash: string): { code: string; lang: string } | null {
 
 const TEMPLATES: Record<string, { label: string; code: string }[]> = {
   python: [
-    { label: "Hello World", code: 'print("Hello, OnlineCode!")' },
+    { label: "Hello World", code: 'print("Hello, DocForge!")' },
     {
       label: "Fibonacci",
       code: "def fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        print(a)\n        a, b = b, a + b\n\nfib(10)",
@@ -150,7 +150,7 @@ const TEMPLATES: Record<string, { label: string; code: string }[]> = {
     },
   ],
   javascript: [
-    { label: "Hello World", code: 'console.log("Hello, OnlineCode!");' },
+    { label: "Hello World", code: 'console.log("Hello, DocForge!");' },
     {
       label: "Array Methods",
       code: 'const nums = [1, 2, 3, 4, 5];\nconst doubled = nums.map(n => n * 2);\nconst sum = nums.reduce((a, b) => a + b, 0);\nconsole.log("Doubled:", doubled);\nconsole.log("Sum:", sum);',
@@ -167,7 +167,7 @@ const TEMPLATES: Record<string, { label: string; code: string }[]> = {
   typescript: [
     {
       label: "Hello World",
-      code: 'const greet = (name: string): string => `Hello, ${name}!`;\nconsole.log(greet("OnlineCode"));',
+      code: 'const greet = (name: string): string => `Hello, ${name}!`;\nconsole.log(greet("DocForge"));',
     },
     {
       label: "Interface",
@@ -181,7 +181,7 @@ const TEMPLATES: Record<string, { label: string; code: string }[]> = {
   cpp: [
     {
       label: "Hello World",
-      code: '#include <iostream>\nint main() {\n    std::cout << "Hello, OnlineCode!" << std::endl;\n    return 0;\n}',
+      code: '#include <iostream>\nint main() {\n    std::cout << "Hello, DocForge!" << std::endl;\n    return 0;\n}',
     },
     {
       label: "Vector Sort",
@@ -189,7 +189,7 @@ const TEMPLATES: Record<string, { label: string; code: string }[]> = {
     },
   ],
   rust: [
-    { label: "Hello World", code: 'fn main() {\n    println!("Hello, OnlineCode!");\n}' },
+    { label: "Hello World", code: 'fn main() {\n    println!("Hello, DocForge!");\n}' },
     {
       label: "Struct + impl",
       code: 'struct Point { x: f64, y: f64 }\nimpl Point {\n    fn distance(&self, other: &Point) -> f64 {\n        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()\n    }\n}\nfn main() {\n    let a = Point { x: 0.0, y: 0.0 };\n    let b = Point { x: 3.0, y: 4.0 };\n    println!("Distance: {}", a.distance(&b));\n}',
@@ -198,7 +198,7 @@ const TEMPLATES: Record<string, { label: string; code: string }[]> = {
   go: [
     {
       label: "Hello World",
-      code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, OnlineCode!")\n}',
+      code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, DocForge!")\n}',
     },
     {
       label: "Goroutine",

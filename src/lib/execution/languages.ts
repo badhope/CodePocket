@@ -35,7 +35,7 @@ const defaultCodeFor = (lang: LanguageMeta): string => {
     case "python":
       return [
         "# Python",
-        'print("Hello, OnlineCode!")',
+        'print("Hello, DocForge!")',
         "",
         "for i in range(3):",
         '    print(f"Count: {i}")',
@@ -44,7 +44,7 @@ const defaultCodeFor = (lang: LanguageMeta): string => {
     case "javascript":
       return [
         "// JavaScript",
-        'console.log("Hello, OnlineCode!");',
+        'console.log("Hello, DocForge!");',
         "",
         "for (let i = 0; i < 3; i++) {",
         "  console.log(`Count: ${i}`);",
@@ -55,36 +55,36 @@ const defaultCodeFor = (lang: LanguageMeta): string => {
       return [
         "// TypeScript",
         "const greet = (name: string): string => `Hello, ${name}!`;",
-        'console.log(greet("OnlineCode"));',
+        'console.log(greet("DocForge"));',
         "",
       ].join("\n");
     case "cpp":
-      return `// C++\n#include <iostream>\nint main() {\n    std::cout << "Hello, OnlineCode!" << std::endl;\n    return 0;\n}\n`;
+      return `// C++\n#include <iostream>\nint main() {\n    std::cout << "Hello, DocForge!" << std::endl;\n    return 0;\n}\n`;
     case "c":
-      return `// C\n#include <stdio.h>\nint main() {\n    printf("Hello, OnlineCode!\\n");\n    return 0;\n}\n`;
+      return `// C\n#include <stdio.h>\nint main() {\n    printf("Hello, DocForge!\\n");\n    return 0;\n}\n`;
     case "java":
-      return `// Java\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, OnlineCode!");\n    }\n}\n`;
+      return `// Java\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, DocForge!");\n    }\n}\n`;
     case "rust":
-      return `// Rust\nfn main() {\n    println!("Hello, OnlineCode!");\n}\n`;
+      return `// Rust\nfn main() {\n    println!("Hello, DocForge!");\n}\n`;
     case "go":
-      return `// Go\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, OnlineCode!")\n}\n`;
+      return `// Go\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, DocForge!")\n}\n`;
     case "csharp":
-      return `// C#\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, OnlineCode!");\n    }\n}\n`;
+      return `// C#\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, DocForge!");\n    }\n}\n`;
     case "php":
-      return `<?php\n// PHP\necho "Hello, OnlineCode!\\n";\n`;
+      return `<?php\n// PHP\necho "Hello, DocForge!\\n";\n`;
     case "ruby":
-      return `# Ruby\nputs "Hello, OnlineCode!"\n\n3.times { |i| puts "Count: #{i}" }\n`;
+      return `# Ruby\nputs "Hello, DocForge!"\n\n3.times { |i| puts "Count: #{i}" }\n`;
     case "kotlin":
-      return `// Kotlin\nfun main() {\n    println("Hello, OnlineCode!")\n}\n`;
+      return `// Kotlin\nfun main() {\n    println("Hello, DocForge!")\n}\n`;
     case "swift":
-      return `// Swift\nprint("Hello, OnlineCode!")\n`;
+      return `// Swift\nprint("Hello, DocForge!")\n`;
     case "scala":
-      return `// Scala\nobject Main extends App {\n    println("Hello, OnlineCode!")\n}\n`;
+      return `// Scala\nobject Main extends App {\n    println("Hello, DocForge!")\n}\n`;
     case "bash":
       return [
         "#!/usr/bin/env bash",
         "# Bash",
-        'echo "Hello, OnlineCode!"',
+        'echo "Hello, DocForge!"',
         "for i in 1 2 3; do",
         '  echo "Count: $i"',
         "done",
@@ -93,16 +93,16 @@ const defaultCodeFor = (lang: LanguageMeta): string => {
     case "lua":
       return [
         "-- Lua",
-        'print("Hello, OnlineCode!")',
+        'print("Hello, DocForge!")',
         "for i = 1, 3 do",
         '  print("Count: " .. i)',
         "end",
         "",
       ].join("\n");
     case "sql":
-      return `-- SQL\nSELECT 'Hello, OnlineCode!' AS greeting;\n`;
+      return `-- SQL\nSELECT 'Hello, DocForge!' AS greeting;\n`;
     case "html":
-      return `<!DOCTYPE html>\n<html lang="en">\n<head><meta charset="UTF-8"><title>Hello</title></head>\n<body><h1>Hello, OnlineCode!</h1></body>\n</html>\n`;
+      return `<!DOCTYPE html>\n<html lang="en">\n<head><meta charset="UTF-8"><title>Hello</title></head>\n<body><h1>Hello, DocForge!</h1></body>\n</html>\n`;
     case "css":
       return `/* CSS */\nbody {\n  font-family: system-ui, sans-serif;\n  background: linear-gradient(135deg, #667eea, #764ba2);\n  color: white;\n  display: grid;\n  place-items: center;\n  min-height: 100vh;\n}\n`;
     default:

@@ -13,7 +13,7 @@ const withNextIntl = createNextIntlPlugin("./src/lib/i18n/request.ts");
  *   fallback. See [static-demo.ts](src/lib/static-demo.ts).
  */
 const isGhPages = process.env.DEPLOY_TARGET === "gh-pages";
-const REPO_NAME = "OnlineCode";
+const REPO_NAME = "DocForge";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

@@ -11,7 +11,7 @@ export function ServiceWorkerRegistration() {
     const register = async () => {
       try {
         // Aggressively unregister any old service workers from the original
-        // static-HTML version of OnlineCode, which served "Loading DATA..." pages
+        // static-HTML version of DocForge, which served "Loading DATA..." pages
         // that conflict with this Next.js app.
         const existing = await navigator.serviceWorker.getRegistrations();
         for (const reg of existing) {

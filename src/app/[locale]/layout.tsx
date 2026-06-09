@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: { default: "DocForge", template: "%s · DocForge" },
-  description: "Universal document conversion platform — convert between DOCX, PDF, Markdown, HTML, XLSX, CSV, JSON, and more",
+  description: "Offline-first developer toolbox — 20 browser tools, polyglot playground, document conversion",
   applicationName: "DocForge",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "DocForge" },

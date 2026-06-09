@@ -1,10 +1,10 @@
-// OnlineCode Service Worker v2
+// DocForge Service Worker v2
 // Strategy:
 //   - HTML/navigation: network-first, fall back to cache only if explicitly precached offline page
 //   - Static assets (_next/static, public assets): cache-first
 //   - /api/*: never intercepted
 //   - On activate: aggressively clear all old caches (onlinecode-v1, workbox-*, etc.) to wipe state
-//     from the original static-HTML version of OnlineCode that was served at this origin.
+//     from the original static-HTML version of DocForge that was served at this origin.
 
 const VERSION = "v2";
 const CACHE = `onlinecode-${VERSION}`;

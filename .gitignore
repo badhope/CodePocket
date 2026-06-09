@@ -30,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files (contains secrets — NEVER commit these)
 .env
 .env.local
 .env.*.local
@@ -54,8 +54,10 @@ next-env.d.ts
 drizzle/meta
 .turbo
 
-# workbuddy (AI assistant workspace data)
+# AI assistant workspace data
 .workbuddy/
+.claude/
+.cursor/
 
 # piston-shim runtime artifacts (created by `make piston-up`)
 /tmp/piston-shim.pid
@@ -63,3 +65,9 @@ drizzle/meta
 infra/piston-shim/node_modules/
 infra/collab-server/node_modules/
 miniprogram/node_modules/
+
+# Python venv (used by smoke test)
+.venv/
+
+# Static export staging (created by build-gh-pages.sh)
+.next-static-staging/

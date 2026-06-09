@@ -1,0 +1,17 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(?:api[_-]?key|apikey|access[_-]?key|secret[_-]?key)\s*[:=]\s*['"]?[a-zA-Z0-9_\-]{20,}'''
+tags = ["key", "generic"]
+
+[[allowlist]]
+paths = [
+  '''\.env\.example$''',
+  '''\.gitignore$''',
+  '''package\.json$''',
+  '''pnpm-lock\.yaml$''',
+  '''SECURITY\.md$''',
+]

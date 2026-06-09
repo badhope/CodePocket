@@ -149,7 +149,7 @@ export const conversions = pgTable(
 );
 
 // ============================================================================
-// EXECUTIONS (OnlineCode playground)
+// EXECUTIONS (DocForge playground)
 // ============================================================================
 
 export const executionStatusEnum = pgEnum("execution_status", [
@@ -194,7 +194,7 @@ export const executions = pgTable(
 );
 
 // ============================================================================
-// PROJECTS (OnlineCode multi-file projects)
+// PROJECTS (DocForge multi-file projects)
 // ============================================================================
 
 export const projectVisibilityEnum = pgEnum("project_visibility", [
