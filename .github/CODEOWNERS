@@ -1,0 +1,22 @@
+# Default owners for everything in the repo
+# Replace @badhope with the actual GitHub usernames of the maintainers
+* @badhope
+
+# Workflow and CI changes need a second pair of eyes
+/.github/ @badhope
+
+# Database migrations are scary
+/drizzle/ @badhope
+/src/lib/db/ @badhope
+
+# Security-sensitive areas
+/src/lib/auth/ @badhope
+/src/lib/api/ratelimit.ts @badhope
+/infra/collab-server/ @badhope
+/infra/piston-shim/ @badhope
+
+# Infra config that affects production
+/next.config.ts @badhope
+/vercel.json @badhope
+/Dockerfile* @badhope
+/docker-compose.yml @badhope

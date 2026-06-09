@@ -1,0 +1,35 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "badhope"
+    labels:
+      - "dependencies"
+    groups:
+      production:
+        dependency-type: "production"
+      development:
+        dependency-type: "development"
+    ignore:
+      # Pinned via pnpm.overrides for security reasons
+      - dependency-name: "dompurify"
+      - dependency-name: "uuid"
+      - dependency-name: "postcss"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    reviewers:
+      - "badhope"
+    labels:
+      - "dependencies"
+      - "ci"

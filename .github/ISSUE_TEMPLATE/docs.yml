@@ -1,0 +1,23 @@
+name: Documentation
+description: 报告文档错误或缺失
+labels: ["docs"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: 哪个页面/文件？
+      description: 例如 README.md 第 123 行，或 /en/tools 页面
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: 什么问题？
+      description: 拼写错误、过时信息、缺例子、结构混乱等
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 建议改法（可选）
+      description: 如果你知道怎么改更好

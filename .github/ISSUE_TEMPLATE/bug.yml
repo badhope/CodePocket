@@ -1,0 +1,64 @@
+name: Bug Report
+description: 报告 bug 帮助我们改进
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你报告 bug！请填写下面的信息，我们会尽快处理。
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么？
+      description: 简要描述 bug 现象
+      placeholder: |
+        访问 /tools/json-formatter 时页面空白，控制台报错 ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 一步步说明怎么触发这个 bug
+      placeholder: |
+        1. 打开 ...
+        2. 点击 ...
+        3. 看到 ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 你期望发生什么
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: 后端状态
+      description: 跑这个 bug 时后端是否在线？
+      options:
+        - 不知道 / 没注意
+        - 在线（完整功能）
+        - 离线（纯前端模式）
+        - 没启动后端
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: 浏览器和版本
+      description: 例如 Chrome 120, Firefox 121, Safari 17
+      placeholder: Chrome 120
+  - type: textarea
+    id: logs
+    attributes:
+      label: 截图 / 报错日志
+      description: 拖入截图或粘贴控制台报错
+  - type: input
+    id: version
+    attributes:
+      label: DocForge 版本
+      description: 在 footer 或 /api/health 中查看
+      placeholder: 3.1.0

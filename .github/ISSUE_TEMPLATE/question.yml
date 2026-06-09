@@ -1,0 +1,21 @@
+name: Question
+description: 提问或寻求帮助
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        有问题？先看一下 [README](../blob/main/README.md) 和 [docs](../blob/main/src/app/%5Blocale%5D/docs/page.tsx)。
+        如果还是没找到答案，在这里提问。
+  - type: textarea
+    id: question
+    attributes:
+      label: 你的问题
+      description: 详细描述
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: 你已经试过什么？
+      description: 列出你尝试过的方法，避免重复建议
