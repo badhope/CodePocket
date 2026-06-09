@@ -7,7 +7,6 @@ authors:
   - family-names: badhope
     given-names: badhope
     alias: badhope
-    orcid: https://orcid.org/0000-0000-0000-0000
 identifiers:
   - type: url
     value: https://github.com/badhope/OnlineCode
@@ -16,6 +15,15 @@ type: software
 url: https://github.com/badhope/OnlineCode
 repository-code: https://github.com/badhope/OnlineCode
 keywords:
-  - open-source, software
+  - cpp
+  - go
+  - mobile-friendly
+  - online-ide
+  - python
+  - rust
+  - code-editor
+  - csharp
+  - java
+  - javascript
 abstract: >-
-  Offline-first developer toolbox — 20 browser tools, polyglot playground, document conversion
+  DocForge — my offline-first dev toolbox. 20 browser tools, a multi-language code playground, document conversion. Works without a server; Postgres/Redis unlock accounts and high-fidelity export when you want them.
