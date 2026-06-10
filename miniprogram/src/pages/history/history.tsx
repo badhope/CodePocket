@@ -1,31 +1,31 @@
-import { View, Text } from '@tarojs/components'
-import { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
-import './history.scss'
+import { View, Text } from "@tarojs/components";
+import { useDidShow } from "@tarojs/taro";
+import { useState } from "react";
+import "./history.scss";
 
 interface HistoryItem {
-  id: string
-  inputName: string
-  inputFormat: string
-  outputFormat: string
-  status: string
-  date: string
-  size: string
+  id: string;
+  inputName: string;
+  inputFormat: string;
+  outputFormat: string;
+  status: string;
+  date: string;
+  size: string;
 }
 
 export default function History() {
-  const [items, setItems] = useState<HistoryItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useDidShow(() => {
-    setLoading(false)
-    setItems([])
-  })
+    setLoading(false);
+    setItems([]);
+  });
 
   return (
     <View className="history-page">
       <Text className="page-title">转换历史</Text>
-      
+
       {loading ? (
         <View className="loading">
           <Text>加载中...</Text>
@@ -45,7 +45,9 @@ export default function History() {
                 <Text className={`item-status status-${item.status}`}>{item.status}</Text>
               </View>
               <View className="item-meta">
-                <Text className="item-format">{item.inputFormat} → {item.outputFormat}</Text>
+                <Text className="item-format">
+                  {item.inputFormat} → {item.outputFormat}
+                </Text>
                 <Text className="item-size">{item.size}</Text>
               </View>
               <Text className="item-date">{item.date}</Text>
@@ -54,5 +56,5 @@ export default function History() {
         </View>
       )}
     </View>
-  )
+  );
 }

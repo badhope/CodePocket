@@ -1,55 +1,55 @@
 # Labeler config: maps file changes to PR labels
-"area: ci":
+ci:
   - .github/**
   - .gitleaks.toml
 
-"area: docs":
+docs:
   - "**/*.md"
   - CHANGELOG.md
   - README.md
   - SECURITY.md
   - CONTRIBUTING.md
 
-"area: security":
+security:
   - .gitleaks.toml
   - SECURITY.md
   - src/lib/auth/**
   - src/lib/api/ratelimit.ts
 
-"area: infra":
+infra:
   - infra/**
   - docker-compose.yml
   - Dockerfile*
   - Makefile
 
-"area: database":
+database:
   - drizzle/**
   - src/lib/db/**
   - scripts/db-*.sh
 
-"area: ui":
+ui:
   - src/app/**
   - src/components/**
   - src/messages/**
   - public/**
 
-"area: tools":
+tools:
   - src/lib/tools/**
   - src/lib/convert/**
 
-"area: execution":
+execution:
   - src/lib/execution/**
   - infra/piston-shim/**
 
-"area: collab":
+collab:
   - src/lib/collab/**
   - infra/collab-server/**
 
-"dependencies":
+dependencies:
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
 
-"breaking":
+breaking:
   - "**/*.ts"
   - "**/*.tsx"

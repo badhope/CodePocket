@@ -35,8 +35,7 @@ const ALLOWED_ORIGINS = buildAllowedSet();
 
 const DEFAULT_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Requested-With, X-Request-Id, Accept",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Request-Id, Accept",
   "Access-Control-Allow-Credentials": "true",
   "Access-Control-Max-Age": "86400",
   Vary: "Origin",
@@ -70,7 +69,10 @@ export function applyCors(headers: Headers, origin: string | null | undefined): 
 /**
  * Build a CORS preflight response.
  */
-export function preflight(origin: string | null | undefined, options: { allowedMethods?: string[] } = {}): NextResponse {
+export function preflight(
+  origin: string | null | undefined,
+  options: { allowedMethods?: string[] } = {},
+): NextResponse {
   const allowed = getAllowedOrigin(origin);
   const headers = new Headers();
   if (allowed) {

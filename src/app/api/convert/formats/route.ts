@@ -7,7 +7,14 @@ import { getClientIp } from "@/lib/api/log";
 
 export const dynamic = "force-dynamic";
 
-const FORMAT_DESCRIPTIONS: Record<string, { label: string; description: string; category: "document" | "spreadsheet" | "presentation" | "data" | "markup" | "text" }> = {
+const FORMAT_DESCRIPTIONS: Record<
+  string,
+  {
+    label: string;
+    description: string;
+    category: "document" | "spreadsheet" | "presentation" | "data" | "markup" | "text";
+  }
+> = {
   docx: { label: "Word Document", description: "Microsoft Word Open XML", category: "document" },
   pdf: { label: "PDF", description: "Portable Document Format", category: "document" },
   md: { label: "Markdown", description: "Plain-text markup", category: "markup" },
@@ -17,7 +24,11 @@ const FORMAT_DESCRIPTIONS: Record<string, { label: string; description: string; 
   csv: { label: "CSV", description: "Comma-separated values", category: "data" },
   json: { label: "JSON", description: "JavaScript Object Notation", category: "data" },
   xml: { label: "XML", description: "Extensible Markup Language", category: "markup" },
-  pptx: { label: "PowerPoint Presentation", description: "Microsoft PowerPoint Open XML", category: "presentation" },
+  pptx: {
+    label: "PowerPoint Presentation",
+    description: "Microsoft PowerPoint Open XML",
+    category: "presentation",
+  },
 };
 
 const DEFAULT_DESC = { label: "", description: "", category: "text" as const };

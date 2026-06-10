@@ -53,10 +53,10 @@ const COMPACT_LEAKED_PASSWORDS = new Set([
   "blahblah1",
 ]);
 
-const enhancedSignUpSchema = signUpSchema.refine(
-  (d) => PASSWORD_EXTRA_REGEX.test(d.password),
-  { message: "Password must contain a symbol", path: ["password"] },
-);
+const enhancedSignUpSchema = signUpSchema.refine((d) => PASSWORD_EXTRA_REGEX.test(d.password), {
+  message: "Password must contain a symbol",
+  path: ["password"],
+});
 
 // In-memory low-pass timing-equaliser. We deliberately do *not* try to be
 // cryptographically perfect - just enough to raise the cost of a brute-force
@@ -67,8 +67,7 @@ const MAX_RESPONSE_DELAY_MS = 600;
 async function equaliseDelay(start: number): Promise<void> {
   const elapsed = Date.now() - start;
   const target =
-    MIN_RESPONSE_DELAY_MS +
-    Math.floor(Math.random() * (MAX_RESPONSE_DELAY_MS - MIN_RESPONSE_DELAY_MS));
+    MIN_RESPONSE_DELAY_MS + Math.floor(Math.random() * (MAX_RESPONSE_DELAY_MS - MIN_RESPONSE_DELAY_MS));
   if (elapsed < target) {
     await new Promise((resolve) => setTimeout(resolve, target - elapsed));
   }
@@ -145,11 +144,7 @@ export async function POST(req: Request) {
       issues: parsed.error.flatten().fieldErrors,
     });
     await equaliseDelay(start);
-    return jsonResponse(
-      { error: "validation", issues: parsed.error.flatten().fieldErrors },
-      400,
-      origin,
-    );
+    return jsonResponse({ error: "validation", issues: parsed.error.flatten().fieldErrors }, 400, origin);
   }
 
   const { name, email, password, locale } = parsed.data;

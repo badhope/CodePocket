@@ -8,12 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, Package as PackageIcon, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { ECOSYSTEMS, PackageEcosystem, PackageRecord, renderManifest } from "@/lib/packages";
@@ -126,11 +121,7 @@ export function PackageManager({ projectId, className }: PackageManagerProps) {
 
   return (
     <div className={cn("flex h-full flex-col gap-3 p-3", className)}>
-      <Tabs
-        value={ecosystem}
-        onValueChange={(v) => setEcosystem(v as PackageEcosystem)}
-        className="flex-1"
-      >
+      <Tabs value={ecosystem} onValueChange={(v) => setEcosystem(v as PackageEcosystem)} className="flex-1">
         <TabsList>
           {Object.values(ECOSYSTEMS).map((e) => (
             <TabsTrigger key={e.id} value={e.id}>
@@ -194,10 +185,7 @@ export function PackageManager({ projectId, className }: PackageManagerProps) {
               ) : (
                 <div className="divide-y rounded-md border">
                   {filtered.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-2 px-2 py-1.5 text-sm"
-                    >
+                    <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 text-sm">
                       <PackageIcon className="text-muted-foreground size-3.5" />
                       <span className="font-mono">{p.name}</span>
                       {p.version && (

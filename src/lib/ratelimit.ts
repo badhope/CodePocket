@@ -36,35 +36,19 @@ function getOrInit(name: LimitName, prefix: string, fallbackLimit: number): Limi
 }
 
 export function convertRateLimit(): LimitFn | Promise<LimitFn> {
-  return getOrInit(
-    "convert",
-    "rl:conv",
-    Number(process.env.RATE_LIMIT_CONVERT_PER_MIN ?? 30),
-  );
+  return getOrInit("convert", "rl:conv", Number(process.env.RATE_LIMIT_CONVERT_PER_MIN ?? 30));
 }
 
 export function executeRateLimit(): LimitFn | Promise<LimitFn> {
-  return getOrInit(
-    "execute",
-    "rl:exec",
-    Number(process.env.RATE_LIMIT_EXECUTE_PER_MIN ?? 20),
-  );
+  return getOrInit("execute", "rl:exec", Number(process.env.RATE_LIMIT_EXECUTE_PER_MIN ?? 20));
 }
 
 export function streamRateLimit(): LimitFn | Promise<LimitFn> {
-  return getOrInit(
-    "stream",
-    "rl:stream",
-    Number(process.env.RATE_LIMIT_STREAM_PER_MIN ?? 10),
-  );
+  return getOrInit("stream", "rl:stream", Number(process.env.RATE_LIMIT_STREAM_PER_MIN ?? 10));
 }
 
 export function apiRateLimit(): LimitFn | Promise<LimitFn> {
-  return getOrInit(
-    "api",
-    "rl:api",
-    Number(process.env.RATE_LIMIT_API_PER_MIN ?? 120),
-  );
+  return getOrInit("api", "rl:api", Number(process.env.RATE_LIMIT_API_PER_MIN ?? 120));
 }
 
 export type RateLimitResult = LimitDecision;

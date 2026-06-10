@@ -14,13 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Share2, Copy, Trash2, Eye, EyeOff, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -71,12 +65,7 @@ export function ShareDialog({ projectId, snippetId, trigger, className }: ShareD
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const target = useMemo(
-    () =>
-      projectId
-        ? { projectId }
-        : snippetId
-          ? { snippetId }
-          : null,
+    () => (projectId ? { projectId } : snippetId ? { snippetId } : null),
     [projectId, snippetId],
   );
 
@@ -114,8 +103,7 @@ export function ShareDialog({ projectId, snippetId, trigger, className }: ShareD
     if (!target) return;
     setCreating(true);
     try {
-      const expiresIn =
-        EXPIRY_OPTIONS.find((o) => o.value === expiry)?.seconds ?? 0;
+      const expiresIn = EXPIRY_OPTIONS.find((o) => o.value === expiry)?.seconds ?? 0;
       const res = await fetch("/api/share", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -176,7 +164,8 @@ export function ShareDialog({ projectId, snippetId, trigger, className }: ShareD
             <Link2 className="size-5" /> Share
           </DialogTitle>
           <DialogDescription>
-            Create a link anyone can use to view this {target && "projectId" in target ? "project" : "snippet"}.
+            Create a link anyone can use to view this{" "}
+            {target && "projectId" in target ? "project" : "snippet"}.
           </DialogDescription>
         </DialogHeader>
 
@@ -186,9 +175,7 @@ export function ShareDialog({ projectId, snippetId, trigger, className }: ShareD
               <Label htmlFor="share-visibility">Visibility</Label>
               <Select
                 value={visibility}
-                onValueChange={(v) =>
-                  setVisibility(v as "public" | "password" | "burn_after_read")
-                }
+                onValueChange={(v) => setVisibility(v as "public" | "password" | "burn_after_read")}
               >
                 <SelectTrigger id="share-visibility">
                   <SelectValue />
@@ -282,9 +269,7 @@ export function ShareDialog({ projectId, snippetId, trigger, className }: ShareD
 
           {shares.length > 0 && (
             <div className="space-y-2">
-              <p className="text-muted-foreground text-xs font-medium uppercase">
-                Existing shares
-              </p>
+              <p className="text-muted-foreground text-xs font-medium uppercase">Existing shares</p>
               <div className="max-h-40 space-y-1 overflow-auto">
                 {shares.map((s) => (
                   <div
@@ -312,9 +297,7 @@ export function ShareDialog({ projectId, snippetId, trigger, className }: ShareD
             </div>
           )}
 
-          {loading && (
-            <p className="text-muted-foreground text-center text-xs">Loading…</p>
-          )}
+          {loading && <p className="text-muted-foreground text-center text-xs">Loading…</p>}
         </div>
 
         <DialogFooter />

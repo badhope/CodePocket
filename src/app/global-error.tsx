@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { AlertTriangle, RefreshCw } from "lucide-react"
+import { useEffect } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function GlobalError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Root-level error:", error)
-  }, [error])
+    console.error("Root-level error:", error);
+  }, [error]);
 
   return (
     <html lang="en">
@@ -54,9 +54,7 @@ export default function GlobalError({
             >
               <AlertTriangle style={{ width: "1.5rem", height: "1.5rem", color: "#dc2626" }} />
             </div>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "0.5rem" }}>
-              Critical Error
-            </h1>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "0.5rem" }}>Critical Error</h1>
             <p style={{ color: "#737373", marginBottom: "1.5rem" }}>
               A critical error occurred. Please refresh the page.
             </p>
@@ -87,5 +85,5 @@ export default function GlobalError({
         </div>
       </body>
     </html>
-  )
+  );
 }

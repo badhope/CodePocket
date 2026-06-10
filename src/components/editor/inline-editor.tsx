@@ -19,7 +19,14 @@ export interface InlineEditorProps {
   readOnly?: boolean;
 }
 
-export function InlineEditor({ value, onChange, language = "plaintext", height = 200, className, readOnly }: InlineEditorProps) {
+export function InlineEditor({
+  value,
+  onChange,
+  language = "plaintext",
+  height = 200,
+  className,
+  readOnly,
+}: InlineEditorProps) {
   return (
     <div className={className} style={{ height }}>
       <MonacoEditor
@@ -69,9 +76,12 @@ export function DebouncedEditor({ value, onSave, onChange, delayMs = 1500, ...re
     [onChange, onSave, delayMs],
   );
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   return <InlineEditor {...rest} value={local} onChange={handleChange} />;
 }

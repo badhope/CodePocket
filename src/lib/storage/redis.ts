@@ -75,11 +75,7 @@ export function backend(): Backend {
  * Throws a clear error if no Redis backend is configured so the route can
  * surface a 503 instead of silently allowing traffic.
  */
-export async function rateLimit(opts: {
-  prefix: string;
-  limit: number;
-  windowMs: number;
-}): Promise<LimitFn> {
+export async function rateLimit(opts: { prefix: string; limit: number; windowMs: number }): Promise<LimitFn> {
   const { prefix, limit, windowMs } = opts;
   if (upstash) {
     // Lazy import so the production bundle never pulls in @upstash/ratelimit
@@ -96,9 +92,8 @@ export async function rateLimit(opts: {
     });
     return async (key: string) => {
       const res = await r.limit(key);
-      const resetValue: number = typeof res.reset === "number"
-        ? res.reset
-        : Math.floor((res.reset as Date).getTime() / 1000);
+      const resetValue: number =
+        typeof res.reset === "number" ? res.reset : Math.floor((res.reset as Date).getTime() / 1000);
       return {
         success: res.success,
         remaining: res.remaining,
@@ -143,14 +138,11 @@ redis.call('PEXPIRE', key, window)
 return {1, limit - count - 1, now + window}
 `;
   const now = Date.now();
-  const result = (await client.eval(
-    lua,
-    1,
-    key,
-    String(now),
-    String(windowMs),
-    String(limit),
-  )) as [number, number, number];
+  const result = (await client.eval(lua, 1, key, String(now), String(windowMs), String(limit))) as [
+    number,
+    number,
+    number,
+  ];
   const [success, remaining, resetMs] = result;
   return {
     success: success === 1,

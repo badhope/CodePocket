@@ -24,6 +24,7 @@ jobs:
           version: 10
       - id: vercel
         uses: vercel/actions/preview@v1
+        continue-on-error: true
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}

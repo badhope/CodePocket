@@ -3,13 +3,13 @@
 This directory has two ways to run the code-execution backend that
 DocForge's `/api/execute` talks to.
 
-| | [piston-shim/](./piston-shim/) (default) | [piston/](./piston/) (legacy Docker stack) |
-| --- | --- | --- |
-| Needs | Node 20+, system toolchains (`python3`, `node`, `gcc`, …) | Docker + ~2 GB of prebuilt runtimes |
-| Cold start | < 1 s | ~30 s (image pull) |
-| Isolation | per-job temp dir + wall-clock timer + rlimit-style output cap | cgroup v2 + namespaces + seccomp |
-| Runtimes | 14 (Python 3.14, Node 24, TypeScript, C/C++ 13, Go 1.25, Rust, Java 25, Ruby 3.4, PHP, Perl, Swift 6, SQLite, Bash) | 40+ (anything upstream Piston supports) |
-| Best for | local dev, CI, self-hosting | production with untrusted multi-tenant traffic |
+|            | [piston-shim/](./piston-shim/) (default)                                                                            | [piston/](./piston/) (legacy Docker stack)     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Needs      | Node 20+, system toolchains (`python3`, `node`, `gcc`, …)                                                           | Docker + ~2 GB of prebuilt runtimes            |
+| Cold start | < 1 s                                                                                                               | ~30 s (image pull)                             |
+| Isolation  | per-job temp dir + wall-clock timer + rlimit-style output cap                                                       | cgroup v2 + namespaces + seccomp               |
+| Runtimes   | 14 (Python 3.14, Node 24, TypeScript, C/C++ 13, Go 1.25, Rust, Java 25, Ruby 3.4, PHP, Perl, Swift 6, SQLite, Bash) | 40+ (anything upstream Piston supports)        |
+| Best for   | local dev, CI, self-hosting                                                                                         | production with untrusted multi-tenant traffic |
 
 > **Why we ship a shim:** the public Piston API
 > (`https://emkc.org/api/v2/piston`) became **whitelist-only on

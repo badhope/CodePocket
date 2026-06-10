@@ -10,17 +10,8 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,13 +36,10 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-const CodeEditor = dynamic(
-  () => import("@/components/editor/code-editor").then((m) => m.CodeEditor),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-full w-full" />,
-  },
-);
+const CodeEditor = dynamic(() => import("@/components/editor/code-editor").then((m) => m.CodeEditor), {
+  ssr: false,
+  loading: () => <Skeleton className="h-full w-full" />,
+});
 
 const Scene3D = dynamic(() => import("@/components/editor/scene-3d").then((m) => m.Scene3D), {
   ssr: false,
@@ -160,7 +148,11 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
   const tpkg = useTranslations("packages");
   const tc = useTranslations("common");
   const collabRoomId = activeTabId ? `p:${id}:${activeTabId}` : null;
-  const { ydoc, status: collabStatus, users: collabUsers } = useYCollab({
+  const {
+    ydoc,
+    status: collabStatus,
+    users: collabUsers,
+  } = useYCollab({
     roomId: collabRoomId,
     userId,
     userName,
@@ -272,9 +264,7 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
         return;
       }
       setData((d) =>
-        d
-          ? { ...d, files: d.files.map((f) => (f.id === fileId ? { ...f, path: newPath } : f)) }
-          : d,
+        d ? { ...d, files: d.files.map((f) => (f.id === fileId ? { ...f, path: newPath } : f)) } : d,
       );
       const t0 = tabs.find((t2) => t2.id === fileId);
       if (t0) updateTab(fileId, { path: newPath });
@@ -349,18 +339,14 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
       const result: ExecuteResponse & { durationMs?: number } = await res.json();
       const startMs = Date.now();
       if (result.result?.run?.stdout) {
-        result.result.run.stdout
-          .split("\n")
-          .forEach((line: string) => {
-            if (line) appendOutput({ type: "out", text: line });
-          });
+        result.result.run.stdout.split("\n").forEach((line: string) => {
+          if (line) appendOutput({ type: "out", text: line });
+        });
       }
       if (result.result?.run?.stderr) {
-        result.result.run.stderr
-          .split("\n")
-          .forEach((line: string) => {
-            if (line) appendOutput({ type: "err", text: line });
-          });
+        result.result.run.stderr.split("\n").forEach((line: string) => {
+          if (line) appendOutput({ type: "err", text: line });
+        });
       }
       const code = result.result?.run?.code ?? -1;
       const dur = (result.durationMs ?? Date.now() - startMs) / 1000;
@@ -383,7 +369,11 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <AlertCircle className="text-destructive size-12" />
             <h2 className="text-lg font-semibold">
-              {error === "not_found" ? t("projectNotFound") : error === "forbidden" ? t("accessDenied") : t("loadFailed")}
+              {error === "not_found"
+                ? t("projectNotFound")
+                : error === "forbidden"
+                  ? t("accessDenied")
+                  : t("loadFailed")}
             </h2>
             <Button asChild>
               <Link href={`/${locale}/projects`}>
@@ -415,16 +405,29 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="bg-background flex items-center gap-2 border-b px-4 py-1.5">
-        <Button variant="ghost" size="icon" onClick={() => router.push(`/${locale}/projects`)} aria-label="Back">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push(`/${locale}/projects`)}
+          aria-label="Back"
+        >
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-semibold">{data.project.name}</span>
-          <span className="text-muted-foreground truncate text-xs">{data.project.description || t("noDescription")}</span>
+          <span className="text-muted-foreground truncate text-xs">
+            {data.project.description || t("noDescription")}
+          </span>
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button size="sm" variant="ghost" onClick={saveNow} disabled={!activeTab?.isDirty} aria-label="Save">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={saveNow}
+              disabled={!activeTab?.isDirty}
+              aria-label="Save"
+            >
               <Save className="size-4" />
             </Button>
           </TooltipTrigger>
@@ -521,7 +524,13 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
                       <Boxes className="mr-1 size-3" /> {tpkg("title")}
                     </TabsTrigger>
                   </TabsList>
-                  <Button size="icon" variant="ghost" className="size-6" onClick={clearOutput} aria-label="Clear">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-6"
+                    onClick={clearOutput}
+                    aria-label="Clear"
+                  >
                     <Trash2 className="size-3" />
                   </Button>
                 </div>
@@ -538,9 +547,9 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
                               ? "text-red-500"
                               : line.type === "warn"
                                 ? "text-yellow-500"
-                                  : line.type === "info"
-                                    ? "text-blue-500"
-                                    : "text-foreground"
+                                : line.type === "info"
+                                  ? "text-blue-500"
+                                  : "text-foreground"
                           }
                         >
                           {line.text}
@@ -564,7 +573,7 @@ export function ProjectEditor({ id }: ProjectEditorProps) {
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      <AlertDialog open={!!deleteFileId}         onOpenChange={(o: boolean) => !o && setDeleteFileId(null)}>
+      <AlertDialog open={!!deleteFileId} onOpenChange={(o: boolean) => !o && setDeleteFileId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteFileConfirm")}</AlertDialogTitle>

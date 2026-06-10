@@ -1,19 +1,13 @@
-"use client"
+"use client";
 
-import { useState, useTransition, useMemo } from "react"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { useState, useTransition, useMemo } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,31 +17,53 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Search, Download, FileText, CheckCircle2, XCircle, Loader2, ArrowRight, Clock, History as HistoryIcon, RefreshCw, ChevronLeft, ChevronRight, X, Trash2 } from "lucide-react"
-import { formatBytes, formatRelativeTime } from "@/lib/utils"
-import { toast } from "sonner"
+} from "@/components/ui/alert-dialog";
+import {
+  Search,
+  Download,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  ArrowRight,
+  Clock,
+  History as HistoryIcon,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Trash2,
+} from "lucide-react";
+import { formatBytes, formatRelativeTime } from "@/lib/utils";
+import { toast } from "sonner";
 
 const FORMAT_LABELS: Record<string, string> = {
-  docx: "DOCX", pdf: "PDF", md: "MD", html: "HTML",
-  txt: "TXT", xlsx: "XLSX", csv: "CSV", json: "JSON",
-  xml: "XML", pptx: "PPTX",
-}
+  docx: "DOCX",
+  pdf: "PDF",
+  md: "MD",
+  html: "HTML",
+  txt: "TXT",
+  xlsx: "XLSX",
+  csv: "CSV",
+  json: "JSON",
+  xml: "XML",
+  pptx: "PPTX",
+};
 
 interface HistoryRecord {
-  id: string
-  inputFormat: string
-  outputFormat: string
-  status: string
-  progress: number | null
-  outputSize: number | null
-  outputFilename: string | null
-  error: string | null
-  durationMs: number | null
-  createdAt: Date
-  completedAt: Date | null
-  filename: string | null
-  inputSize: number | null
+  id: string;
+  inputFormat: string;
+  outputFormat: string;
+  status: string;
+  progress: number | null;
+  outputSize: number | null;
+  outputFilename: string | null;
+  error: string | null;
+  durationMs: number | null;
+  createdAt: Date;
+  completedAt: Date | null;
+  filename: string | null;
+  inputSize: number | null;
 }
 
 export function HistoryList({
@@ -58,78 +74,75 @@ export function HistoryList({
   initialQuery,
   initialStatus,
 }: {
-  records: HistoryRecord[]
-  total: number
-  page: number
-  totalPages: number
-  pageSize: number
-  initialQuery: string
-  initialStatus: string
+  records: HistoryRecord[];
+  total: number;
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  initialQuery: string;
+  initialStatus: string;
 }) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [query, setQuery] = useState(initialQuery)
-  const [isPending, startTransition] = useTransition()
-  const [deleting, setDeleting] = useState<HistoryRecord | null>(null)
-  const [deleteAll, setDeleteAll] = useState(false)
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(initialQuery);
+  const [isPending, startTransition] = useTransition();
+  const [deleting, setDeleting] = useState<HistoryRecord | null>(null);
+  const [deleteAll, setDeleteAll] = useState(false);
 
   const updateParams = (updates: Record<string, string | null | undefined>) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     for (const [k, v] of Object.entries(updates)) {
-      if (v == null || v === "" || v === "all") params.delete(k)
-      else params.set(k, v)
+      if (v == null || v === "" || v === "all") params.delete(k);
+      else params.set(k, v);
     }
-    if (!("page" in updates)) params.delete("page")
+    if (!("page" in updates)) params.delete("page");
     startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`)
-    })
-  }
+      router.push(`${pathname}?${params.toString()}`);
+    });
+  };
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    updateParams({ q: query })
-  }
+    e.preventDefault();
+    updateParams({ q: query });
+  };
 
   const handleClearSearch = () => {
-    setQuery("")
-    updateParams({ q: null })
-  }
+    setQuery("");
+    updateParams({ q: null });
+  };
 
   const handleDelete = async () => {
-    if (!deleting) return
+    if (!deleting) return;
     try {
-      const res = await fetch(`/api/conversions/${deleting.id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Delete failed")
-      toast.success("Conversion deleted")
-      setDeleting(null)
-      router.refresh()
+      const res = await fetch(`/api/conversions/${deleting.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      toast.success("Conversion deleted");
+      setDeleting(null);
+      router.refresh();
     } catch (e) {
       toast.error("Failed to delete", {
         description: e instanceof Error ? e.message : String(e),
-      })
+      });
     }
-  }
+  };
 
   const handleDeleteAll = async () => {
     try {
-      const res = await fetch("/api/conversions", { method: "DELETE" })
-      if (!res.ok) throw new Error("Clear failed")
-      const data = (await res.json()) as { count?: number }
-      toast.success("History cleared", { description: `${data.count ?? 0} items removed` })
-      setDeleteAll(false)
-      router.refresh()
+      const res = await fetch("/api/conversions", { method: "DELETE" });
+      if (!res.ok) throw new Error("Clear failed");
+      const data = (await res.json()) as { count?: number };
+      toast.success("History cleared", { description: `${data.count ?? 0} items removed` });
+      setDeleteAll(false);
+      router.refresh();
     } catch (e) {
       toast.error("Failed to clear", {
         description: e instanceof Error ? e.message : String(e),
-      })
+      });
     }
-  }
+  };
 
-  const hasFilters = useMemo(
-    () => Boolean(query) || initialStatus !== "all",
-    [query, initialStatus],
-  )
+  const hasFilters = useMemo(() => Boolean(query) || initialStatus !== "all", [query, initialStatus]);
 
   return (
     <>
@@ -137,28 +150,25 @@ export function HistoryList({
         <CardContent className="p-4">
           <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
               <Input
                 placeholder="Search by filename..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="pl-9 pr-9"
+                className="pr-9 pl-9"
               />
               {query && (
                 <button
                   type="button"
                   onClick={handleClearSearch}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 hover:bg-muted"
+                  className="hover:bg-muted absolute top-1/2 right-2 -translate-y-1/2 rounded p-1"
                   aria-label="Clear search"
                 >
                   <X className="size-3.5" />
                 </button>
               )}
             </div>
-            <Select
-              value={initialStatus}
-              onValueChange={(v) => updateParams({ status: v })}
-            >
+            <Select value={initialStatus} onValueChange={(v) => updateParams({ status: v })}>
               <SelectTrigger className="w-full sm:w-44">
                 <SelectValue />
               </SelectTrigger>
@@ -179,8 +189,8 @@ export function HistoryList({
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  setQuery("")
-                  updateParams({ q: null, status: null, page: null })
+                  setQuery("");
+                  updateParams({ q: null, status: null, page: null });
                 }}
               >
                 Clear
@@ -195,16 +205,14 @@ export function HistoryList({
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             {hasFilters ? (
               <>
-                <Search className="mb-4 size-12 text-muted-foreground" />
+                <Search className="text-muted-foreground mb-4 size-12" />
                 <h3 className="mb-2 text-lg font-semibold">No results found</h3>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  Try adjusting your search or filters.
-                </p>
+                <p className="text-muted-foreground mb-6 text-sm">Try adjusting your search or filters.</p>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setQuery("")
-                    updateParams({ q: null, status: null })
+                    setQuery("");
+                    updateParams({ q: null, status: null });
                   }}
                 >
                   Clear filters
@@ -212,11 +220,9 @@ export function HistoryList({
               </>
             ) : (
               <>
-                <HistoryIcon className="mb-4 size-12 text-muted-foreground" />
+                <HistoryIcon className="text-muted-foreground mb-4 size-12" />
                 <h3 className="mb-2 text-lg font-semibold">No conversions yet</h3>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  Start by converting your first document.
-                </p>
+                <p className="text-muted-foreground mb-6 text-sm">Start by converting your first document.</p>
                 <Button asChild>
                   <Link href="/convert">
                     Start Converting
@@ -231,17 +237,13 @@ export function HistoryList({
         <>
           <div className="space-y-2">
             {records.map((record) => (
-              <RecordCard
-                key={record.id}
-                record={record}
-                onDelete={() => setDeleting(record)}
-              />
+              <RecordCard key={record.id} record={record} onDelete={() => setDeleting(record)} />
             ))}
           </div>
 
           {total > 0 && (
             <div className="flex flex-col items-center justify-between gap-3 pt-2 sm:flex-row">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -272,7 +274,7 @@ export function HistoryList({
                     <ChevronLeft className="size-3.5" />
                     Previous
                   </Button>
-                  <span className="px-2 text-sm text-muted-foreground">
+                  <span className="text-muted-foreground px-2 text-sm">
                     Page {page} of {totalPages}
                   </span>
                   <Button
@@ -296,12 +298,16 @@ export function HistoryList({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this conversion?</AlertDialogTitle>
             <AlertDialogDescription>
-              The conversion record for &quot;{deleting?.filename ?? "Unknown file"}&quot; will be permanently deleted. This cannot be undone.
+              The conversion record for &quot;{deleting?.filename ?? "Unknown file"}&quot; will be permanently
+              deleted. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -313,50 +319,54 @@ export function HistoryList({
           <AlertDialogHeader>
             <AlertDialogTitle>Clear all conversion history?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all {total.toLocaleString()} conversion records. This action cannot be undone.
+              This will permanently delete all {total.toLocaleString()} conversion records. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDeleteAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Clear all
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }
 
 function RecordCard({ record, onDelete }: { record: HistoryRecord; onDelete: () => void }) {
   const handleDownload = async () => {
     try {
-      const res = await fetch(`/api/conversions/${record.id}/download`)
-      if (!res.ok) throw new Error("Download failed")
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = record.outputFilename ?? "converted"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 100)
+      const res = await fetch(`/api/conversions/${record.id}/download`);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = record.outputFilename ?? "converted";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (e) {
       toast.error("Download failed", {
         description: e instanceof Error ? e.message : String(e),
-      })
+      });
     }
-  }
+  };
 
   return (
     <Card>
       <CardContent className="flex items-center justify-between gap-4 p-4">
         <div className="flex min-w-0 items-center gap-3">
-          <FileText className="size-7 shrink-0 text-muted-foreground" />
+          <FileText className="text-muted-foreground size-7 shrink-0" />
           <div className="min-w-0">
             <p className="truncate font-medium">{record.filename ?? "Unknown file"}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+            <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-sm">
               <Badge variant="outline" className="text-xs">
                 {FORMAT_LABELS[record.inputFormat] ?? record.inputFormat}
               </Badge>
@@ -364,9 +374,7 @@ function RecordCard({ record, onDelete }: { record: HistoryRecord; onDelete: () 
               <Badge variant="outline" className="text-xs">
                 {FORMAT_LABELS[record.outputFormat] ?? record.outputFormat}
               </Badge>
-              {record.inputSize != null && (
-                <span className="text-xs">{formatBytes(record.inputSize)}</span>
-              )}
+              {record.inputSize != null && <span className="text-xs">{formatBytes(record.inputSize)}</span>}
               {record.durationMs != null && (
                 <span className="hidden text-xs sm:inline">· {(record.durationMs / 1000).toFixed(1)}s</span>
               )}
@@ -394,7 +402,7 @@ function RecordCard({ record, onDelete }: { record: HistoryRecord; onDelete: () 
                 {record.status}
               </Badge>
             )}
-            <span className="hidden text-xs text-muted-foreground sm:block">
+            <span className="text-muted-foreground hidden text-xs sm:block">
               <Clock className="mr-1 inline size-3" />
               {formatRelativeTime(record.createdAt)}
             </span>
@@ -421,5 +429,5 @@ function RecordCard({ record, onDelete }: { record: HistoryRecord; onDelete: () 
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

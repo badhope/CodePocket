@@ -136,7 +136,12 @@ export function isOriginWhitelisted(origin: string | null | undefined): boolean 
     return list.includes(origin);
   }
   const appUrl = serverEnv.AUTH_URL ?? "http://localhost:3000";
-  const devOrigins = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"];
+  const devOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+  ];
   return [...devOrigins, appUrl].includes(origin);
 }
 
@@ -155,9 +160,7 @@ function originFromUrl(url: string): string | null {
  */
 export function allowedOrigins(): string[] {
   const list = serverEnv.CORS_ALLOWED_ORIGINS;
-  const fromEnv = (list ?? [])
-    .map(originFromUrl)
-    .filter((v: string | null): v is string => v !== null);
+  const fromEnv = (list ?? []).map(originFromUrl).filter((v: string | null): v is string => v !== null);
   const appOrigin = originFromUrl(serverEnv.AUTH_URL ?? "http://localhost:3000");
   const devOrigins = [
     "http://localhost:3000",

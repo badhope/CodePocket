@@ -19,10 +19,7 @@ async function findFile(projectId: string, fileId: string, userId: string) {
   });
 }
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string; fileId: string }> },
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string; fileId: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id, fileId } = await params;
@@ -31,10 +28,7 @@ export async function GET(
   return NextResponse.json(f);
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string; fileId: string }> },
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string; fileId: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const limit = await apiRateLimit().limit(`files:patch:${session.user.id}`);
@@ -71,10 +65,7 @@ export async function PATCH(
   return NextResponse.json(updated);
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string; fileId: string }> },
-) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string; fileId: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id, fileId } = await params;

@@ -1,7 +1,27 @@
 // @ts-nocheck -- third-party types are incomplete
 import { z } from "zod";
 
-const SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "cpp", "c", "java", "rust", "go", "csharp", "php", "ruby", "kotlin", "swift", "scala", "bash", "lua", "sql", "html", "css"] as const
+const SUPPORTED_LANGUAGES = [
+  "python",
+  "javascript",
+  "typescript",
+  "cpp",
+  "c",
+  "java",
+  "rust",
+  "go",
+  "csharp",
+  "php",
+  "ruby",
+  "kotlin",
+  "swift",
+  "scala",
+  "bash",
+  "lua",
+  "sql",
+  "html",
+  "css",
+] as const;
 
 const limitsSchema = z.object({
   cpuTimeMs: z.number().int().min(100).max(60_000).default(10_000),
@@ -22,7 +42,10 @@ export const executeSchema = z.object({
   language: z.enum(SUPPORTED_LANGUAGES),
   version: z.string().max(32).optional(),
   files: z.array(fileSchema).min(1).max(50),
-  stdin: z.string().max(64 * 1024).optional(),
+  stdin: z
+    .string()
+    .max(64 * 1024)
+    .optional(),
   args: z.array(z.string().max(512)).max(64).default([]),
   env: z.record(z.string(), z.string().max(1024)).default({}),
   compileTimeoutMs: z.number().int().min(100).max(60_000).default(10_000),

@@ -13,11 +13,13 @@ import { getLanguage } from "@/lib/execution";
 export const runtime = "nodejs";
 
 function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 200) || nanoid(6);
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 200) || nanoid(6)
+  );
 }
 
 export async function GET(req: Request) {
@@ -38,9 +40,7 @@ export async function GET(req: Request) {
 
   const conditions = [eq(projects.ownerId, session.user.id)];
   if (q) {
-    conditions.push(
-      or(ilike(projects.name, `%${q}%`), ilike(projects.description, `%${q}%`))!,
-    );
+    conditions.push(or(ilike(projects.name, `%${q}%`), ilike(projects.description, `%${q}%`))!);
   }
   if (language && getLanguage(language)) {
     conditions.push(eq(projects.language, language));
@@ -121,7 +121,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "create_failed" }, { status: 500 });
   }
 
-  const mainFile = language === "html" ? "index.html" : language === "cpp" || language === "c" ? "main." + (language === "cpp" ? "cpp" : "c") : "main." + (meta.extensions[0]?.replace(/^\./, "") ?? "txt");
+  const mainFile =
+    language === "html"
+      ? "index.html"
+      : language === "cpp" || language === "c"
+        ? "main." + (language === "cpp" ? "cpp" : "c")
+        : "main." + (meta.extensions[0]?.replace(/^\./, "") ?? "txt");
   await db.insert(projectFiles).values({
     projectId: created.id,
     path: mainFile,

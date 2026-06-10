@@ -1,4 +1,5 @@
 ---
-name: Discussion category: Q&A
-description: 问题求助
+title: 问题求助
+labels:
+  - q-a
 ---

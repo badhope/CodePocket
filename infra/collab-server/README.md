@@ -61,15 +61,15 @@ COLLAB_SHARED_SECRET=<same value as fly secrets>
 
 ## Configuration
 
-| Variable                  | Default       | Description                                  |
-|---------------------------|---------------|----------------------------------------------|
-| `PORT`                    | `1234`        | WebSocket port                               |
-| `HOST`                    | `0.0.0.0`     | Bind address                                 |
-| `COLLAB_REQUIRE_AUTH`     | `false`       | Require shared secret in client token        |
-| `COLLAB_SHARED_SECRET`    | empty         | Shared secret (required if auth enabled)     |
-| `COLLAB_MAX_DOCS`         | `1000`        | Max concurrent rooms in memory               |
-| `COLLAB_DOC_TTL_MS`       | `3600000`     | Inactive doc eviction window (1h)            |
-| `COLLAB_LOG_LEVEL`        | `info`        | `info` / `warn` / `error`                    |
+| Variable               | Default   | Description                              |
+| ---------------------- | --------- | ---------------------------------------- |
+| `PORT`                 | `1234`    | WebSocket port                           |
+| `HOST`                 | `0.0.0.0` | Bind address                             |
+| `COLLAB_REQUIRE_AUTH`  | `false`   | Require shared secret in client token    |
+| `COLLAB_SHARED_SECRET` | empty     | Shared secret (required if auth enabled) |
+| `COLLAB_MAX_DOCS`      | `1000`    | Max concurrent rooms in memory           |
+| `COLLAB_DOC_TTL_MS`    | `3600000` | Inactive doc eviction window (1h)        |
+| `COLLAB_LOG_LEVEL`     | `info`    | `info` / `warn` / `error`                |
 
 ## Limits
 

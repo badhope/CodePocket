@@ -38,10 +38,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const proj = await assertProjectOwnership(id, session.user.id);
   if (!proj) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const rows = await db
-    .select()
-    .from(packages)
-    .where(eq(packages.projectId, id));
+  const rows = await db.select().from(packages).where(eq(packages.projectId, id));
   return NextResponse.json({ packages: rows });
 }
 
@@ -55,10 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json();
   const parsed = addPackageSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "validation", issues: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "validation", issues: parsed.error.flatten() }, { status: 400 });
   }
 
   const [created] = await db
@@ -89,10 +83,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const body = await req.json();
   const parsed = removePackageSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "validation", issues: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "validation", issues: parsed.error.flatten() }, { status: 400 });
   }
 
   const result = await db

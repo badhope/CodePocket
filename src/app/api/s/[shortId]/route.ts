@@ -42,7 +42,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ shortId:
     content = snip;
   }
 
-  await db.update(shares).set({ viewCount: sql`${shares.viewCount} + 1` }).where(eq(shares.id, share.id));
+  await db
+    .update(shares)
+    .set({ viewCount: sql`${shares.viewCount} + 1` })
+    .where(eq(shares.id, share.id));
 
   if (share.visibility === "burn_after_read") {
     await db.update(shares).set({ burned: true }).where(eq(shares.id, share.id));

@@ -23,10 +23,7 @@ export async function POST(req: Request) {
   try {
     const limit = await streamRateLimit().limit(`exec:sse:${session.user.id}`);
     if (!limit.success) {
-      return NextResponse.json(
-        { error: "rate_limited", retryAfter: limit.reset },
-        { status: 429 },
-      );
+      return NextResponse.json({ error: "rate_limited", retryAfter: limit.reset }, { status: 429 });
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -90,10 +87,8 @@ export async function POST(req: Request) {
           controller.enqueue(sse("compile", result.result.compile));
         }
         if (result.result?.run) {
-          if (result.result.run.stdout)
-            controller.enqueue(sse("stdout", { data: result.result.run.stdout }));
-          if (result.result.run.stderr)
-            controller.enqueue(sse("stderr", { data: result.result.run.stderr }));
+          if (result.result.run.stdout) controller.enqueue(sse("stdout", { data: result.result.run.stdout }));
+          if (result.result.run.stderr) controller.enqueue(sse("stderr", { data: result.result.run.stderr }));
         }
         controller.enqueue(
           sse("exit", {
