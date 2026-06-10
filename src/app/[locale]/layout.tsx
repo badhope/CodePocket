@@ -1,16 +1,16 @@
-import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
-import { NextIntlClientProvider, hasLocale } from "next-intl"
-import { getMessages, setRequestLocale } from "next-intl/server"
-import { notFound } from "next/navigation"
-import { Providers } from "@/components/providers"
-import { Header } from "@/components/layout/header"
-import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
-import { routing } from "@/lib/i18n/routing"
-import "@/app/globals.css"
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { NextIntlClientProvider, hasLocale } from "next-intl";
+import { getMessages, setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { Providers } from "@/components/providers";
+import { Header } from "@/components/layout/header";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
+import { routing } from "@/lib/i18n/routing";
+import "@/app/globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "DocForge", template: "%s · DocForge" },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: { type: "website", locale: "en_US", siteName: "DocForge" },
   twitter: { card: "summary_large_image", title: "DocForge" },
   robots: { index: true, follow: true },
-}
+};
 
 export const viewport: Viewport = {
   themeColor: [
@@ -33,23 +33,23 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-}
+};
 
 export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }))
+  return routing.locales.map((locale) => ({ locale }));
 }
 
 export default async function LocaleLayout({
   children,
   params,
 }: {
-  children: React.ReactNode
-  params: Promise<{ locale: string }>
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params
-  if (!hasLocale(routing.locales, locale)) notFound()
-  setRequestLocale(locale)
-  const messages = await getMessages()
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  setRequestLocale(locale);
+  const messages = await getMessages();
 
   return (
     <html
@@ -57,7 +57,7 @@ export default async function LocaleLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex h-full flex-col bg-background text-foreground">
+      <body className="bg-background text-foreground flex h-full flex-col">
         <NextIntlClientProvider messages={messages}>
           <Providers>
             <Header />
@@ -67,5 +67,5 @@ export default async function LocaleLayout({
         </NextIntlClientProvider>
       </body>
     </html>
-  )
+  );
 }

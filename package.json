@@ -132,7 +132,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.7",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^10",
+    "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",

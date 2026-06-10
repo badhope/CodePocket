@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server"
-import { ConversionCache } from "@/lib/convert/cache"
-import { success } from "@/lib/api/response"
+import { NextResponse } from "next/server";
+import { ConversionCache } from "@/lib/convert/cache";
+import { success } from "@/lib/api/response";
 
-export const dynamic = "force-dynamic"
-export const runtime = "nodejs"
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
  * GET /api/metrics
@@ -17,8 +17,8 @@ export const runtime = "nodejs"
  * production deployments.
  */
 export async function GET() {
-  const cache = ConversionCache.getInstance()
-  const mem = process.memoryUsage()
+  const cache = ConversionCache.getInstance();
+  const mem = process.memoryUsage();
   return NextResponse.json(
     success({
       cache: cache.stats,
@@ -39,5 +39,5 @@ export async function GET() {
         "Cache-Control": "no-store, max-age=0",
       },
     },
-  )
+  );
 }

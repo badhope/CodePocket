@@ -1,20 +1,11 @@
-"use client"
+"use client";
 
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface TrendPoint {
-  date: string
-  conversions: number
-  successful: number
+  date: string;
+  conversions: number;
+  successful: number;
 }
 
 export function TrendChart({ data }: { data: TrendPoint[] }) {
@@ -78,5 +69,5 @@ export function TrendChart({ data }: { data: TrendPoint[] }) {
         </AreaChart>
       </ResponsiveContainer>
     </div>
-  )
+  );
 }

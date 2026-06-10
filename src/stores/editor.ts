@@ -128,9 +128,7 @@ export const useEditorStore = create<EditorState>()(
         })),
       markClean: (id) =>
         set((s) => ({
-          tabs: s.tabs.map((t) =>
-            t.id === id ? { ...t, isDirty: false, savedContent: t.content } : t,
-          ),
+          tabs: s.tabs.map((t) => (t.id === id ? { ...t, isDirty: false, savedContent: t.content } : t)),
         })),
       setLanguage: (lang) => set({ currentLanguage: lang }),
       setFontSize: (n) => set({ fontSize: Math.max(10, Math.min(24, n)) }),

@@ -1,55 +1,79 @@
 # Labeler config: maps file changes to PR labels
-"area: ci":
-  - .github/**
-  - .gitleaks.toml
+# Format reference: https://github.com/actions/labeler/blob/v5/README.md
 
-"area: docs":
-  - "**/*.md"
-  - CHANGELOG.md
-  - README.md
-  - SECURITY.md
-  - CONTRIBUTING.md
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - .gitleaks.toml
 
-"area: security":
-  - .gitleaks.toml
-  - SECURITY.md
-  - src/lib/auth/**
-  - src/lib/api/ratelimit.ts
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - CHANGELOG.md
+          - README.md
+          - SECURITY.md
+          - CONTRIBUTING.md
 
-"area: infra":
-  - infra/**
-  - docker-compose.yml
-  - Dockerfile*
-  - Makefile
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .gitleaks.toml
+          - SECURITY.md
+          - src/lib/auth/**
+          - src/lib/api/ratelimit.ts
 
-"area: database":
-  - drizzle/**
-  - src/lib/db/**
-  - scripts/db-*.sh
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - infra/**
+          - docker-compose.yml
+          - Dockerfile*
+          - Makefile
 
-"area: ui":
-  - src/app/**
-  - src/components/**
-  - src/messages/**
-  - public/**
+database:
+  - changed-files:
+      - any-glob-to-any-file:
+          - drizzle/**
+          - src/lib/db/**
+          - scripts/db-*.sh
 
-"area: tools":
-  - src/lib/tools/**
-  - src/lib/convert/**
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/app/**
+          - src/components/**
+          - src/messages/**
+          - public/**
 
-"area: execution":
-  - src/lib/execution/**
-  - infra/piston-shim/**
+tools:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/tools/**
+          - src/lib/convert/**
 
-"area: collab":
-  - src/lib/collab/**
-  - infra/collab-server/**
+execution:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/execution/**
+          - infra/piston-shim/**
 
-"dependencies":
-  - package.json
-  - pnpm-lock.yaml
-  - pnpm-workspace.yaml
+collab:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/collab/**
+          - infra/collab-server/**
 
-"breaking":
-  - "**/*.ts"
-  - "**/*.tsx"
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - package.json
+          - pnpm-lock.yaml
+          - pnpm-workspace.yaml
+
+breaking:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.ts"
+          - "**/*.tsx"

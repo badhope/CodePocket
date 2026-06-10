@@ -11,13 +11,19 @@ export const createFileSchema = z.object({
   projectId: z.string().uuid(),
   path: filePathSchema,
   type: z.enum(["file", "directory"]).default("file"),
-  content: z.string().max(5 * 1024 * 1024).optional(),
+  content: z
+    .string()
+    .max(5 * 1024 * 1024)
+    .optional(),
   mime: z.string().max(128).optional(),
   encoding: z.enum(["utf-8", "base64", "binary"]).default("utf-8"),
 });
 
 export const updateFileSchema = z.object({
-  content: z.string().max(5 * 1024 * 1024).optional(),
+  content: z
+    .string()
+    .max(5 * 1024 * 1024)
+    .optional(),
   commitMessage: z.string().max(500).optional(),
 });
 

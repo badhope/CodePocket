@@ -108,15 +108,14 @@ export async function POST(req: NextRequest) {
     if (rl.scope === "unconfigured") {
       logCtx.error("rate_limit_backend_unavailable", { reason: "no_redis_backend" });
       return withCors(
-        errors.serviceUnavailable("Redis backend not configured. Set UPSTASH_REDIS_REST_URL/TOKEN or REDIS_URL."),
+        errors.serviceUnavailable(
+          "Redis backend not configured. Set UPSTASH_REDIS_REST_URL/TOKEN or REDIS_URL.",
+        ),
         origin,
       );
     }
     logCtx.warn("convert_rate_limited", { scope: rl.scope, retryAfterMs: rl.retryAfterMs });
-    return withCors(
-      errors.rateLimited(Math.ceil(rl.retryAfterMs / 1000)),
-      origin,
-    );
+    return withCors(errors.rateLimited(Math.ceil(rl.retryAfterMs / 1000)), origin);
   }
 
   const log = logger.withContext({ requestId, ip, path: "/api/convert", method: "POST" });
@@ -136,7 +135,9 @@ export async function POST(req: NextRequest) {
         if (userRl.scope === "unconfigured") {
           log.error("rate_limit_backend_unavailable", { reason: "no_redis_backend", userId });
           return withCors(
-            errors.serviceUnavailable("Redis backend not configured. Set UPSTASH_REDIS_REST_URL/TOKEN or REDIS_URL."),
+            errors.serviceUnavailable(
+              "Redis backend not configured. Set UPSTASH_REDIS_REST_URL/TOKEN or REDIS_URL.",
+            ),
             origin,
           );
         }
@@ -169,19 +170,13 @@ export async function POST(req: NextRequest) {
 
     if (file.size > ABSOLUTE_MAX_BYTES) {
       log.warn("convert_file_too_large", { size: file.size, userId });
-      return withCors(
-        errors.payloadTooLarge(`File too large. Max ${MAX_FILE_SIZE_MB}MB`),
-        origin,
-      );
+      return withCors(errors.payloadTooLarge(`File too large. Max ${MAX_FILE_SIZE_MB}MB`), origin);
     }
 
     const inputFormat = detectFormat(file.name);
     if (!inputFormat) {
       log.warn("convert_unsupported_input", { filename: file.name, userId });
-      return withCors(
-        errors.badRequest("Unsupported input format"),
-        origin,
-      );
+      return withCors(errors.badRequest("Unsupported input format"), origin);
     }
 
     if (!INPUT_FORMATS.includes(inputFormat as (typeof INPUT_FORMATS)[number])) {
@@ -192,20 +187,14 @@ export async function POST(req: NextRequest) {
     if (!isConversionSupported(inputFormat, outputFormatTyped)) {
       log.warn("convert_unsupported_conversion", { inputFormat, outputFormat, userId });
       return withCors(
-        errors.badRequest(
-          `Conversion from ${inputFormat} to ${outputFormat} is not supported`,
-        ),
+        errors.badRequest(`Conversion from ${inputFormat} to ${outputFormat} is not supported`),
         origin,
       );
     }
 
     // Read the bytes once, then run the magic-number check on a slice.
     const buffer = Buffer.from(await file.arrayBuffer());
-    const head = new Uint8Array(
-      buffer.buffer,
-      buffer.byteOffset,
-      Math.min(buffer.byteLength, 16),
-    );
+    const head = new Uint8Array(buffer.buffer, buffer.byteOffset, Math.min(buffer.byteLength, 16));
     if (!validateMagicBytes(inputFormat, head)) {
       log.warn("convert_magic_bytes_mismatch", {
         inputFormat,
@@ -213,9 +202,7 @@ export async function POST(req: NextRequest) {
         userId,
       });
       return withCors(
-        errors.badRequest(
-          `File contents do not match the declared ${inputFormat} format`,
-        ),
+        errors.badRequest(`File contents do not match the declared ${inputFormat} format`),
         origin,
       );
     }
@@ -239,10 +226,7 @@ export async function POST(req: NextRequest) {
         error: result.error,
         userId,
       });
-      return withCors(
-        errors.internal(result.error ?? "Conversion failed"),
-        origin,
-      );
+      return withCors(errors.internal(result.error ?? "Conversion failed"), origin);
     }
 
     const outputFilename = result.outputFilename || getOutputFilename(file.name, outputFormatTyped);

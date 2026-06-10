@@ -64,9 +64,7 @@ describe("language registry integrity", () => {
   it("category values are from a known set", () => {
     const validCategories = ["scripting", "compiled", "jvm", "dotnet", "data", "markup", "shell"];
     for (const lang of LANGUAGE_LIST) {
-      expect(validCategories, `${lang.id} has invalid category ${lang.category}`).toContain(
-        lang.category,
-      );
+      expect(validCategories, `${lang.id} has invalid category ${lang.category}`).toContain(lang.category);
     }
   });
 

@@ -23,14 +23,10 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: isGhPages ? "1mb" : "10mb",
-      ...(isGhPages
-        ? { allowedOrigins: ["localhost:3000", "127.0.0.1:3000"] }
-        : {}),
+      ...(isGhPages ? { allowedOrigins: ["localhost:3000", "127.0.0.1:3000"] } : {}),
     },
   },
-  serverExternalPackages: isGhPages
-    ? ["isomorphic-git"]
-    : ["@sentry/nextjs", "isomorphic-git"],
+  serverExternalPackages: isGhPages ? ["isomorphic-git"] : ["@sentry/nextjs", "isomorphic-git"],
   images: isGhPages
     ? { unoptimized: true }
     : {
@@ -57,7 +53,10 @@ const nextConfig: NextConfig = {
       {
         source: "/sw.js",
         headers: [
-          { key: "Cache-Control", value: isGhPages ? "no-cache, no-store, must-revalidate" : "public, max-age=0, must-revalidate" },
+          {
+            key: "Cache-Control",
+            value: isGhPages ? "no-cache, no-store, must-revalidate" : "public, max-age=0, must-revalidate",
+          },
           { key: "Service-Worker-Allowed", value: "/" },
         ],
       },

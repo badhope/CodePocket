@@ -68,12 +68,9 @@ export async function POST(req: Request) {
   }
 
   const shortId = nanoid(10);
-  const passwordHash = parsed.data.password
-    ? await bcrypt.hash(parsed.data.password, 10)
-    : null;
+  const passwordHash = parsed.data.password ? await bcrypt.hash(parsed.data.password, 10) : null;
 
-  const expiresAt =
-    parsed.data.expiresIn > 0 ? new Date(Date.now() + parsed.data.expiresIn * 1000) : null;
+  const expiresAt = parsed.data.expiresIn > 0 ? new Date(Date.now() + parsed.data.expiresIn * 1000) : null;
 
   const [created] = await db
     .insert(shares)
@@ -90,8 +87,5 @@ export async function POST(req: Request) {
 
   if (!created) return NextResponse.json({ error: "create_failed" }, { status: 500 });
 
-  return NextResponse.json(
-    { shortId, url: `/s/${shortId}`, expiresAt: created.expiresAt },
-    { status: 201 },
-  );
+  return NextResponse.json({ shortId, url: `/s/${shortId}`, expiresAt: created.expiresAt }, { status: 201 });
 }

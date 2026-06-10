@@ -1,12 +1,12 @@
-import { type PropsWithChildren } from 'react'
-import { useLaunch } from '@tarojs/taro'
+import { type PropsWithChildren } from "react";
+import { useLaunch } from "@tarojs/taro";
 
 function App({ children }: PropsWithChildren) {
   useLaunch(() => {
-    console.log('DocForge Mini Program launched.')
-  })
+    console.log("DocForge Mini Program launched.");
+  });
 
-  return children
+  return children;
 }
 
-export default App
+export default App;

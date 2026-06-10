@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  ECOSYSTEMS,
-  renderManifest,
-  type PackageEcosystem,
-  type PackageRecord,
-} from "@/lib/packages";
+import { ECOSYSTEMS, renderManifest, type PackageEcosystem, type PackageRecord } from "@/lib/packages";
 
 describe("ecosystem configuration", () => {
   it("all ecosystems have required fields", () => {

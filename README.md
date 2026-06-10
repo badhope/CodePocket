@@ -49,6 +49,7 @@ make dev          # 启动开发服务器
 ```
 
 `make up` 会自动：
+
 - 启动 Postgres 集群（端口 5432）
 - 启动 Redis（端口 6379）
 - 启动本地 Piston-shim 代码执行服务（端口 2000）
@@ -73,13 +74,13 @@ make piston-logs    # 查看日志
 
 全部在 `/[locale]/tools` 下，**完全离线**，零网络请求。
 
-| 分类 | 工具 |
-|------|------|
-| **格式化** | JSON 格式化、CSS 格式化、SQL 格式化、HTML 格式化 |
-| **转换** | YAML⇄JSON、TOML⇄JSON、CSV⇄JSON、Markdown⇄HTML |
-| **编解码** | Base64、URL 编码、SHA 哈希、JWT 解码 |
-| **生成** | UUID、颜色（HEX/RGB/HSL）、进制转换、Lorem ipsum、QR 码 |
-| **解析** | Cron 表达式、正则测试、文本 Diff |
+| 分类       | 工具                                                    |
+| ---------- | ------------------------------------------------------- |
+| **格式化** | JSON 格式化、CSS 格式化、SQL 格式化、HTML 格式化        |
+| **转换**   | YAML⇄JSON、TOML⇄JSON、CSV⇄JSON、Markdown⇄HTML           |
+| **编解码** | Base64、URL 编码、SHA 哈希、JWT 解码                    |
+| **生成**   | UUID、颜色（HEX/RGB/HSL）、进制转换、Lorem ipsum、QR 码 |
+| **解析**   | Cron 表达式、正则测试、文本 Diff                        |
 
 每个工具都通过离线优先状态机（`useBackendStatus` + feature gate）运行。后端在线时走 API，离线时自动降级到浏览器端——不会假装成功，状态一目了然。
 
@@ -152,37 +153,37 @@ unknown → checking → online  → degraded
 
 ## Make 命令速查
 
-| 命令 | 作用 |
-|------|------|
-| `make up` | 启动 Postgres + Redis + Piston-shim，应用迁移 |
-| `make down` | 停止所有后端服务 |
-| `make status` | 查看各服务状态 |
-| `make dev` | 启动 Next.js 开发服务器 |
-| `make build` | 生产构建 |
-| `make test` | 运行单元测试 |
-| `make lint` | ESLint 检查 |
-| `make typecheck` | TypeScript 类型检查 |
-| `make smoke` | 端到端冒烟测试 |
-| `make db-reset` | 重置本地数据库（破坏性） |
-| `make db-studio` | 打开 Drizzle Studio |
-| `make bootstrap` | 首次设置：创建角色/数据库 + 迁移 + 安装依赖 |
+| 命令             | 作用                                          |
+| ---------------- | --------------------------------------------- |
+| `make up`        | 启动 Postgres + Redis + Piston-shim，应用迁移 |
+| `make down`      | 停止所有后端服务                              |
+| `make status`    | 查看各服务状态                                |
+| `make dev`       | 启动 Next.js 开发服务器                       |
+| `make build`     | 生产构建                                      |
+| `make test`      | 运行单元测试                                  |
+| `make lint`      | ESLint 检查                                   |
+| `make typecheck` | TypeScript 类型检查                           |
+| `make smoke`     | 端到端冒烟测试                                |
+| `make db-reset`  | 重置本地数据库（破坏性）                      |
+| `make db-studio` | 打开 Drizzle Studio                           |
+| `make bootstrap` | 首次设置：创建角色/数据库 + 迁移 + 安装依赖   |
 
 ## 环境变量
 
 所有配置都在 `.env` 文件里，完整注释见 [`.env.example`](./.env.example)。关键变量：
 
-| 变量 | 用途 |
-|------|------|
-| `NEXT_PUBLIC_STATIC_DEMO` | `1` = 纯前端模式（gh-pages 构建默认值） |
-| `NEXT_PUBLIC_COLLAB_URL` | Yjs WebSocket 地址；不设 = 单人模式 |
-| `POSTGRES_URL` | 数据库连接串 |
-| `AUTH_SECRET` | NextAuth v5 密钥（32+ 字符） |
-| `AUTH_URL` | 应用 URL |
-| `AUTH_GITHUB_ID/SECRET` | GitHub OAuth（可选） |
-| `UPSTASH_REDIS_REST_*` | Upstash Redis（生产环境） |
-| `RATE_LIMIT_*` | 限流配置 |
-| `PISTON_API_URL` | Piston-shim 地址，默认 `http://127.0.0.1:2000/api/v2` |
-| `SENTRY_DSN` | 错误上报（可选） |
+| 变量                      | 用途                                                  |
+| ------------------------- | ----------------------------------------------------- |
+| `NEXT_PUBLIC_STATIC_DEMO` | `1` = 纯前端模式（gh-pages 构建默认值）               |
+| `NEXT_PUBLIC_COLLAB_URL`  | Yjs WebSocket 地址；不设 = 单人模式                   |
+| `POSTGRES_URL`            | 数据库连接串                                          |
+| `AUTH_SECRET`             | NextAuth v5 密钥（32+ 字符）                          |
+| `AUTH_URL`                | 应用 URL                                              |
+| `AUTH_GITHUB_ID/SECRET`   | GitHub OAuth（可选）                                  |
+| `UPSTASH_REDIS_REST_*`    | Upstash Redis（生产环境）                             |
+| `RATE_LIMIT_*`            | 限流配置                                              |
+| `PISTON_API_URL`          | Piston-shim 地址，默认 `http://127.0.0.1:2000/api/v2` |
+| `SENTRY_DSN`              | 错误上报（可选）                                      |
 
 ## 项目结构
 
@@ -229,10 +230,10 @@ OnlineCode/
 └── miniprogram/            # Taro 微信小程序（共用后端 API）
 ```
 
-| 命令 | 作用 |
-|------|------|
-| `pnpm mp:dev` | 小程序开发模式 |
-| `pnpm mp:build` | 小程序构建 |
+| 命令             | 作用                 |
+| ---------------- | -------------------- |
+| `pnpm mp:dev`    | 小程序开发模式       |
+| `pnpm mp:build`  | 小程序构建           |
 | `make piston-up` | 启动本地 Piston-shim |
 
 ## 测试
@@ -260,6 +261,7 @@ pnpm test:e2e
 **纯静态（浏览器端）** — `pnpm build:gh-pages` 生成自包含静态站点，部署 `out/` 目录到 GitHub Pages、Cloudflare Pages 或任何静态托管。20 个工具和代码沙盒全部可用，无需后端。协作服务器可独立部署。
 
 生产环境建议：
+
 - 用 Upstash Redis 替代本地 Redis
 - 用托管 Postgres（Neon、Supabase、RDS）
 - 可选 Vercel Blob 上传、Sentry 错误上报

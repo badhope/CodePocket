@@ -76,10 +76,12 @@ function getLimiter(prefix: string, max: number, window: string): LimitFn | Prom
   if (cached) return cached;
   const inFlight = limiterInitCache.get(key);
   if (inFlight) return inFlight;
-  const init: Promise<LimitFn> = rateLimit({ prefix, limit: max, windowMs: parseWindow(window) }).then((fn) => {
-    limiterCache.set(key, fn);
-    return fn;
-  });
+  const init: Promise<LimitFn> = rateLimit({ prefix, limit: max, windowMs: parseWindow(window) }).then(
+    (fn) => {
+      limiterCache.set(key, fn);
+      return fn;
+    },
+  );
   limiterInitCache.set(key, init);
   return init;
 }
@@ -100,11 +102,7 @@ export interface CheckResult {
   retryAfterMs: number;
 }
 
-function matchRoute(
-  method: string,
-  path: string,
-  routes: RouteLimitConfig[] = [],
-): RouteLimitConfig | null {
+function matchRoute(method: string, path: string, routes: RouteLimitConfig[] = []): RouteLimitConfig | null {
   for (const r of routes) {
     if (r.method !== "*" && r.method !== method) continue;
     if (!path.startsWith(r.pathPrefix)) continue;

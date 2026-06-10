@@ -8,6 +8,7 @@ DocForge 的所有重要变更都记录在此文件。格式参考 [Keep a Chang
 ## [3.1.0] - 2026-06-05
 
 ### 简介
+
 正式确立"**离线优先（offline-first）**"为产品的核心哲学。20 个工具、playground、编辑器、PWA
 全部在浏览器中即可工作；后端仅解锁账户、协作和高保真 DOCX/PDF/XLSX 输出。
 本版本同时完成"全面深修"——消除所有 TODO/CVE/死代码/不一致描述。
@@ -38,7 +39,7 @@ DocForge 的所有重要变更都记录在此文件。格式参考 [Keep a Chang
 - **`client-tools.ts` 中 `htmlToMarkdown` 同步 `require()`** → 改为 async + 缓存的 `import()`。
 - **过期依赖 CVE**（10 个 moderate）→ `pnpm.overrides` 强制升级
   `dompurify ≥ 3.3.2` / `uuid ≥ 11.1.1` / `postcss ≥ 8.5.10`，`pnpm audit` 清零。
-- **`BackendStatusOverview` 硬编码 ``/en/tools`` 链接** → 改用
+- **`BackendStatusOverview` 硬编码 `/en/tools` 链接** → 改用
   `<Link href="/tools">`，多语言路由正确。
 - **`BackendStatusOverview.LOCAL_FEATURES` 列举已删除的 dead features** → 收紧到 `["convert.local"]`。
 - **7 个 dead `FeatureId`**（`collab.live`、`convert.docx/pdf/xlsx/pptx/image-ocr/batch-upload`）→
@@ -76,14 +77,14 @@ DocForge 的所有重要变更都记录在此文件。格式参考 [Keep a Chang
 
 ### 验证（Verification）
 
-| 检查         | 结果                              |
-| ------------ | --------------------------------- |
-| `pnpm typecheck` | 0 errors                       |
-| `pnpm lint`      | 0 errors, 0 warnings           |
-| `pnpm test`      | 52 / 52 unit tests pass        |
-| `pnpm audit`     | 0 vulnerabilities              |
-| i18n 校验        | 0 missing / extra keys         |
-| `pnpm build`     | 成功（full stack）              |
+| 检查             | 结果                    |
+| ---------------- | ----------------------- |
+| `pnpm typecheck` | 0 errors                |
+| `pnpm lint`      | 0 errors, 0 warnings    |
+| `pnpm test`      | 52 / 52 unit tests pass |
+| `pnpm audit`     | 0 vulnerabilities       |
+| i18n 校验        | 0 missing / extra keys  |
+| `pnpm build`     | 成功（full stack）      |
 
 ---
 

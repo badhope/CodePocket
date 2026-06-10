@@ -22,9 +22,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        ...(process.env.PLAYWRIGHT_CHROME_CHANNEL
-          ? { channel: "chrome" as const }
-          : {}),
+        ...(process.env.PLAYWRIGHT_CHROME_CHANNEL ? { channel: "chrome" as const } : {}),
       },
     },
     {

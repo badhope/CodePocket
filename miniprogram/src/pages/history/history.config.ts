@@ -1,3 +1,3 @@
 export default definePageConfig({
-  navigationBarTitleText: '转换历史'
-})
+  navigationBarTitleText: "转换历史",
+});

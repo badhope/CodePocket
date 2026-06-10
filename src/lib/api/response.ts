@@ -150,22 +150,16 @@ export function paginated<T>(
  * Convenience helpers for common error responses.
  */
 export const errors = {
-  unauthorized: (message = "Authentication required") =>
-    error(message, 401, ERROR_CODES.UNAUTHORIZED),
-  forbidden: (message = "Insufficient permissions") =>
-    error(message, 403, ERROR_CODES.FORBIDDEN),
-  notFound: (message = "Resource not found") =>
-    error(message, 404, ERROR_CODES.NOT_FOUND),
-  badRequest: (message = "Bad request") =>
-    error(message, 400, ERROR_CODES.BAD_REQUEST),
+  unauthorized: (message = "Authentication required") => error(message, 401, ERROR_CODES.UNAUTHORIZED),
+  forbidden: (message = "Insufficient permissions") => error(message, 403, ERROR_CODES.FORBIDDEN),
+  notFound: (message = "Resource not found") => error(message, 404, ERROR_CODES.NOT_FOUND),
+  badRequest: (message = "Bad request") => error(message, 400, ERROR_CODES.BAD_REQUEST),
   methodNotAllowed: (allowed: string[]) =>
     error(`Method not allowed. Allowed: ${allowed.join(", ")}`, 405, ERROR_CODES.METHOD_NOT_ALLOWED),
-  payloadTooLarge: (message = "Payload too large") =>
-    error(message, 413, ERROR_CODES.PAYLOAD_TOO_LARGE),
+  payloadTooLarge: (message = "Payload too large") => error(message, 413, ERROR_CODES.PAYLOAD_TOO_LARGE),
   rateLimited: (retryAfter?: number) =>
     error("Too many requests", 429, ERROR_CODES.RATE_LIMITED, { retryAfter }),
-  internal: (message = "Internal server error") =>
-    error(message, 500, ERROR_CODES.INTERNAL),
+  internal: (message = "Internal server error") => error(message, 500, ERROR_CODES.INTERNAL),
   serviceUnavailable: (message = "Service unavailable") =>
     error(message, 503, ERROR_CODES.SERVICE_UNAVAILABLE),
 };

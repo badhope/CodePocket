@@ -24,10 +24,7 @@ export async function POST(req: Request) {
     const limitKey = isAuthenticated ? `exec:${session.user.id}` : `exec:anon:${ip}`;
     const limit = await limiter(limitKey);
     if (!limit.success) {
-      return NextResponse.json(
-        { error: "rate_limited", retryAfter: limit.reset },
-        { status: 429 },
-      );
+      return NextResponse.json({ error: "rate_limited", retryAfter: limit.reset }, { status: 429 });
     }
   } catch (e) {
     // Redis missing -> backend is not available. Surface 503 so the
@@ -143,7 +140,7 @@ export async function POST(req: Request) {
     durationMs,
     result: {
       language: finalResult?.language ?? meta.pistonLanguage,
-      version: finalResult?.version ?? (parsed.data.version ?? meta.defaultVersion),
+      version: finalResult?.version ?? parsed.data.version ?? meta.defaultVersion,
       run: run ?? null,
       compile: compile ?? null,
     },

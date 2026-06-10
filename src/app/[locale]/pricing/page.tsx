@@ -1,15 +1,15 @@
-import { getTranslations, setRequestLocale } from "next-intl/server"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Check } from "lucide-react"
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params
-  setRequestLocale(locale)
-  const t = await getTranslations("nav")
-  const tc = await getTranslations("common")
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("nav");
+  const tc = await getTranslations("common");
 
   const tiers = [
     {
@@ -69,33 +69,26 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       href: "/sign-up",
       highlighted: false,
     },
-  ]
+  ];
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-12">
       <div className="mx-auto max-w-3xl text-center">
-        <h1 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">
-          {t("pricing")}
-        </h1>
-        <p className="mb-12 text-lg text-muted-foreground">
+        <h1 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">{t("pricing")}</h1>
+        <p className="text-muted-foreground mb-12 text-lg">
           Choose the plan that fits your document conversion needs. Upgrade anytime.
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         {tiers.map((tier) => (
-          <Card
-            key={tier.name}
-            className={tier.highlighted ? "border-primary shadow-lg" : ""}
-          >
+          <Card key={tier.name} className={tier.highlighted ? "border-primary shadow-lg" : ""}>
             <CardHeader>
-              {tier.highlighted && (
-                <Badge className="mb-3 w-fit">Popular</Badge>
-              )}
+              {tier.highlighted && <Badge className="mb-3 w-fit">Popular</Badge>}
               <CardTitle>{tier.name}</CardTitle>
               <div className="mt-2">
                 <span className="text-3xl font-bold">{tier.price}</span>
-                <span className="text-sm text-muted-foreground">{tier.period}</span>
+                <span className="text-muted-foreground text-sm">{tier.period}</span>
               </div>
               <CardDescription>{tier.description}</CardDescription>
             </CardHeader>
@@ -103,16 +96,12 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
               <ul className="space-y-2 text-sm">
                 {tier.features.map((f) => (
                   <li key={f} className="flex items-center gap-2">
-                    <Check className="size-4 shrink-0 text-primary" />
+                    <Check className="text-primary size-4 shrink-0" />
                     {f}
                   </li>
                 ))}
               </ul>
-              <Button
-                className="mt-auto w-full"
-                variant={tier.highlighted ? "default" : "outline"}
-                asChild
-              >
+              <Button className="mt-auto w-full" variant={tier.highlighted ? "default" : "outline"} asChild>
                 <Link href={tier.href}>{tier.cta}</Link>
               </Button>
             </CardContent>
@@ -120,9 +109,9 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         ))}
       </div>
 
-      <p className="mt-8 text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground mt-8 text-center text-sm">
         {tc("comingSoon")}: Custom enterprise plans, dedicated infrastructure, and on-premise deployment.
       </p>
     </div>
-  )
+  );
 }

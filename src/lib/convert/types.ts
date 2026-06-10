@@ -1,60 +1,71 @@
-export type InputFormat = "docx" | "pdf" | "md" | "html" | "txt" | "xlsx" | "csv" | "json" | "xml" | "pptx"
-export type OutputFormat = "pdf" | "docx" | "html" | "md" | "txt" | "csv" | "json" | "xlsx"
+export type InputFormat = "docx" | "pdf" | "md" | "html" | "txt" | "xlsx" | "csv" | "json" | "xml" | "pptx";
+export type OutputFormat = "pdf" | "docx" | "html" | "md" | "txt" | "csv" | "json" | "xlsx";
 
-export const INPUT_FORMATS = ["docx", "pdf", "md", "html", "txt", "xlsx", "csv", "json", "xml", "pptx"] as const
-export const OUTPUT_FORMATS = ["pdf", "docx", "html", "md", "txt", "csv", "json", "xlsx"] as const
+export const INPUT_FORMATS = [
+  "docx",
+  "pdf",
+  "md",
+  "html",
+  "txt",
+  "xlsx",
+  "csv",
+  "json",
+  "xml",
+  "pptx",
+] as const;
+export const OUTPUT_FORMATS = ["pdf", "docx", "html", "md", "txt", "csv", "json", "xlsx"] as const;
 
 export interface ConversionOptions {
-  inputFormat: InputFormat
-  outputFormat: OutputFormat
-  filename: string
+  inputFormat: InputFormat;
+  outputFormat: OutputFormat;
+  filename: string;
   /**
    * Timeout in milliseconds. Default 30000 (30s).
    */
-  timeout?: number
+  timeout?: number;
   /**
    * Concurrency for batch processing. Default 3.
    */
-  concurrency?: number
+  concurrency?: number;
   /**
    * Skip input magic-number validation. Default false.
    */
-  skipValidation?: boolean
+  skipValidation?: boolean;
   /**
    * Skip LRU cache. Default false.
    */
-  skipCache?: boolean
+  skipCache?: boolean;
 }
 
 export interface ConversionResult {
-  success: boolean
-  outputBuffer?: Buffer
-  outputFilename?: string
-  outputFormat: OutputFormat
-  mimeType: string
-  error?: string
-  errorCode?: ConversionErrorCode
+  success: boolean;
+  outputBuffer?: Buffer;
+  outputFilename?: string;
+  outputFormat: OutputFormat;
+  mimeType: string;
+  error?: string;
+  errorCode?: ConversionErrorCode;
   metadata?: {
-    originalSize: number
-    convertedSize: number
-    duration: number
-    pageCount?: number
-  }
-  metrics?: ConversionMetrics
+    originalSize: number;
+    convertedSize: number;
+    duration: number;
+    pageCount?: number;
+  };
+  metrics?: ConversionMetrics;
 }
 
 export interface ConversionJob {
-  id: string
-  status: "pending" | "processing" | "completed" | "failed"
-  inputFormat: InputFormat
-  outputFormat: OutputFormat
-  inputFilename: string
-  outputFilename?: string
-  progress: number
-  error?: string
-  createdAt: Date
-  completedAt?: Date
-  result?: ConversionResult
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  inputFormat: InputFormat;
+  outputFormat: OutputFormat;
+  inputFilename: string;
+  outputFilename?: string;
+  progress: number;
+  error?: string;
+  createdAt: Date;
+  completedAt?: Date;
+  result?: ConversionResult;
 }
 
 export const MIME_TYPES: Record<string, string> = {
@@ -68,7 +79,7 @@ export const MIME_TYPES: Record<string, string> = {
   json: "application/json",
   xml: "application/xml",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-}
+};
 
 export const EXTENSIONS: Record<string, string> = {
   docx: ".docx",
@@ -81,7 +92,7 @@ export const EXTENSIONS: Record<string, string> = {
   json: ".json",
   xml: ".xml",
   pptx: ".pptx",
-}
+};
 
 /**
  * Canonical, strongly-typed mapping from a known format to its MIME type.
@@ -98,7 +109,7 @@ export const MIME_BY_FORMAT: Record<InputFormat | OutputFormat, string> = {
   json: "application/json",
   xml: "application/xml",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-}
+};
 
 /**
  * Canonical, strongly-typed mapping from a known format to its file extension
@@ -115,7 +126,7 @@ export const FORMAT_EXTENSIONS: Record<InputFormat | OutputFormat, string> = {
   json: ".json",
   xml: ".xml",
   pptx: ".pptx",
-}
+};
 
 export const CONVERSION_MAP: Record<string, string[]> = {
   docx: ["pdf", "html", "md", "txt"],
@@ -128,7 +139,7 @@ export const CONVERSION_MAP: Record<string, string[]> = {
   json: ["csv", "html", "xlsx"],
   xml: ["json", "html", "csv"],
   pptx: ["pdf", "html"],
-}
+};
 
 /* ------------------------------------------------------------------ */
 /*                          Enhanced types                            */
@@ -147,21 +158,21 @@ export type ConversionErrorCode =
   | "EMPTY_INPUT"
   | "MAGIC_NUMBER_MISMATCH"
   | "INPUT_TOO_LARGE"
-  | "UNKNOWN"
+  | "UNKNOWN";
 
 /**
  * Thrown for all conversion errors. Carries a stable `code` so consumers
  * can branch on the failure mode without parsing the message.
  */
 export class ConversionError extends Error {
-  readonly code: ConversionErrorCode
-  override readonly cause?: unknown
+  readonly code: ConversionErrorCode;
+  override readonly cause?: unknown;
 
   constructor(code: ConversionErrorCode, message: string, cause?: unknown) {
-    super(message)
-    this.name = "ConversionError"
-    this.code = code
-    this.cause = cause
+    super(message);
+    this.name = "ConversionError";
+    this.code = code;
+    this.cause = cause;
   }
 }
 
@@ -169,27 +180,21 @@ export class ConversionError extends Error {
  * A progress callback receives the fraction in `[0, 1]` plus a `stage`
  * label so UIs can render meaningful status messages.
  */
-export type ConversionProgressCallback = (progress: number, stage: ConversionStage) => void
+export type ConversionProgressCallback = (progress: number, stage: ConversionStage) => void;
 
-export type ConversionStage =
-  | "validating"
-  | "parsing"
-  | "transforming"
-  | "encoding"
-  | "finalizing"
-  | "done"
+export type ConversionStage = "validating" | "parsing" | "transforming" | "encoding" | "finalizing" | "done";
 
 /**
  * Lifecycle event emitted while a conversion is running. Subscribers can
  * react asynchronously without blocking the conversion pipeline.
  */
 export interface ConversionEvent {
-  type: "start" | "progress" | "complete" | "error"
-  progress: number
-  stage: ConversionStage
-  timestamp: number
-  error?: ConversionError
-  result?: ConversionResult
+  type: "start" | "progress" | "complete" | "error";
+  progress: number;
+  stage: ConversionStage;
+  timestamp: number;
+  error?: ConversionError;
+  result?: ConversionResult;
 }
 
 /**
@@ -197,13 +202,13 @@ export interface ConversionEvent {
  * `summary` aggregates the pass / fail counts.
  */
 export interface BatchConversionResult {
-  results: ConversionResult[]
+  results: ConversionResult[];
   summary: {
-    total: number
-    succeeded: number
-    failed: number
-    duration: number
-  }
+    total: number;
+    succeeded: number;
+    failed: number;
+    duration: number;
+  };
 }
 
 /**
@@ -213,19 +218,19 @@ export interface BatchConversionResult {
  * unavailable (e.g. the browser).
  */
 export interface ConversionMetrics {
-  inputSize: number
-  outputSize: number
-  duration: number
-  parseDuration?: number
-  transformDuration?: number
-  encodeDuration?: number
-  peakMemoryMb?: number
-  startedAt: number
-  finishedAt: number
+  inputSize: number;
+  outputSize: number;
+  duration: number;
+  parseDuration?: number;
+  transformDuration?: number;
+  encodeDuration?: number;
+  peakMemoryMb?: number;
+  startedAt: number;
+  finishedAt: number;
 }
 
-export const DEFAULT_TIMEOUT_MS = 30_000
-export const DEFAULT_BATCH_CONCURRENCY = 3
-export const DEFAULT_MAX_INPUT_SIZE = 50 * 1024 * 1024
-export const DEFAULT_MAX_TEXT_SIZE = 10 * 1024 * 1024
-export const CACHE_MAX_ENTRIES = 100
+export const DEFAULT_TIMEOUT_MS = 30_000;
+export const DEFAULT_BATCH_CONCURRENCY = 3;
+export const DEFAULT_MAX_INPUT_SIZE = 50 * 1024 * 1024;
+export const DEFAULT_MAX_TEXT_SIZE = 10 * 1024 * 1024;
+export const CACHE_MAX_ENTRIES = 100;

@@ -187,13 +187,7 @@ if (typeof process !== "undefined" && (process as { on?: unknown }).on) {
   registerLifecycleFlush();
 }
 
-function log(
-  level: LogLevel,
-  message: string,
-  meta?: LogMeta,
-  ctx?: RequestContext,
-  error?: unknown,
-): void {
+function log(level: LogLevel, message: string, meta?: LogMeta, ctx?: RequestContext, error?: unknown): void {
   if (!shouldLog(level)) return;
   const entry = buildEntry(level, message, meta, ctx, error);
   enqueue(entry);
@@ -208,7 +202,12 @@ export interface Logger {
   info(message: string, meta?: LogMeta): void;
   warn(message: string, meta?: LogMeta): void;
   error(message: string, meta?: LogMeta | unknown, error?: unknown): void;
-  api(req: { method?: string; path?: string; ip?: string; userId?: string; requestId?: string }, status: number, durationMs: number, meta?: LogMeta): void;
+  api(
+    req: { method?: string; path?: string; ip?: string; userId?: string; requestId?: string },
+    status: number,
+    durationMs: number,
+    meta?: LogMeta,
+  ): void;
   withContext(ctx: RequestContext): ScopedLogger;
   flush(): void;
 }
@@ -227,7 +226,11 @@ function createLogger(scopeCtx?: RequestContext): Logger {
       log("warn", message, meta, scopeCtx);
     },
     error(message, metaOrError, errorArg) {
-      if (metaOrError instanceof Error || typeof metaOrError === "string" || (metaOrError && typeof metaOrError === "object" && "stack" in (metaOrError as object))) {
+      if (
+        metaOrError instanceof Error ||
+        typeof metaOrError === "string" ||
+        (metaOrError && typeof metaOrError === "object" && "stack" in (metaOrError as object))
+      ) {
         log("error", message, undefined, scopeCtx, metaOrError);
       } else {
         log("error", message, metaOrError as LogMeta | undefined, scopeCtx, errorArg);
@@ -266,9 +269,7 @@ export function newRequestId(): string {
   if (g.crypto?.randomUUID) {
     return g.crypto.randomUUID().replace(/-/g, "").slice(0, 16);
   }
-  return (
-    Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
-  );
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
 /**

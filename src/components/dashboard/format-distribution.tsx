@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 interface FormatDatum {
-  name: string
-  value: number
+  name: string;
+  value: number;
 }
 
 const COLORS = [
@@ -16,10 +16,10 @@ const COLORS = [
   "#06b6d4",
   "#ec4899",
   "#84cc16",
-]
+];
 
 export function FormatDistribution({ data }: { data: FormatDatum[] }) {
-  const total = data.reduce((sum, d) => sum + d.value, 0)
+  const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
     <div>
@@ -51,22 +51,20 @@ export function FormatDistribution({ data }: { data: FormatDatum[] }) {
                 borderRadius: "8px",
                 fontSize: "12px",
               }}
-              formatter={((value: number | string) => [
-                `${value} (${((Number(value) / total) * 100).toFixed(1)}%)`,
-                "Count",
-              ]) as never}
+              formatter={
+                ((value: number | string) => [
+                  `${value} (${((Number(value) / total) * 100).toFixed(1)}%)`,
+                  "Count",
+                ]) as never
+              }
             />
-            <Legend
-              wrapperStyle={{ fontSize: "11px" }}
-              iconType="circle"
-              verticalAlign="bottom"
-            />
+            <Legend wrapperStyle={{ fontSize: "11px" }} iconType="circle" verticalAlign="bottom" />
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 text-center text-xs text-muted-foreground">
+      <div className="text-muted-foreground mt-2 text-center text-xs">
         {total.toLocaleString()} total conversions
       </div>
     </div>
-  )
+  );
 }

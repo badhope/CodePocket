@@ -1,4 +1,5 @@
 ---
-name: Discussion category: General
-description: 一般讨论
+title: 一般讨论
+labels:
+  - general
 ---

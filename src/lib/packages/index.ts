@@ -87,11 +87,11 @@ export function renderManifest(ecosystem: PackageEcosystem, pkgs: PackageRecord[
       return pkgs.map((p) => `${p.name}${p.version ? `==${p.version}` : ""}`).join("\n") + "\n";
     }
     case "cargo": {
-      const lines = ["[package]", 'name = "project"', 'version = "0.1.0"', "edition = \"2021\"", ""];
+      const lines = ["[package]", 'name = "project"', 'version = "0.1.0"', 'edition = "2021"', ""];
       const deps: string[] = [];
       const devDeps: string[] = [];
       for (const p of pkgs) {
-        const v = p.version ? `\"${p.version}\"` : "\"*\"";
+        const v = p.version ? `\"${p.version}\"` : '"*"';
         if (p.dev) devDeps.push(`${p.name} = { version = ${v} }`);
         else deps.push(`${p.name} = { version = ${v} }`);
       }

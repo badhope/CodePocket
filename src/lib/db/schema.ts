@@ -20,8 +20,18 @@ import type { AdapterAccountType } from "next-auth/adapters";
 // ============================================================================
 
 export const userRoleEnum = pgEnum("user_role", ["user", "pro", "admin"]);
-export const documentStatusEnum = pgEnum("document_status", ["uploaded", "converting", "converted", "failed"]);
-export const conversionStatusEnum = pgEnum("conversion_status", ["pending", "processing", "completed", "failed"]);
+export const documentStatusEnum = pgEnum("document_status", [
+  "uploaded",
+  "converting",
+  "converted",
+  "failed",
+]);
+export const conversionStatusEnum = pgEnum("conversion_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+]);
 
 // ============================================================================
 // AUTH TABLES (NextAuth Drizzle Adapter compatible)
@@ -108,10 +118,7 @@ export const documents = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [
-    index("document_user_idx").on(t.userId),
-    index("document_status_idx").on(t.status),
-  ],
+  (t) => [index("document_user_idx").on(t.userId), index("document_status_idx").on(t.status)],
 );
 
 // ============================================================================
@@ -197,11 +204,7 @@ export const executions = pgTable(
 // PROJECTS (DocForge multi-file projects)
 // ============================================================================
 
-export const projectVisibilityEnum = pgEnum("project_visibility", [
-  "private",
-  "public",
-  "unlisted",
-]);
+export const projectVisibilityEnum = pgEnum("project_visibility", ["private", "public", "unlisted"]);
 
 export const fileTypeEnum = pgEnum("file_type", ["file", "directory"]);
 
@@ -225,63 +228,52 @@ export const projects = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [
-    index("project_visibility_idx").on(t.visibility),
-  ],
+  (t) => [index("project_visibility_idx").on(t.visibility)],
 );
 
-export const projectFiles = pgTable(
-  "project_file",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    path: text("path").notNull(),
-    type: fileTypeEnum("type").notNull().default("file"),
-    content: text("content"),
-    blobKey: text("blob_key"),
-    size: bigint("size", { mode: "number" }).notNull().default(0),
-    mime: varchar("mime", { length: 128 }),
-    encoding: varchar("encoding", { length: 32 }).notNull().default("utf-8"),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-  },
-);
+export const projectFiles = pgTable("project_file", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  path: text("path").notNull(),
+  type: fileTypeEnum("type").notNull().default("file"),
+  content: text("content"),
+  blobKey: text("blob_key"),
+  size: bigint("size", { mode: "number" }).notNull().default(0),
+  mime: varchar("mime", { length: 128 }),
+  encoding: varchar("encoding", { length: 32 }).notNull().default("utf-8"),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
 
-export const fileVersions = pgTable(
-  "file_version",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    fileId: uuid("file_id")
-      .notNull()
-      .references(() => projectFiles.id, { onDelete: "cascade" }),
-    blobKey: text("blob_key").notNull(),
-    size: bigint("size", { mode: "number" }).notNull(),
-    commitMessage: text("commit_message"),
-    authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  },
-);
+export const fileVersions = pgTable("file_version", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  fileId: uuid("file_id")
+    .notNull()
+    .references(() => projectFiles.id, { onDelete: "cascade" }),
+  blobKey: text("blob_key").notNull(),
+  size: bigint("size", { mode: "number" }).notNull(),
+  commitMessage: text("commit_message"),
+  authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
 
 // ============================================================================
 // PROJECT PACKAGES
 // ============================================================================
 
-export const packages = pgTable(
-  "package",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    ecosystem: varchar("ecosystem", { length: 32 }).notNull(),
-    name: varchar("name", { length: 255 }).notNull(),
-    version: varchar("version", { length: 64 }),
-    dev: boolean("dev").notNull().default(false),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  },
-);
+export const packages = pgTable("package", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  ecosystem: varchar("ecosystem", { length: 32 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  version: varchar("version", { length: 64 }),
+  dev: boolean("dev").notNull().default(false),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
 
 // ============================================================================
 // SNIPPETS
@@ -313,11 +305,7 @@ export const snippets = pgTable(
 // SHARES
 // ============================================================================
 
-export const shareVisibilityEnum = pgEnum("share_visibility", [
-  "public",
-  "password",
-  "burn_after_read",
-]);
+export const shareVisibilityEnum = pgEnum("share_visibility", ["public", "password", "burn_after_read"]);
 
 export const shares = pgTable(
   "share",
@@ -343,28 +331,20 @@ export const shares = pgTable(
 // TEAMS
 // ============================================================================
 
-export const teamRoleEnum = pgEnum("team_role", [
-  "owner",
-  "admin",
-  "member",
-  "viewer",
-]);
+export const teamRoleEnum = pgEnum("team_role", ["owner", "admin", "member", "viewer"]);
 
-export const teams = pgTable(
-  "team",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    name: varchar("name", { length: 255 }).notNull(),
-    slug: varchar("slug", { length: 255 }).notNull().unique(),
-    description: text("description"),
-    plan: varchar("plan", { length: 32 }).notNull().default("free"),
-    ownerId: text("owner_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-  },
-);
+export const teams = pgTable("team", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  plan: varchar("plan", { length: 32 }).notNull().default("free"),
+  ownerId: text("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
 
 export const teamMembers = pgTable(
   "team_member",
@@ -386,23 +366,20 @@ export const teamMembers = pgTable(
 // API KEYS & AUDIT LOG
 // ============================================================================
 
-export const apiKeys = pgTable(
-  "api_key",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 64 }).notNull(),
-    keyHash: text("key_hash").notNull(),
-    keyPrefix: varchar("key_prefix", { length: 12 }).notNull(),
-    scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
-    lastUsedAt: timestamp("last_used_at", { mode: "date" }),
-    expiresAt: timestamp("expires_at", { mode: "date" }),
-    revokedAt: timestamp("revoked_at", { mode: "date" }),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  },
-);
+export const apiKeys = pgTable("api_key", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 64 }).notNull(),
+  keyHash: text("key_hash").notNull(),
+  keyPrefix: varchar("key_prefix", { length: 12 }).notNull(),
+  scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+  lastUsedAt: timestamp("last_used_at", { mode: "date" }),
+  expiresAt: timestamp("expires_at", { mode: "date" }),
+  revokedAt: timestamp("revoked_at", { mode: "date" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
 
 export const auditLogs = pgTable(
   "audit_log",

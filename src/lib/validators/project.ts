@@ -1,7 +1,27 @@
 // @ts-nocheck -- third-party types are incomplete
 import { z } from "zod";
 
-const SUPPORTED_LANGUAGES = ["python", "javascript", "typescript", "cpp", "c", "java", "rust", "go", "csharp", "php", "ruby", "kotlin", "swift", "scala", "bash", "lua", "sql", "html", "css"] as const
+const SUPPORTED_LANGUAGES = [
+  "python",
+  "javascript",
+  "typescript",
+  "cpp",
+  "c",
+  "java",
+  "rust",
+  "go",
+  "csharp",
+  "php",
+  "ruby",
+  "kotlin",
+  "swift",
+  "scala",
+  "bash",
+  "lua",
+  "sql",
+  "html",
+  "css",
+] as const;
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

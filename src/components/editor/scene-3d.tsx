@@ -38,7 +38,13 @@ export function Scene3D({ className, children, cameraPosition = [0, 0, 5] }: Sce
   );
 }
 
-export function Cube({ position = [0, 0, 0], color = "orange" }: { position?: [number, number, number]; color?: string }) {
+export function Cube({
+  position = [0, 0, 0],
+  color = "orange",
+}: {
+  position?: [number, number, number];
+  color?: string;
+}) {
   return (
     <mesh position={position} castShadow>
       <boxGeometry args={[1, 1, 1]} />
@@ -47,7 +53,13 @@ export function Cube({ position = [0, 0, 0], color = "orange" }: { position?: [n
   );
 }
 
-export function Sphere({ position = [0, 0, 0], color = "hotpink" }: { position?: [number, number, number]; color?: string }) {
+export function Sphere({
+  position = [0, 0, 0],
+  color = "hotpink",
+}: {
+  position?: [number, number, number];
+  color?: string;
+}) {
   return (
     <mesh position={position} castShadow>
       <sphereGeometry args={[0.7, 32, 32]} />

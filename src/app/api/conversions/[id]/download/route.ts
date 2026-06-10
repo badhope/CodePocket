@@ -1,32 +1,32 @@
-import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
-import { conversions } from "@/lib/db/schema"
-import { eq, and } from "drizzle-orm"
-import { getOutputFilename, getMimeType } from "@/lib/convert"
-import { errors } from "@/lib/api/response"
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { conversions } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { getOutputFilename, getMimeType } from "@/lib/convert";
+import { errors } from "@/lib/api/response";
 
 interface RouteContext {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 export async function GET(_req: NextRequest, ctx: RouteContext) {
-  const session = await auth()
-  if (!session?.user) return errors.unauthorized()
+  const session = await auth();
+  if (!session?.user) return errors.unauthorized();
 
-  const { id } = await ctx.params
+  const { id } = await ctx.params;
 
   const record = await db
     .select()
     .from(conversions)
     .where(and(eq(conversions.id, id), eq(conversions.userId, session.user.id)))
-    .limit(1)
+    .limit(1);
 
-  if (record.length === 0) return errors.notFound("Conversion not found")
+  if (record.length === 0) return errors.notFound("Conversion not found");
 
-  const c = record[0]!
+  const c = record[0]!;
   if (c.status !== "completed" || !c.outputFilename) {
-    return errors.badRequest("Conversion is not ready for download")
+    return errors.badRequest("Conversion is not ready for download");
   }
 
   if (!c.outputBlobKey) {
@@ -36,7 +36,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
         outputFilename: c.outputFilename,
       }),
       { status: 410, headers: { "Content-Type": "application/json" } },
-    )
+    );
   }
 
   return new NextResponse(
@@ -53,5 +53,5 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
         "Cache-Control": "private, max-age=0, no-cache",
       },
     },
-  )
+  );
 }
