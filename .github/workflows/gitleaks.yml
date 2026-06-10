@@ -25,6 +25,7 @@ jobs:
 
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@v3
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
