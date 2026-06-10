@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
-    "@hocuspocus/provider": "^4.1.0",
+    "@hocuspocus/provider": "^4.1.1",
     "@hookform/resolvers": "^5.0.1",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-avatar": "^1.1.12",
