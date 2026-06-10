@@ -1,55 +1,79 @@
 # Labeler config: maps file changes to PR labels
+# Format reference: https://github.com/actions/labeler/blob/v5/README.md
+
 ci:
-  - .github/**
-  - .gitleaks.toml
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - .gitleaks.toml
 
 docs:
-  - "**/*.md"
-  - CHANGELOG.md
-  - README.md
-  - SECURITY.md
-  - CONTRIBUTING.md
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - CHANGELOG.md
+          - README.md
+          - SECURITY.md
+          - CONTRIBUTING.md
 
 security:
-  - .gitleaks.toml
-  - SECURITY.md
-  - src/lib/auth/**
-  - src/lib/api/ratelimit.ts
+  - changed-files:
+      - any-glob-to-any-file:
+          - .gitleaks.toml
+          - SECURITY.md
+          - src/lib/auth/**
+          - src/lib/api/ratelimit.ts
 
 infra:
-  - infra/**
-  - docker-compose.yml
-  - Dockerfile*
-  - Makefile
+  - changed-files:
+      - any-glob-to-any-file:
+          - infra/**
+          - docker-compose.yml
+          - Dockerfile*
+          - Makefile
 
 database:
-  - drizzle/**
-  - src/lib/db/**
-  - scripts/db-*.sh
+  - changed-files:
+      - any-glob-to-any-file:
+          - drizzle/**
+          - src/lib/db/**
+          - scripts/db-*.sh
 
 ui:
-  - src/app/**
-  - src/components/**
-  - src/messages/**
-  - public/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/app/**
+          - src/components/**
+          - src/messages/**
+          - public/**
 
 tools:
-  - src/lib/tools/**
-  - src/lib/convert/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/tools/**
+          - src/lib/convert/**
 
 execution:
-  - src/lib/execution/**
-  - infra/piston-shim/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/execution/**
+          - infra/piston-shim/**
 
 collab:
-  - src/lib/collab/**
-  - infra/collab-server/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/collab/**
+          - infra/collab-server/**
 
 dependencies:
-  - package.json
-  - pnpm-lock.yaml
-  - pnpm-workspace.yaml
+  - changed-files:
+      - any-glob-to-any-file:
+          - package.json
+          - pnpm-lock.yaml
+          - pnpm-workspace.yaml
 
 breaking:
-  - "**/*.ts"
-  - "**/*.tsx"
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.ts"
+          - "**/*.tsx"
