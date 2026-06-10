@@ -1,96 +1,46 @@
-# Contributing to DocForge
+# Contributing
 
-Thanks for your interest in contributing! This document covers the practical
-details of getting a change merged.
+Want to send a PR? Cool. Here's the flow.
 
-## Ground rules
+## Before you start
 
-1. **Read the architecture first.** The project is offline-first by design —
-   the 20 browser tools and code playground must keep working without the
-   backend. Any change that breaks this is a regression.
-2. **Don't add new dependencies without justification.** Every new dep is a
-   security surface area. If you must, explain the trade-off in the PR.
-3. **One PR = one concern.** Refactors, bug fixes, and new features go in
-   separate PRs. Makes review and revert easier.
-4. **CI must be green.** lint + typecheck + test + build.
+- **Open an issue first** if the change is non-trivial. I don't want you
+  to spend a weekend on something I'd have asked you to do differently.
+- Read the code that's already there. I try to keep it boring and
+  consistent. If you're adding a new pattern, it should fit.
+- Look at the README for how to install / run / test. Use the lockfile
+  that's checked in; don't regenerate it.
 
-## Local setup
+## Local checks
 
-```bash
-# 1. Fork & clone
-git clone https://github.com/<your-username>/OnlineCode.git
-cd OnlineCode
-
-# 2. Install
-pnpm install
-
-# 3. Run the dev server (no backend needed for the 20 tools)
-pnpm dev
-
-# 4. (Optional) start the local services
-make up      # Postgres + Redis + Piston-shim
-```
-
-## Where to add what
-
-| You want to... | Edit this |
-| --- | --- |
-| Add a browser tool | `src/lib/tools/client-tools.ts` + `feature-gate.ts` + `messages/*.json` |
-| Add a new language | `src/lib/execution/languages.ts` (+ frontend-runner for browser-side) |
-| Add a doc format conversion | `src/lib/convert/<format>.ts` + `formats.ts` + `engine.ts` |
-| Add a new translation | copy `src/messages/en.json` → `de.json` + register in `i18n/routing.ts` |
-| Add a new API route | `src/app/api/<path>/route.ts` + zod schema in `validators/` |
-| Modify a page | `src/app/[locale]/<page>/page.tsx` + corresponding `messages/*.json` |
-
-See the [README](README.md#怎么扩展) for step-by-step guides.
-
-## Code style
-
-- TypeScript strict mode, no `any` (use `unknown` + narrowing)
-- Use Zod schemas for runtime validation at every API boundary
-- Components are server components by default; add `"use client"` only when
-  you need state/effects
-- Translations live in `src/messages/<locale>.json` — never hard-code English
-  strings in components
+Run whatever the project has: `pnpm test`, `pytest`, `cargo test`, etc.
+If linter / formatter configs are checked in, run them too. CI will
+catch what you missed, but a green push is faster than a red one.
 
 ## Commit messages
 
-We use [Conventional Commits](https://www.conventionalcommits.org/) because
-release-please parses them to bump versions and generate the changelog:
+I don't enforce Conventional Commits. Subject, blank line, body, done.
+If a commit fixes an issue, mention the issue number. Don't bother with
+emoji or "WIP" prefixes.
 
-```
-feat: add JSON Diff tool
-fix: handle UTF-8 BOM in CSV parser
-docs: clarify Piston-shim usage
-chore: bump pnpm to 10.4
-refactor: extract rate-limit cache to lib/api
-```
+## Pull requests
 
-Breaking changes use `feat!:` or include a `BREAKING CHANGE:` footer.
+- Fill the PR template. One paragraph in the body is fine; screenshots
+  help for UI.
+- Keep the diff small. Squash before merging unless the history matters.
+- I'll review roughly in order of arrival. If CI is green and the change
+  does what the description says, I'll merge. I might push back on
+  architecture; that's not personal.
+- Don't commit secrets, generated build output, large binaries, or
+  someone else's code without a license.
 
-## Pull request process
+## What I won't merge
 
-1. Branch from `main` (we don't use `develop` for hotfixes, but we'll add it
-   when the team grows)
-2. Make your change
-3. Run `make test && make lint && make typecheck` locally
-4. Fill in the [PR template](.github/PULL_REQUEST_TEMPLATE.md)
-5. Request a review from a [CODEOWNER](.github/CODEOWNERS)
-6. Once approved, squash-merge with a Conventional Commit message
-
-## Reporting bugs
-
-Open a [bug report](.github/ISSUE_TEMPLATE/bug.yml) with:
-- A minimal reproduction
-- The backend state (online / offline / not running)
-- Browser + version
-- Console errors if any
-
-## Security issues
-
-**Do not open a public issue.** Follow [SECURITY.md](SECURITY.md) instead.
+- Drive-by refactors that don't fix a real problem.
+- New dependencies for trivial reasons.
+- Anything that breaks the existing API without a heads-up first.
 
 ## License
 
-By contributing, you agree your contributions will be licensed under the
-project's MIT license.
+By contributing, you agree your contribution is licensed under the same
+license as the rest of the project. See [`LICENSE`](./LICENSE).

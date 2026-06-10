@@ -1,42 +1,27 @@
----
-name: 通用 Pull Request
-about: 任何代码改动
-title: ""
-labels: []
----
+## What
 
-## 改了什么
+<!-- One line: what this PR does -->
 
-<!-- 简要说明这个 PR 做了什么 -->
+## Why
 
-## 关联 Issue
+<!-- The reason. What problem does this fix / what value does it add? -->
 
-<!-- 关联的 issue，例如 Fixes #123 -->
+## How
 
-## 改动类型
+<!-- Approach, breaking changes, anything weird you did -->
 
-- [ ] Bug 修复
-- [ ] 新功能
-- [ ] 重构（无功能变化）
-- [ ] 文档
-- [ ] 测试
-- [ ] CI / 部署
-- [ ] 安全修复
+## Tested
 
-## 怎么测的
+<!-- How you tested. If you didn't, say so and tell me why -->
 
-<!-- 描述你怎么验证这个改动是工作的 -->
+## Checklist
 
-## 检查清单
+- [ ] I have read [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- [ ] Tests pass locally (and CI is green)
+- [ ] I didn't add any new linter / typecheck warnings
+- [ ] I didn't commit any secrets, build output, or large binaries
+- [ ] I added a `CHANGELOG.md` entry under "Unreleased" if it matters
 
-- [ ] `pnpm typecheck` 通过
-- [ ] `pnpm lint` 通过
-- [ ] `pnpm test` 通过（如果是新功能加了测试）
-- [ ] 没引入新的依赖（或已在 `pnpm.overrides` 处理 CVE）
-- [ ] 没破坏 offline-first（浏览器端核心功能依然可用）
-- [ ] 国际化文案已加到所有 6 种语言
-- [ ] CHANGELOG.md 已更新（如果是用户可见的改动）
+## Screenshots / Logs
 
-## 截图
-
-<!-- 如果是 UI 改动，附上 before/after 截图 -->
+<!-- Drag in images for UI changes. Paste (redacted) logs for runtime changes. -->

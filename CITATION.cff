@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software in academic work, please cite it using the
+  metadata below.
+title: OnlineCode
+authors:
+  - family-names: badhope
+    given-names: badhope
+    alias: badhope
+identifiers:
+  - type: url
+    value: https://github.com/badhope/OnlineCode
+license: MIT
+type: software
+url: https://github.com/badhope/OnlineCode
+repository-code: https://github.com/badhope/OnlineCode
+keywords:
+  - cpp
+  - go
+  - mobile-friendly
+  - online-ide
+  - python
+  - rust
+  - code-editor
+  - csharp
+  - java
+  - javascript
+abstract: >-
+  DocForge — my offline-first dev toolbox. 20 browser tools, a multi-language code playground, document conversion. Works without a server; Postgres/Redis unlock accounts and high-fidelity export when you want them.
