@@ -15,11 +15,11 @@ jobs:
     outputs:
       preview-url: ${{ steps.vercel.outputs.preview-url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v6.0.8
         with:
           version: 10
       - id: vercel
@@ -30,7 +30,7 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./
       - name: Comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: preview
           message: |
