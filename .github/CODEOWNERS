@@ -1,22 +1,22 @@
-# Default owners for everything in the repo
-# Replace @badhope with the actual GitHub usernames of the maintainers
-* @badhope
+# CODEOWNERS — default review ownership
+# badhope is the sole owner; replace with team handles in a
+# multi-maintainer setup.
 
-# Workflow and CI changes need a second pair of eyes
-/.github/ @badhope
+# Default: everything
+*       @badhope
 
-# Database migrations are scary
-/drizzle/ @badhope
-/src/lib/db/ @badhope
+# GitHub configuration
+/.github/        @badhope
 
-# Security-sensitive areas
-/src/lib/auth/ @badhope
-/src/lib/api/ratelimit.ts @badhope
-/infra/collab-server/ @badhope
-/infra/piston-shim/ @badhope
+# Documentation
+/docs/           @badhope
+/README.md       @badhope
+/CHANGELOG.md    @badhope
 
-# Infra config that affects production
-/next.config.ts @badhope
-/vercel.json @badhope
-/Dockerfile* @badhope
-/docker-compose.yml @badhope
+# Build / release config
+/package.json    @badhope
+/uv.lock         @badhope
+/package-lock.json @badhope
+/pnpm-lock.yaml  @badhope
+/Cargo.toml      @badhope
+/Cargo.lock      @badhope
