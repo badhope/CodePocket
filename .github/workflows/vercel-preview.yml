@@ -23,7 +23,7 @@ jobs:
         with:
           version: 10
       - id: vercel
-        uses: vercel/actions/preview@v1
+        uses: vercel/actions/preview@v5
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
