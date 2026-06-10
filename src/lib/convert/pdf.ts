@@ -1,5 +1,6 @@
-import { getDocument } from "pdfjs-dist";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+// pdfjs-dist@6 references browser-only globals (DOMMatrix, etc.) at module
+// load. Dynamic-import it so the server build does not try to evaluate it
+// during "Collecting page data".
 
 function buildMinimalDocx(text: string): Buffer {
   const escapedText = text
@@ -103,6 +104,7 @@ function crc32(data: Buffer): number {
 }
 
 export async function convertPdfToText(buffer: Buffer): Promise<string> {
+  const { getDocument } = await import("pdfjs-dist");
   const loadingTask = getDocument({ data: new Uint8Array(buffer) });
   const pdf = await loadingTask.promise;
   const pages: string[] = [];
