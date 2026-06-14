@@ -23,6 +23,8 @@ export type DocumentFormat = "md" | "html" | "txt" | "json" | "xml" | "pdf" | "d
 export interface ConversionPair {
   readonly from: DocumentFormat;
   readonly to: DocumentFormat;
+  /** 显示标签 */
+  readonly label?: string;
   /** 能否纯前端（false = 必须后端） */
   readonly local: boolean;
   /** 主用实现（无值表示纯客户端尚未实现，需后端） */

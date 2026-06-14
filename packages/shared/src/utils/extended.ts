@@ -93,13 +93,12 @@ export interface HSL {
 
 export function hexToRgb(hex: string): RGB | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : null;
+  if (!result || !result[1] || !result[2] || !result[3]) return null;
+  return {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16),
+  };
 }
 
 export function rgbToHex(r: number, g: number, b: number): string {
@@ -179,7 +178,7 @@ export function hslToRgb(h: number, s: number, l: number): RGB {
 export function csvToJson(csv: string): { ok: true; output: string } | { ok: false; error: string } {
   try {
     const lines = csv.trim().split("\n");
-    if (lines.length === 0) return { ok: false, error: "Empty CSV" };
+    if (lines.length === 0 || !lines[0]) return { ok: false, error: "Empty CSV" };
 
     const headers = lines[0].split(",").map((h) => h.trim());
     const result = lines.slice(1).map((line) => {

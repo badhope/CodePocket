@@ -68,6 +68,18 @@ export class ApiClient {
       timeoutMs: options?.timeoutMs,
     });
   }
+
+  async get<T>(
+    path: string,
+    options?: { signal?: AbortSignal; timeoutMs?: number; raw?: boolean },
+  ): Promise<T> {
+    return this.request<T>(path, {
+      method: "GET",
+      signal: options?.signal,
+      timeoutMs: options?.timeoutMs,
+      raw: options?.raw,
+    });
+  }
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {

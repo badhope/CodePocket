@@ -35,7 +35,7 @@ export interface ToolRunResult {
   meta?: Record<string, unknown>;
 }
 
-export type Locale = "en" | "zh-CN" | "zh-TW" | "ja" | "ko" | "es";
+export type Locale = "en" | "zh-CN" | "zh-TW" | "ja" | "ko" | "es" | "fr";
 
 export interface I18nMessages {
   [key: string]: string | I18nMessages;

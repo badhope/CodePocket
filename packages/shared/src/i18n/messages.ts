@@ -204,6 +204,7 @@ const MESSAGES: Record<Locale, I18nMessages> = {
   ja: zhCN, // fallback
   ko: zhCN, // fallback
   es: zhCN, // fallback
+  fr: zhCN, // fallback
 };
 
 /** 获取本地化字符串，支持点号路径和 <accent> 标签替换 */
@@ -265,7 +266,7 @@ export function negotiateLocale(preferred?: string): Locale {
   const locales = preferred
     .split(",")
     .map((part) => {
-      const [lang, quality = "q=1"] = part.trim().split(";");
+      const [lang = "", quality = "q=1"] = part.trim().split(";");
       const q = parseFloat((quality.split("=")[1] ?? "1").trim()) || 1;
       return { locale: lang.trim().toLowerCase(), q };
     })
