@@ -17,9 +17,7 @@ import {
 import { useRecentTools } from "@/composables/useRecentTools";
 import ToolIcon from "@/components/ToolIcon.vue";
 
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 const allTools = listTools();
 const allLangs = listSupportedLocales();
 const { list: recent, load } = useRecentTools();
@@ -107,7 +105,7 @@ function getToolUrl(slug: string): string {
     "document-convert": "/pages/DocumentConvertPage",
     "qr-generator": "/pages/QrPage",
     "regex-tester": "/pages/RegexPage",
-    "playground": "/pages/PlaygroundPage",
+    playground: "/pages/PlaygroundPage",
   };
   return specialPages[slug] ?? `/pages/ToolRunnerPage?slug=${slug}`;
 }
@@ -164,17 +162,19 @@ function getToolUrl(slug: string): string {
             <text class="home-terminal__title">~/docforge · zsh</text>
           </view>
           <view class="home-terminal__body">
-<text class="prompt">$</text> <text class="cmd">docforge tools --filter=offline</text>
-<text class="dim">→ scanning 20 tools…</text>
-<text class="ok">✓</text> <text class="cmd">19</text> <text class="dim">run in your browser</text>
-<text class="ok">✓</text> <text class="cmd"> 1</text> <text class="dim">needs the backend (playground)</text>
-<text class="prompt">$</text> <text class="cmd">docforge convert report.md pdf</text>
-<text class="dim">→ piping markdown through</text> <text class="hi">marked</text>
-<text class="ok">✓</text> <text class="cmd">report.pdf</text> <text class="dim">· 28 KB · 4 pages</text>
-<text class="prompt">$</text> <text class="cmd">docforge run hello.py</text>
-<text class="dim">→ spawning</text> <text class="hi">pyodide</text> <text class="dim"> worker…</text>
-<text class="cmd">Hello, DocForge!</text>
-<text class="prompt">$</text> <text class="cursor">▌</text>
+            <text class="prompt">$</text> <text class="cmd">docforge tools --filter=offline</text>
+            <text class="dim">→ scanning 20 tools…</text>
+            <text class="ok">✓</text> <text class="cmd">19</text> <text class="dim">run in your browser</text>
+            <text class="ok">✓</text> <text class="cmd"> 1</text>
+            <text class="dim">needs the backend (playground)</text> <text class="prompt">$</text>
+            <text class="cmd">docforge convert report.md pdf</text>
+            <text class="dim">→ piping markdown through</text> <text class="hi">marked</text>
+            <text class="ok">✓</text> <text class="cmd">report.pdf</text>
+            <text class="dim">· 28 KB · 4 pages</text> <text class="prompt">$</text>
+            <text class="cmd">docforge run hello.py</text> <text class="dim">→ spawning</text>
+            <text class="hi">pyodide</text> <text class="dim"> worker…</text>
+            <text class="cmd">Hello, DocForge!</text>
+            <text class="prompt">$</text> <text class="cursor">▌</text>
           </view>
         </view>
       </view>
@@ -187,7 +187,8 @@ function getToolUrl(slug: string): string {
         <view class="heading">{{ toolLabelFor(locale, featuredTool.slug) }}</view>
         <view class="p">{{ toolDescriptionFor(locale, featuredTool.slug) }}</view>
         <view class="p df-text-muted df-text-sm" style="margin: 0">
-          Tries <text class="code">Piston</text> first, falls back to <text class="code">Pyodide</text> in a worker, then in-process JavaScript / TypeScript. Streamed output, cancellable mid-run.
+          Tries <text class="code">Piston</text> first, falls back to <text class="code">Pyodide</text> in a
+          worker, then in-process JavaScript / TypeScript. Streamed output, cancellable mid-run.
         </view>
         <view class="feature-callout__cta">
           <navigator url="/pages/PlaygroundPage" class="df-btn df-btn-primary">
@@ -200,8 +201,15 @@ function getToolUrl(slug: string): string {
         <view><text class="ln">1</text><text class="cmt"># hello.py</text></view>
         <view><text class="ln">2</text><text class="kw">import</text> <text class="str">math</text></view>
         <view><text class="ln">3</text></view>
-        <view><text class="ln">4</text><text class="kw">for</text> i <text class="kw">in</text> <text class="str">range(3)</text>:</view>
-        <view><text class="ln">5</text>    <text class="str">print</text>(<text class="str">f"hi &#123;i&#125;"</text>)</view>
+        <view
+          ><text class="ln">4</text><text class="kw">for</text> i <text class="kw">in</text>
+          <text class="str">range(3)</text>:</view
+        >
+        <view
+          ><text class="ln">5</text> <text class="str">print</text>(<text class="str"
+            >f"hi &#123;i&#125;"</text
+          >)</view
+        >
         <view><text class="ln">6</text></view>
         <view><text class="ln">7</text><text class="cmt"># → streamed via abortable signal</text></view>
         <view style="margin-top: 0.5em; color: var(--df-success)">hi 0 · hi 1 · hi 2</view>
@@ -218,12 +226,7 @@ function getToolUrl(slug: string): string {
         <navigator url="/pages/ToolsIndexPage" class="more">view all →</navigator>
       </view>
       <view class="tool-grid">
-        <navigator
-          v-for="t in recentTools"
-          :key="t.slug"
-          :url="getToolUrl(t.slug)"
-          class="tool-card"
-        >
+        <navigator v-for="t in recentTools" :key="t.slug" :url="getToolUrl(t.slug)" class="tool-card">
           <view class="tool-card__head">
             <view class="tool-card__title">
               <text class="tool-card__icon">
@@ -258,18 +261,15 @@ function getToolUrl(slug: string): string {
           <text>{{ tFor(locale, `tools.category.${cat}`) }}</text>
           <text class="count">· {{ grouped[cat]?.length ?? 0 }}</text>
         </view>
-        <navigator :url="`/pages/ToolsIndexPage?cat=${cat}`" class="more">see {{ grouped[cat]?.length ?? 0 }} →</navigator>
+        <navigator :url="`/pages/ToolsIndexPage?cat=${cat}`" class="more"
+          >see {{ grouped[cat]?.length ?? 0 }} →</navigator
+        >
       </view>
       <view class="p df-text-secondary df-text-sm" style="margin: 0 0 var(--df-space-3); max-width: 64ch">
         {{ CATEGORY_DESCRIPTIONS[cat] }}
       </view>
       <view class="tool-grid">
-        <navigator
-          v-for="t in groupedPreview[cat]"
-          :key="t.slug"
-          :url="getToolUrl(t.slug)"
-          class="tool-card"
-        >
+        <navigator v-for="t in groupedPreview[cat]" :key="t.slug" :url="getToolUrl(t.slug)" class="tool-card">
           <view class="tool-card__head">
             <view class="tool-card__title">
               <text class="tool-card__icon">

@@ -40,5 +40,3 @@ export type Locale = "en" | "zh-CN" | "zh-TW" | "ja" | "ko" | "es";
 export interface I18nMessages {
   [key: string]: string | I18nMessages;
 }
-
-

@@ -27,9 +27,7 @@ const selected = ref("python");
 const meta = computed<LanguageMeta | undefined>(() => getLanguage(selected.value));
 const code = ref(meta.value?.defaultCode ?? "");
 
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 const { snapshot } = useFeatureGate();
 const { run, cancel, running } = useCancelable();
 
@@ -137,8 +135,7 @@ function reset() {
   runtimeMs.value = 0;
 }
 
-onMounted(() => {
-});
+onMounted(() => {});
 </script>
 
 <template>
@@ -154,12 +151,7 @@ onMounted(() => {
 
     <view class="playground__bar">
       <label class="df-eyebrow">{{ tFor(locale, "playground.lang") }}</label>
-      <select
-        :value="selected"
-        @change="onSelect"
-        class="df-select"
-        style="max-width: 240px"
-      >
+      <select :value="selected" @change="onSelect" class="df-select" style="max-width: 240px">
         <option v-for="l in langs" :key="l.id" :value="l.id">{{ l.label }}</option>
       </select>
       <text class="df-text-muted df-text-xs" v-if="meta">
@@ -167,11 +159,7 @@ onMounted(() => {
       </text>
       <text class="df-spacer" />
       <text v-if="running" class="df-text-muted df-text-xs">{{ stage }}</text>
-      <button
-        v-if="!running"
-        class="df-btn df-btn-primary"
-        @click="onRun"
-      >
+      <button v-if="!running" class="df-btn df-btn-primary" @click="onRun">
         <text>▶</text>
         <text>{{ tFor(locale, "playground.run") }}</text>
       </button>
@@ -189,15 +177,9 @@ onMounted(() => {
     <view class="playground__editor">
       <view class="playground__label">
         <view class="heading">{{ meta?.label ?? "code" }} ({{ backendLabel || "—" }})</view>
-        <text class="df-text-xs df-text-muted">
-          {{ code.length }} {{ tFor(locale, "common.chars") }}
-        </text>
+        <text class="df-text-xs df-text-muted"> {{ code.length }} {{ tFor(locale, "common.chars") }} </text>
       </view>
-      <textarea
-        v-model="code"
-        class="df-textarea df-textarea-tall"
-        spellcheck="false"
-      />
+      <textarea v-model="code" class="df-textarea df-textarea-tall" spellcheck="false" />
     </view>
 
     <view class="playground__dual">
@@ -208,7 +190,9 @@ onMounted(() => {
             {{ stdout.length }} {{ tFor(locale, "common.chars") }} · {{ runtimeMs }}ms
           </text>
         </view>
-        <view class="pre df-mono-block" data-stream="stdout">{{ stdout || `// ${tFor(locale, "playground.stdout")}` }}</view>
+        <view class="pre df-mono-block" data-stream="stdout">{{
+          stdout || `// ${tFor(locale, "playground.stdout")}`
+        }}</view>
       </view>
 
       <view class="playground__output">
@@ -218,7 +202,9 @@ onMounted(() => {
             {{ tFor(locale, "playground.exit") }}: {{ exitCode }}
           </text>
         </view>
-        <view class="pre df-mono-block" data-stream="stderr">{{ stderr || `// ${tFor(locale, "playground.stderr")}` }}</view>
+        <view class="pre df-mono-block" data-stream="stderr">{{
+          stderr || `// ${tFor(locale, "playground.stderr")}`
+        }}</view>
       </view>
     </view>
   </view>

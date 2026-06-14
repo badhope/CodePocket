@@ -57,7 +57,16 @@ onUnmounted(() => {
   <view class="app-header">
     <navigator url="/pages/index/index" class="app-brand" @click="closeMenu">
       <text class="app-brand__mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <polyline points="16 18 22 12 16 6" />
           <polyline points="8 6 2 12 8 18" />
         </svg>
@@ -80,7 +89,7 @@ onUnmounted(() => {
         aria-label="language"
         @change="setLocale(($event.target as HTMLSelectElement).value as Locale)"
       >
-        <option v-for="l in ['en','es','fr','ja','ko','zh-CN']" :key="l" :value="l">{{ l }}</option>
+        <option v-for="l in ['en', 'es', 'fr', 'ja', 'ko', 'zh-CN']" :key="l" :value="l">{{ l }}</option>
       </select>
 
       <!-- 移动端汉堡 -->
@@ -128,9 +137,15 @@ onUnmounted(() => {
     <view v-if="menuOpen" class="app-drawer" @click.self="closeMenu">
       <view class="app-drawer__panel" role="dialog" aria-label="menu">
         <view class="app-drawer__nav" @click="closeMenu">
-          <navigator url="/pages/index/index" class="app-drawer__link">{{ tFor(locale, "nav.home") }}</navigator>
-          <navigator url="/pages/tools/index" class="app-drawer__link">{{ tFor(locale, "nav.tools") }}</navigator>
-          <navigator url="/pages/playground/index" class="app-drawer__link">{{ tFor(locale, "nav.playground") }}</navigator>
+          <navigator url="/pages/index/index" class="app-drawer__link">{{
+            tFor(locale, "nav.home")
+          }}</navigator>
+          <navigator url="/pages/tools/index" class="app-drawer__link">{{
+            tFor(locale, "nav.tools")
+          }}</navigator>
+          <navigator url="/pages/playground/index" class="app-drawer__link">{{
+            tFor(locale, "nav.playground")
+          }}</navigator>
         </view>
 
         <view class="app-drawer__meta">
@@ -142,7 +157,9 @@ onUnmounted(() => {
               :value="locale"
               @change="setLocale(($event.target as HTMLSelectElement).value as Locale)"
             >
-              <option v-for="l in ['en','es','fr','ja','ko','zh-CN']" :key="l" :value="l">{{ l }}</option>
+              <option v-for="l in ['en', 'es', 'fr', 'ja', 'ko', 'zh-CN']" :key="l" :value="l">
+                {{ l }}
+              </option>
             </select>
           </view>
         </view>
@@ -208,8 +225,7 @@ onUnmounted(() => {
   border-left: 1px solid var(--df-border);
   display: flex;
   flex-direction: column;
-  padding: calc(56px + var(--df-space-3)) var(--df-space-4) var(--df-space-5)
-    var(--df-space-4);
+  padding: calc(56px + var(--df-space-3)) var(--df-space-4) var(--df-space-5) var(--df-space-4);
   padding-bottom: calc(var(--df-space-5) + env(safe-area-inset-bottom, 0));
   gap: var(--df-space-4);
   overflow-y: auto;

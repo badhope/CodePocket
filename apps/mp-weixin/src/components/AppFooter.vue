@@ -10,7 +10,16 @@ const year = new Date().getFullYear();
     <view class="app-footer__col">
       <view class="app-footer__brand">
         <text class="app-footer__mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <polyline points="16 18 22 12 16 6" />
             <polyline points="8 6 2 12 8 18" />
           </svg>
@@ -23,7 +32,9 @@ const year = new Date().getFullYear();
       <text class="df-text-xs df-text-muted">20 tools · 19 languages · 6 locales</text>
     </view>
     <view class="app-footer__col app-footer__links">
-      <navigator url="https://github.com/badhope/OnlineCode" target="_blank" rel="noopener">github ↗</navigator>
+      <navigator url="https://github.com/badhope/OnlineCode" target="_blank" rel="noopener"
+        >github ↗</navigator
+      >
       <navigator url="/pages/tools/index">all tools</navigator>
       <navigator url="/pages/playground/index">playground</navigator>
     </view>

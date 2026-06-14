@@ -19,9 +19,7 @@ const sample = computed(() => SAMPLES[slug]);
 
 const { snapshot } = useFeatureGate();
 const { memo } = useResultCache();
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 
 const input = ref<string>("");
 const output = ref<string>("");
@@ -33,10 +31,8 @@ async function run() {
   error.value = "";
   if (!runner.value) return;
   try {
-    const r = (await memo(
-      slug,
-      input.value,
-      () => Promise.resolve(runner.value!(input.value)),
+    const r = (await memo(slug, input.value, () =>
+      Promise.resolve(runner.value!(input.value)),
     )) as ToolRunResult;
     if (r.ok) output.value = r.output ?? "";
     else error.value = r.error ?? "";
@@ -70,7 +66,9 @@ onMounted(() => {
     <view class="md-editor">
       <view class="md-editor__label">
         <view class="heading">{{ tFor(locale, "markdown.label") }}</view>
-        <button class="df-btn df-btn-sm" @click="loadSample" :disabled="!sample">{{ tFor(locale, "common.loadSample") }}</button>
+        <button class="df-btn df-btn-sm" @click="loadSample" :disabled="!sample">
+          {{ tFor(locale, "common.loadSample") }}
+        </button>
       </view>
       <textarea
         v-model="input"

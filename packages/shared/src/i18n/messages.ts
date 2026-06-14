@@ -32,7 +32,8 @@ const en: I18nMessages = {
   home: {
     eyebrow: "Developer Toolbox",
     title: "Build <accent>faster</accent> with 30 tools",
-    subtitle: "Format, convert, encode, validate — all in one place. 28 tools run offline, 2 need the server.",
+    subtitle:
+      "Format, convert, encode, validate — all in one place. 28 tools run offline, 2 need the server.",
     stat: {
       tools: "Tools",
       langs: "Languages",
@@ -52,32 +53,65 @@ const en: I18nMessages = {
   "tools.category.utility": "Utility",
   "tools.category.playground": "Playground",
   "tools.category.extended": "Extended",
-  "tools.json-formatter": { label: "JSON Formatter", description: "Format and minify JSON with syntax highlighting" },
+  "tools.json-formatter": {
+    label: "JSON Formatter",
+    description: "Format and minify JSON with syntax highlighting",
+  },
   "tools.css-formatter": { label: "CSS Formatter", description: "Beautify and minify CSS stylesheets" },
   "tools.html-formatter": { label: "HTML Formatter", description: "Format and minify HTML documents" },
   "tools.sql-formatter": { label: "SQL Formatter", description: "Beautify SQL queries" },
   "tools.xml-formatter": { label: "XML Formatter", description: "Format XML documents" },
-  "tools.markdown-preview": { label: "Markdown Preview", description: "Render Markdown to HTML in real-time" },
+  "tools.markdown-preview": {
+    label: "Markdown Preview",
+    description: "Render Markdown to HTML in real-time",
+  },
   "tools.markdown-to-html": { label: "Markdown → HTML", description: "Convert Markdown to HTML" },
   "tools.html-to-markdown": { label: "HTML → Markdown", description: "Convert HTML back to Markdown" },
-  "tools.document-convert": { label: "Document Convert", description: "Convert between DOCX, PDF, XLSX (requires server)" },
+  "tools.document-convert": {
+    label: "Document Convert",
+    description: "Convert between DOCX, PDF, XLSX (requires server)",
+  },
   "tools.base64": { label: "Base64", description: "Encode and decode Base64 strings" },
   "tools.url-codec": { label: "URL Codec", description: "Encode and decode URL percent-encoding" },
-  "tools.jwt-decoder": { label: "JWT Decoder", description: "Decode JWT tokens — header, payload, signature" },
+  "tools.jwt-decoder": {
+    label: "JWT Decoder",
+    description: "Decode JWT tokens — header, payload, signature",
+  },
   "tools.uuid-generator": { label: "UUID Generator", description: "Generate UUID v4 and short IDs" },
-  "tools.json-schema-validator": { label: "JSON Schema Validator", description: "Validate JSON against schemas" },
+  "tools.json-schema-validator": {
+    label: "JSON Schema Validator",
+    description: "Validate JSON against schemas",
+  },
   "tools.regex-tester": { label: "Regex Tester", description: "Test regular expressions with live matching" },
   "tools.qr-generator": { label: "QR Generator", description: "Generate QR codes as SVG" },
-  "tools.playground": { label: "Code Playground", description: "Run code in 19+ languages (requires server)" },
+  "tools.playground": {
+    label: "Code Playground",
+    description: "Run code in 19+ languages (requires server)",
+  },
   "tools.json-diff": { label: "JSON Diff", description: "Compare two JSON objects side by side" },
   "tools.text-diff": { label: "Text Diff", description: "Line-by-line text comparison" },
-  "tools.epoch-converter": { label: "Epoch Converter", description: "Convert between Unix timestamps and dates" },
+  "tools.epoch-converter": {
+    label: "Epoch Converter",
+    description: "Convert between Unix timestamps and dates",
+  },
   "tools.yaml-formatter": { label: "YAML Formatter", description: "Format and minify YAML documents" },
-  "tools.hash-generator": { label: "Hash Generator", description: "Generate MD5, SHA-1, SHA-256, SHA-512 hashes" },
-  "tools.color-converter": { label: "Color Converter", description: "Convert between HEX, RGB, HSL color formats" },
+  "tools.hash-generator": {
+    label: "Hash Generator",
+    description: "Generate MD5, SHA-1, SHA-256, SHA-512 hashes",
+  },
+  "tools.color-converter": {
+    label: "Color Converter",
+    description: "Convert between HEX, RGB, HSL color formats",
+  },
   "tools.csv-json": { label: "CSV ↔ JSON", description: "Convert between CSV and JSON formats" },
-  "tools.text-utils": { label: "Text Utils", description: "Sort, unique, reverse, case conversion, word count" },
-  "tools.cron-parser": { label: "Cron Parser", description: "Parse cron expressions into human-readable descriptions" },
+  "tools.text-utils": {
+    label: "Text Utils",
+    description: "Sort, unique, reverse, case conversion, word count",
+  },
+  "tools.cron-parser": {
+    label: "Cron Parser",
+    description: "Parse cron expressions into human-readable descriptions",
+  },
   "tools.lorem-ipsum": { label: "Lorem Ipsum", description: "Generate placeholder text" },
   "tools.number-base": { label: "Number Base", description: "Convert between binary, octal, decimal, hex" },
   "tools.jsonpath": { label: "JSONPath", description: "Query JSON data with JSONPath expressions" },
@@ -167,9 +201,9 @@ const MESSAGES: Record<Locale, I18nMessages> = {
   en,
   "zh-CN": zhCN,
   "zh-TW": zhCN, // fallback
-  ja: zhCN,       // fallback
-  ko: zhCN,       // fallback
-  es: zhCN,       // fallback
+  ja: zhCN, // fallback
+  ko: zhCN, // fallback
+  es: zhCN, // fallback
 };
 
 /** 获取本地化字符串，支持点号路径和 <accent> 标签替换 */
@@ -225,14 +259,27 @@ export function listSupportedLocales(): { slug: Locale; label: string }[] {
 
 /** 协商语言环境 */
 export function negotiateLocale(preferred?: string): Locale {
-  if (preferred) {
-    const normalized = preferred.toLowerCase();
-    if (normalized === "en" || normalized.startsWith("en-")) return "en";
+  if (!preferred) return "en";
+
+  // 解析 Accept-Language 头，提取 locale list（按 q 值排序）
+  const locales = preferred
+    .split(",")
+    .map((part) => {
+      const [lang, quality = "q=1"] = part.trim().split(";");
+      const q = parseFloat((quality.split("=")[1] ?? "1").trim()) || 1;
+      return { locale: lang.trim().toLowerCase(), q };
+    })
+    .sort((a, b) => b.q - a.q);
+
+  for (const { locale } of locales) {
+    const normalized = locale.toLowerCase();
     if (normalized === "zh-cn" || normalized === "zh") return "zh-CN";
     if (normalized === "zh-tw" || normalized === "zh-hk") return "zh-TW";
     if (normalized === "ja" || normalized.startsWith("ja-")) return "ja";
     if (normalized === "ko" || normalized.startsWith("ko-")) return "ko";
     if (normalized === "es" || normalized.startsWith("es-")) return "es";
+    if (normalized === "fr" || normalized.startsWith("fr-")) return "fr";
+    if (normalized === "en" || normalized.startsWith("en-")) return "en";
   }
   return "en";
 }

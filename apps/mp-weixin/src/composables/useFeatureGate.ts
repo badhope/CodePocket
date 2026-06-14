@@ -51,22 +51,10 @@ export function useFeatureGate() {
         } catch {
           body = null;
         }
-        snapshot.value = parseHealthResponse(
-          body,
-          res.status,
-          true,
-          null,
-          Math.round(latency),
-        );
+        snapshot.value = parseHealthResponse(body, res.status, true, null, Math.round(latency));
       }
     } catch (e) {
-      snapshot.value = parseHealthResponse(
-        null,
-        0,
-        true,
-        (e as Error).message ?? "network error",
-        null,
-      );
+      snapshot.value = parseHealthResponse(null, 0, true, (e as Error).message ?? "network error", null);
     }
   }
 

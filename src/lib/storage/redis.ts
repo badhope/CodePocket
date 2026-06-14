@@ -76,16 +76,16 @@ const memoryStore = new Map<string, { timestamps: number[]; expires: number }>()
 function slidingWindowMemory(key: string, limit: number, windowMs: number): LimitDecision {
   const now = Date.now();
   const cutoff = now - windowMs;
-  
+
   let entry = memoryStore.get(key);
   if (!entry || entry.expires < now) {
     entry = { timestamps: [], expires: now + windowMs };
     memoryStore.set(key, entry);
   }
-  
+
   // Remove expired timestamps
-  entry.timestamps = entry.timestamps.filter(t => t > cutoff);
-  
+  entry.timestamps = entry.timestamps.filter((t) => t > cutoff);
+
   const count = entry.timestamps.length;
   if (count >= limit) {
     const oldest = entry.timestamps[0] ?? now;
@@ -96,7 +96,7 @@ function slidingWindowMemory(key: string, limit: number, windowMs: number): Limi
       limit,
     };
   }
-  
+
   entry.timestamps.push(now);
   return {
     success: true,

@@ -11,12 +11,7 @@
  * 这里我们导出的是接口 + 包装器；Worker 脚本另存在 sandbox/worker.js。
  */
 
-import type {
-  ExecutionBackend,
-  ExecutionRequest,
-  ExecutionResult,
-  ExecutionEvent,
-} from "../protocol.js";
+import type { ExecutionBackend, ExecutionRequest, ExecutionResult, ExecutionEvent } from "../protocol.js";
 import { inferLanguageFromFilename } from "../languages.js";
 import { AbortError, throwIfAborted } from "../abort.js";
 

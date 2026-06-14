@@ -14,10 +14,7 @@ export interface SchemaCheckResult {
   data: unknown;
 }
 
-export function checkJsonBasic(
-  input: string,
-  schema: z.ZodType<unknown>,
-): SchemaCheckResult {
+export function checkJsonBasic(input: string, schema: z.ZodType<unknown>): SchemaCheckResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(input);

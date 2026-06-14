@@ -9,24 +9,27 @@ export const SAMPLES: Record<string, { input: string; options?: Record<string, u
     options: { op: "format", indent: 2 },
   },
   "css-formatter": {
-    input: ".btn{color:red;background:#fff;padding:8px 16px;border-radius:4px}.btn:hover{color:#fff;background:red}",
+    input:
+      ".btn{color:red;background:#fff;padding:8px 16px;border-radius:4px}.btn:hover{color:#fff;background:red}",
   },
   "html-formatter": {
-    input: "<div class=\"card\"><h2>Hello</h2><p>DocForge</p></div>",
+    input: '<div class="card"><h2>Hello</h2><p>DocForge</p></div>',
   },
   "sql-formatter": {
     input:
       "SELECT u.id, u.name, COUNT(p.id) AS post_count FROM users u LEFT JOIN posts p ON p.author_id = u.id WHERE u.created_at > '2024-01-01' GROUP BY u.id ORDER BY post_count DESC LIMIT 10;",
   },
   "xml-formatter": {
-    input: '<?xml version="1.0"?><root><item id="1"><name>A</name></item><item id="2"><name>B</name></item></root>',
+    input:
+      '<?xml version="1.0"?><root><item id="1"><name>A</name></item><item id="2"><name>B</name></item></root>',
   },
   "markdown-preview": {
-    input: "# DocForge\n\nA **developer toolbox** with 30 tools.\n\n- JSON / CSS / HTML / SQL format\n- Base64 / URL / JWT codec\n- UUID / QR generate\n- Playground for 19 languages\n\n```js\nconsole.log('Hello, DocForge!');\n```",
+    input:
+      "# DocForge\n\nA **developer toolbox** with 30 tools.\n\n- JSON / CSS / HTML / SQL format\n- Base64 / URL / JWT codec\n- UUID / QR generate\n- Playground for 19 languages\n\n```js\nconsole.log('Hello, DocForge!');\n```",
   },
   "markdown-to-html": { input: "# Title\n\nSome **bold** text and `code`." },
   "html-to-markdown": {
-    input: '<h1>Title</h1><p>Some <strong>bold</strong> text and <code>code</code>.</p>',
+    input: "<h1>Title</h1><p>Some <strong>bold</strong> text and <code>code</code>.</p>",
   },
   "document-convert": { input: "(上传 .docx / .pdf / .xlsx 后由后端转换；M1 离线端不支持)" },
   base64: { input: "Hello, DocForge! 你好，世界！", options: { op: "encode" } },
@@ -41,14 +44,14 @@ export const SAMPLES: Record<string, { input: string; options?: Record<string, u
     options: { schema: "signin" },
   },
   "regex-tester": {
-    input:
-      "DocForge v0.1.0 released in 2024-01. 30 tools, 19 languages, 6 locales. The future is now.",
+    input: "DocForge v0.1.0 released in 2024-01. 30 tools, 19 languages, 6 locales. The future is now.",
     options: { pattern: "\\b(\\d+)(?=\\s+(?:tools?|languages?|locales?))", flags: "g" },
   },
   "qr-generator": { input: "https://docforge.dev" },
   playground: { input: 'print("Hello, DocForge!")' },
   "json-diff": {
-    input: '{\n  "name": "DocForge",\n  "version": "0.1.0",\n  "tools": 20,\n  "offline": true\n}\n---\n{\n  "name": "DocForge",\n  "version": "0.2.0",\n  "tools": 30,\n  "offline": false,\n  "license": "MIT"\n}',
+    input:
+      '{\n  "name": "DocForge",\n  "version": "0.1.0",\n  "tools": 20,\n  "offline": true\n}\n---\n{\n  "name": "DocForge",\n  "version": "0.2.0",\n  "tools": 30,\n  "offline": false,\n  "license": "MIT"\n}',
   },
   "text-diff": {
     input:
@@ -87,11 +90,11 @@ export const SAMPLES: Record<string, { input: string; options?: Record<string, u
     input: "255",
     options: { fromBase: 10, toBase: 16 },
   },
-  "jsonpath": {
+  jsonpath: {
     input: '{"store":{"book":[{"title":"JavaScript"},{"title":"Python"}]}}',
     options: { path: "$.store.book[*].title" },
   },
-  "validator": {
+  validator: {
     input: "test@example.com",
     options: { type: "email" },
   },

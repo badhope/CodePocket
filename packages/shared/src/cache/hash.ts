@@ -12,9 +12,7 @@ const ENC = new TextEncoder();
 export async function sha256(input: string): Promise<string> {
   if (typeof globalThis.crypto?.subtle?.digest === "function") {
     const buf = await globalThis.crypto.subtle.digest("SHA-256", ENC.encode(input));
-    return [...new Uint8Array(buf)]
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
   }
   // 极少数环境（老 Safari）兜底用 FNV-1a
   return fnv1aHex(input);

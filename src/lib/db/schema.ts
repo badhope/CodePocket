@@ -1,10 +1,6 @@
-import {
-  sqliteTable,
-  text,
-  integer,
-  primaryKey,
-} from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import type { AdapterAccountType } from "next-auth/adapters";
 
 // ============================================================================
@@ -23,8 +19,12 @@ export const users = sqliteTable("user", {
   theme: text("theme").notNull().default("dark"),
   twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
   twoFactorSecret: text("two_factor_secret"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 export const accounts = sqliteTable(
@@ -87,8 +87,12 @@ export const documents = sqliteTable("document", {
   mimeType: text("mime_type"),
   blobKey: text("blob_key"),
   status: text("status").notNull().default("uploaded"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ============================================================================
@@ -113,7 +117,9 @@ export const conversions = sqliteTable("conversion", {
   error: text("error"),
   durationMs: integer("duration_ms"),
   metadata: text("metadata", { mode: "json" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
   completedAt: integer("completed_at", { mode: "timestamp" }),
 });
 
@@ -142,7 +148,9 @@ export const executions = sqliteTable("execution", {
   memoryKb: integer("memory_kb"),
   startedAt: integer("started_at", { mode: "timestamp" }),
   finishedAt: integer("finished_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ============================================================================
@@ -164,8 +172,12 @@ export const projects = sqliteTable("project", {
   starCount: integer("star_count").notNull().default(0),
   forkCount: integer("fork_count").notNull().default(0),
   forkOf: text("fork_of"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 export const projectFiles = sqliteTable("project_file", {
@@ -180,8 +192,12 @@ export const projectFiles = sqliteTable("project_file", {
   size: integer("size").notNull().default(0),
   mime: text("mime"),
   encoding: text("encoding").notNull().default("utf-8"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 export const fileVersions = sqliteTable("file_version", {
@@ -193,7 +209,9 @@ export const fileVersions = sqliteTable("file_version", {
   size: integer("size").notNull(),
   commitMessage: text("commit_message"),
   authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ============================================================================
@@ -209,7 +227,9 @@ export const packages = sqliteTable("package", {
   name: text("name").notNull(),
   version: text("version"),
   dev: integer("dev", { mode: "boolean" }).notNull().default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ============================================================================
@@ -230,8 +250,12 @@ export const snippets = sqliteTable("snippet", {
   viewCount: integer("view_count").notNull().default(0),
   forkCount: integer("fork_count").notNull().default(0),
   likeCount: integer("like_count").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ============================================================================
@@ -251,7 +275,9 @@ export const shares = sqliteTable("share", {
   viewCount: integer("view_count").notNull().default(0),
   burned: integer("burned", { mode: "boolean" }).notNull().default(false),
   expiresAt: integer("expires_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ============================================================================
@@ -267,8 +293,12 @@ export const teams = sqliteTable("team", {
   ownerId: text("owner_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 export const teamMembers = sqliteTable(
@@ -283,10 +313,12 @@ export const teamMembers = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").notNull().default("member"),
     invitedBy: text("invited_by").references(() => users.id, { onDelete: "set null" }),
-    joinedAt: integer("joined_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    joinedAt: integer("joined_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
   },
   (t) => ({
-    uniqueTeamUser: { columns: [t.teamId, t.userId], primaryKey: true },
+    uniqueTeamUser: primaryKey({ columns: [t.teamId, t.userId] }),
   }),
 );
 
@@ -306,7 +338,9 @@ export const apiKeys = sqliteTable("api_key", {
   lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
   expiresAt: integer("expires_at", { mode: "timestamp" }),
   revokedAt: integer("revoked_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 export const auditLogs = sqliteTable("audit_log", {
@@ -317,7 +351,9 @@ export const auditLogs = sqliteTable("audit_log", {
   metadata: text("metadata", { mode: "json" }),
   ip: text("ip"),
   userAgent: text("user_agent"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ============================================================================
@@ -346,3 +382,18 @@ export type TeamMember = typeof teamMembers.$inferSelect;
 export type NewTeamMember = typeof teamMembers.$inferInsert;
 export type Package = typeof packages.$inferSelect;
 export type NewPackage = typeof packages.$inferInsert;
+
+// ============================================================================
+// RELATIONS
+// ============================================================================
+
+export const conversionsRelations = relations(conversions, ({ one }) => ({
+  document: one(documents, {
+    fields: [conversions.documentId],
+    references: [documents.id],
+  }),
+}));
+
+export const documentsRelations = relations(documents, ({ many }) => ({
+  conversions: many(conversions),
+}));

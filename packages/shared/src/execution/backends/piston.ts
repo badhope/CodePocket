@@ -7,12 +7,7 @@
  *   POST /api/execute/stream 同样的 payload → SSE/ndjson 流式 ExecutionEvent
  */
 
-import type {
-  ExecutionBackend,
-  ExecutionRequest,
-  ExecutionResult,
-  ExecutionEvent,
-} from "../protocol.js";
+import type { ExecutionBackend, ExecutionRequest, ExecutionResult, ExecutionEvent } from "../protocol.js";
 import { ApiClient, ENDPOINTS } from "../../api-client/index.js";
 import { throwIfAborted } from "../abort.js";
 

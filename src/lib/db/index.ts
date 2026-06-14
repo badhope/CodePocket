@@ -20,11 +20,11 @@ function resolveDbPath(): string {
 function createDb() {
   const dbPath = resolveDbPath();
   const sqlite = new Database(dbPath);
-  
+
   // Enable WAL mode for better concurrency
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("synchronous = NORMAL");
-  
+
   return drizzle(sqlite, { schema, casing: "snake_case" });
 }
 

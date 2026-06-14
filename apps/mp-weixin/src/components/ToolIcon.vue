@@ -99,7 +99,9 @@ const wh = computed(() => `${props.size}px`);
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8" />
       <polyline points="14 2 14 8 20 8" />
       <circle cx="17" cy="17" r="2" />
-      <path d="M17 13v1M17 20v1M14.5 14.5l.7.7M18.8 18.8l.7.7M14 17h1M19 17h1M14.5 19.5l.7-.7M18.8 15.2l.7-.7" />
+      <path
+        d="M17 13v1M17 20v1M14.5 14.5l.7.7M18.8 18.8l.7.7M14 17h1M19 17h1M14.5 19.5l.7-.7M18.8 15.2l.7-.7"
+      />
     </template>
 
     <!-- base64 / binary -->

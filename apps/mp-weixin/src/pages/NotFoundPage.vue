@@ -5,12 +5,9 @@
 import { ref, onMounted } from "vue";
 import { tFor, type Locale } from "@docforge/shared";
 
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 
-onMounted(() => {
-});
+onMounted(() => {});
 </script>
 
 <template>
@@ -18,17 +15,11 @@ onMounted(() => {
     <view class="p df-eyebrow">// 404 · path not found</view>
     <view class="heading df-h1">{{ tFor(locale, "notfound.title") }}</view>
     <view class="p df-text-secondary">{{ tFor(locale, "notfound.subtitle") }}</view>
-    <view class="pre df-mono-block notfound__block">$ docforge open &lt;requested_path&gt;
-&gt; error: path not found
-&gt; hint: try one of these:
-  · /              home
-  · /tools         all 20 tools
-  · /playground    code playground
-  · /tools/qr      QR generator
-  · /tools/regex   regex tester
-  · /tools/markdown  markdown preview
-  · /tools/document-convert  document converter
-</view>
+    <view class="pre df-mono-block notfound__block"
+      >$ docforge open &lt;requested_path&gt; &gt; error: path not found &gt; hint: try one of these: · / home
+      · /tools all 20 tools · /playground code playground · /tools/qr QR generator · /tools/regex regex tester
+      · /tools/markdown markdown preview · /tools/document-convert document converter
+    </view>
     <view class="df-row" style="margin-top: var(--df-space-4); justify-content: center">
       <navigator url="/pages/index/index" class="df-btn df-btn-primary">← home</navigator>
       <navigator url="/pages/ToolsIndexPage" class="df-btn">all tools</navigator>

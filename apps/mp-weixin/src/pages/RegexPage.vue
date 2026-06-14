@@ -19,9 +19,7 @@ const sample = computed(() => SAMPLES[slug]);
 
 const { snapshot } = useFeatureGate();
 const { memo } = useResultCache();
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 
 const input = ref<string>("");
 const output = ref<string>("");
@@ -61,8 +59,7 @@ function loadSample() {
 watch(input, run);
 watch(options, run, { deep: true });
 
-onMounted(() => {
-});
+onMounted(() => {});
 </script>
 
 <template>
@@ -91,7 +88,9 @@ onMounted(() => {
     <view class="regex-input">
       <view class="regex-input__label">
         <view class="heading">{{ tFor(locale, "common.input") }}</view>
-        <text class="df-text-xs df-text-muted" v-if="meta?.count != null">{{ meta.count }} {{ tFor(locale, "regex.matches") }}</text>
+        <text class="df-text-xs df-text-muted" v-if="meta?.count != null"
+          >{{ meta.count }} {{ tFor(locale, "regex.matches") }}</text
+        >
       </view>
       <textarea
         v-model="input"
@@ -107,7 +106,7 @@ onMounted(() => {
         <view class="heading">{{ tFor(locale, "regex.matches") }}</view>
       </view>
       <ErrorBar v-if="error" :message="error" />
-      <view v-else class="pre df-mono-block">{{ output || tFor(locale, 'regex.noMatches') }}</view>
+      <view v-else class="pre df-mono-block">{{ output || tFor(locale, "regex.noMatches") }}</view>
     </view>
   </ToolLayout>
 </template>

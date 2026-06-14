@@ -58,11 +58,7 @@ import {
   type ToolRunner,
   type ToolRunResult,
 } from "@docforge/shared";
-import {
-  createProjectSchema,
-  signInSchema,
-  checkJsonBasic,
-} from "@docforge/shared";
+import { createProjectSchema, signInSchema, checkJsonBasic } from "@docforge/shared";
 
 function jsonOrError(input: string): { ok: true; value: unknown } | { ok: false; error: string } {
   try {
@@ -363,19 +359,28 @@ export const runCsvJson: ToolRunner = (input, opts) => {
 export const runTextUtils: ToolRunner = (input, opts) => {
   const op = (opts?.op as string) ?? "sort";
   switch (op) {
-    case "sort": return { ok: true, output: sortLines(input, false) };
-    case "sortDesc": return { ok: true, output: sortLines(input, true) };
-    case "unique": return { ok: true, output: uniqueLines(input) };
-    case "reverse": return { ok: true, output: reverseLines(input) };
-    case "shuffle": return { ok: true, output: shuffleLines(input) };
-    case "upper": return { ok: true, output: toUpperCase(input) };
-    case "lower": return { ok: true, output: toLowerCase(input) };
-    case "title": return { ok: true, output: toTitleCase(input) };
+    case "sort":
+      return { ok: true, output: sortLines(input, false) };
+    case "sortDesc":
+      return { ok: true, output: sortLines(input, true) };
+    case "unique":
+      return { ok: true, output: uniqueLines(input) };
+    case "reverse":
+      return { ok: true, output: reverseLines(input) };
+    case "shuffle":
+      return { ok: true, output: shuffleLines(input) };
+    case "upper":
+      return { ok: true, output: toUpperCase(input) };
+    case "lower":
+      return { ok: true, output: toLowerCase(input) };
+    case "title":
+      return { ok: true, output: toTitleCase(input) };
     case "count": {
       const wc = wordCount(input);
       return { ok: true, output: `字符: ${wc.chars}\n单词: ${wc.words}\n行: ${wc.lines}` };
     }
-    default: return { ok: false, error: `未知操作: ${op}` };
+    default:
+      return { ok: false, error: `未知操作: ${op}` };
   }
 };
 
@@ -408,15 +413,20 @@ export const runJsonPath: ToolRunner = (input, opts) => {
 export const runValidator: ToolRunner = (input, opts) => {
   const type = (opts?.type as string) ?? "email";
   switch (type) {
-    case "email": return { ok: true, output: validateEmail(input) ? "✓ 有效邮箱" : "✗ 无效邮箱" };
-    case "url": return { ok: true, output: validateUrl(input) ? "✓ 有效URL" : "✗ 无效URL" };
-    case "ipv4": return { ok: true, output: validateIPv4(input) ? "✓ 有效IPv4" : "✗ 无效IPv4" };
-    case "ipv6": return { ok: true, output: validateIPv6(input) ? "✓ 有效IPv6" : "✗ 无效IPv6" };
+    case "email":
+      return { ok: true, output: validateEmail(input) ? "✓ 有效邮箱" : "✗ 无效邮箱" };
+    case "url":
+      return { ok: true, output: validateUrl(input) ? "✓ 有效URL" : "✗ 无效URL" };
+    case "ipv4":
+      return { ok: true, output: validateIPv4(input) ? "✓ 有效IPv4" : "✗ 无效IPv4" };
+    case "ipv6":
+      return { ok: true, output: validateIPv6(input) ? "✓ 有效IPv6" : "✗ 无效IPv6" };
     case "ip": {
       const result = validateIP(input);
       return { ok: true, output: result.valid ? `✓ 有效IP (${result.type})` : "✗ 无效IP" };
     }
-    default: return { ok: false, error: `未知类型: ${type}` };
+    default:
+      return { ok: false, error: `未知类型: ${type}` };
   }
 };
 
@@ -455,8 +465,8 @@ export const RUNNERS: Record<string, ToolRunner> = {
   "cron-parser": runCronParser,
   "lorem-ipsum": runLoremIpsum,
   "number-base": runNumberBase,
-  "jsonpath": runJsonPath,
-  "validator": runValidator,
+  jsonpath: runJsonPath,
+  validator: runValidator,
 };
 
 export function getRunner(slug: string): ToolRunner | undefined {

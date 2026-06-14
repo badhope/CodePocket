@@ -20,7 +20,9 @@ code,
 pre,
 .df-mono {
   font-family: var(--df-font-mono);
-  font-feature-settings: "calt" 0, "liga" 0;
+  font-feature-settings:
+    "calt" 0,
+    "liga" 0;
 }
 
 /* ── 容器 ──────────────────────────────────────── */

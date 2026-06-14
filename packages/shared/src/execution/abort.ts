@@ -20,10 +20,7 @@ export function throwIfAborted(signal?: AbortSignal): void {
 }
 
 /** 把一个异步迭代器绑到 signal：signal 触发时停止迭代 */
-export async function* withAbort<T>(
-  source: AsyncIterable<T>,
-  signal?: AbortSignal,
-): AsyncIterable<T> {
+export async function* withAbort<T>(source: AsyncIterable<T>, signal?: AbortSignal): AsyncIterable<T> {
   if (signal?.aborted) throw new AbortError();
   const it = source[Symbol.asyncIterator]();
   const abortHandler = () => {

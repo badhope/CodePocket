@@ -34,7 +34,11 @@
     "title": "DocForge",
     "router": { "mode": "hash", "base": "/" },
     "publicPath": "/",
-    "devServer": { "port": 5174, "https": false, "proxy": { "/api": { "target": "http://localhost:3000", "changeOrigin": true } } },
+    "devServer": {
+      "port": 5174,
+      "https": false,
+      "proxy": { "/api": { "target": "http://localhost:3000", "changeOrigin": true } }
+    },
     "optimization": { "treeShaking": { "enable": true } },
     "sdkConfigs": {}
   },

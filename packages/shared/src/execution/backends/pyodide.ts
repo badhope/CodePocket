@@ -5,12 +5,7 @@
  * 仅 H5 / App 可用。小程序无 WebAssembly，跑不了。
  */
 
-import type {
-  ExecutionBackend,
-  ExecutionRequest,
-  ExecutionResult,
-  ExecutionEvent,
-} from "../protocol.js";
+import type { ExecutionBackend, ExecutionRequest, ExecutionResult, ExecutionEvent } from "../protocol.js";
 import { AbortError, throwIfAborted } from "../abort.js";
 
 export interface PyodideBackendOptions {
@@ -94,9 +89,7 @@ export class PyodideBackend implements ExecutionBackend {
     const execId = `py-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     yield { type: "started", executionId: execId, language: "python", version: "pyodide" };
 
-    const loadFactory = (await this.loadPyodide()) as (opts: {
-      indexURL: string;
-    }) => Promise<PyodideLike>;
+    const loadFactory = (await this.loadPyodide()) as (opts: { indexURL: string }) => Promise<PyodideLike>;
     throwIfAborted(signal);
     const py = await loadFactory({ indexURL: this.indexUrl });
     throwIfAborted(signal);

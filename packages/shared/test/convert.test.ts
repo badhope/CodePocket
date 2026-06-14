@@ -114,7 +114,7 @@ describe("convert/converter — 7. JSON → XML", () => {
 
 describe("convert/converter — 8. XML → JSON", () => {
   it("parses a root", () => {
-    const json = xmlToJson("<a id=\"1\"><b>2</b></a>");
+    const json = xmlToJson('<a id="1"><b>2</b></a>');
     const data = JSON.parse(json) as { a: { "@_id": string; b: number | string } };
     expect(data.a["@_id"]).toBe("1");
     // fast-xml-parser 默认识别数字字面量；改用 numberValue

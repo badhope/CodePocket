@@ -36,9 +36,7 @@ function asPiston(p: PistonBackend | PistonBackendOptions | undefined): PistonBa
   if (!p) return new PistonBackend();
   return p instanceof PistonBackend ? p : new PistonBackend(p);
 }
-function asPyodide(
-  p: PyodideBackend | PyodideBackendOptions | undefined,
-): PyodideBackend | null {
+function asPyodide(p: PyodideBackend | PyodideBackendOptions | undefined): PyodideBackend | null {
   if (!p) return new PyodideBackend();
   return p instanceof PyodideBackend ? p : new PyodideBackend(p);
 }

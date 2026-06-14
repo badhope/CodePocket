@@ -17,15 +17,7 @@
  */
 
 /** 文档格式枚举 */
-export type DocumentFormat =
-  | "md"
-  | "html"
-  | "txt"
-  | "json"
-  | "xml"
-  | "pdf"
-  | "docx"
-  | "xlsx";
+export type DocumentFormat = "md" | "html" | "txt" | "json" | "xml" | "pdf" | "docx" | "xlsx";
 
 /** 转换方向（from → to） */
 export interface ConversionPair {
@@ -34,7 +26,16 @@ export interface ConversionPair {
   /** 能否纯前端（false = 必须后端） */
   readonly local: boolean;
   /** 主用实现（无值表示纯客户端尚未实现，需后端） */
-  readonly hint: "marked" | "turndown" | "fast-xml-parser" | "pdf-lib" | "strip" | "wrap" | "html-walk" | "escape" | "backend";
+  readonly hint:
+    | "marked"
+    | "turndown"
+    | "fast-xml-parser"
+    | "pdf-lib"
+    | "strip"
+    | "wrap"
+    | "html-walk"
+    | "escape"
+    | "backend";
 }
 
 /** MIME / 扩展名 元数据 */

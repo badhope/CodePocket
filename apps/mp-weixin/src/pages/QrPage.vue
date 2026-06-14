@@ -20,9 +20,7 @@ const sample = computed(() => SAMPLES[slug]);
 
 const { snapshot } = useFeatureGate();
 const { memo } = useResultCache();
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 
 const input = ref<string>("");
 const output = ref<string>("");
@@ -55,8 +53,7 @@ function loadSample() {
 watch(input, run);
 watch(options, run, { deep: true });
 
-onMounted(() => {
-});
+onMounted(() => {});
 </script>
 
 <template>
@@ -76,7 +73,7 @@ onMounted(() => {
       <view class="df-row" style="gap: var(--df-space-2); flex-wrap: wrap; margin-top: var(--df-space-2)">
         <text class="df-eyebrow">ec:</text>
         <button
-          v-for="lvl in ['L','M','Q','H'] as const"
+          v-for="lvl in ['L', 'M', 'Q', 'H'] as const"
           :key="lvl"
           class="df-btn df-btn-sm"
           :class="options.ec === lvl ? 'df-btn-primary' : ''"

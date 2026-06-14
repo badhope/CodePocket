@@ -8,13 +8,7 @@ const uni = (uniPkg as unknown as { default: typeof uniPkg }).default ?? uniPkg;
 // pdf-lib 是 shared 包静态依赖，引入链上有 tslib/pako/... 等多个子依赖。
 // 在 uni-app x 小程序端这些子依赖解析路径与 H5 略有差异，
 // 这里统一 external，由运行时按需加载（uni-app 的 commonjs 兼容层处理）。
-const externalDeps = [
-  "pdf-lib",
-  "tslib",
-  "pako",
-  "strnum",
-  "pdf-lib/cjs/core/errors",
-];
+const externalDeps = ["pdf-lib", "tslib", "pako", "strnum", "pdf-lib/cjs/core/errors"];
 
 // DocForge mp-weixin 编译入口
 // - h5 端：把 <view>/<text> 编译成 <div>/<span>
@@ -41,12 +35,7 @@ export default defineConfig({
   },
   // 预构建 pdf-lib 相关依赖
   optimizeDeps: {
-    include: [
-      "pdf-lib",
-      "@pdf-lib/upng",
-      "@pdf-lib/standard-fonts",
-      "fast-xml-parser",
-    ],
+    include: ["pdf-lib", "@pdf-lib/upng", "@pdf-lib/standard-fonts", "fast-xml-parser"],
     esbuildOptions: {
       target: "esnext",
     },

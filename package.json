@@ -165,7 +165,15 @@
     "vitest": "^4.1.7"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3", "esbuild", "@swc/core", "core-js", "core-js-pure", "@parcel/watcher", "@sentry/cli"],
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "@swc/core",
+      "core-js",
+      "core-js-pure",
+      "@parcel/watcher",
+      "@sentry/cli"
+    ],
     "overrides": {
       "dompurify@>=3 <3.3.2": ">=3.3.2",
       "uuid@<11.1.1": ">=11.1.1",

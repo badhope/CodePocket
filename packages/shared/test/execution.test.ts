@@ -6,11 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  PistonBackend,
-  selectBackend,
-  type ExecutionResult,
-} from "../src/index.js";
+import { PistonBackend, selectBackend, type ExecutionResult } from "../src/index.js";
 import type { BackendSnapshot } from "../src/index.js";
 
 const OK_RESULT: ExecutionResult = {
@@ -29,9 +25,7 @@ function mockFetchJson(body: unknown, status = 200): typeof globalThis.fetch {
 
 describe("PistonBackend", () => {
   it("execute() POSTs to /api/execute and unwraps body", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(OK_RESULT), { status: 200 }),
-    );
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify(OK_RESULT), { status: 200 }));
     const client = new PistonBackend({ baseURL: "https://x", fetch: fetchImpl });
     const res = await client.execute({
       language: "python",
@@ -57,9 +51,11 @@ describe("PistonBackend", () => {
       JSON.stringify({ type: "run-output", executionId: "e1", stream: "stdout", chunk: "hi" }),
       JSON.stringify({ type: "run-end", executionId: "e1", result: OK_RESULT.run }),
     ].join("\n");
-    const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(ndjson, { status: 200, headers: { "content-type": "application/x-ndjson" } }),
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(ndjson, { status: 200, headers: { "content-type": "application/x-ndjson" } }),
+      );
     const client = new PistonBackend({ baseURL: "https://x", fetch: fetchImpl });
     const events: { type: string }[] = [];
     for await (const ev of client.stream({
@@ -94,13 +90,17 @@ describe("selectBackend", () => {
     state: "online",
     latencyMs: 10,
     lastChecked: 0,
-    details: null,
+    error: null,
+    server: null,
+    apiReachable: true,
   };
   const offline: BackendSnapshot = {
     state: "offline",
     latencyMs: null,
     lastChecked: 0,
-    details: null,
+    error: null,
+    server: null,
+    apiReachable: true,
   };
 
   it("picks Piston when backend online and language supported", () => {

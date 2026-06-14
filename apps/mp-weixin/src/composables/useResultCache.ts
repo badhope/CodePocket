@@ -15,11 +15,9 @@ import { mpAdapter } from "@docforge/storage";
 const DEFAULT_MAX = 100;
 const DEFAULT_TTL = 60 * 60 * 1000; // 1h
 
-let _shared:
-  | {
-      cache: ResultCache;
-    }
-  | null = null;
+let _shared: {
+  cache: ResultCache;
+} | null = null;
 
 async function ensureShared() {
   if (_shared) return _shared.cache;
@@ -80,5 +78,12 @@ export function useResultCache() {
     stats.value = cache?.stats() ?? stats.value;
   }
 
-  return { memo, stats, clear, get isReady() { return ready; } };
+  return {
+    memo,
+    stats,
+    clear,
+    get isReady() {
+      return ready;
+    },
+  };
 }

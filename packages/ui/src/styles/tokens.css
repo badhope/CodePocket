@@ -33,8 +33,7 @@
   --df-info-soft: #e0f2fe;
 
   /* ── 排版 ──────────────────────────────────────────── */
-  --df-font-mono:
-    "JetBrains Mono", "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --df-font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --df-font-sans: var(--df-font-mono);
   --df-font-display: var(--df-font-mono);
   --df-text-xs: 0.75rem;

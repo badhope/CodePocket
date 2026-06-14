@@ -91,7 +91,10 @@ function stripTypeAnnotations(code) {
   out = out.replace(/^\s*(import|export)\s+type\s+.*?;?\s*$/gm, "");
 
   // Remove interface / type alias blocks
-  out = out.replace(/^\s*(export\s+)?(interface|type)\s+\w+[\s\S]*?(?=\n\s*\n|\n(?:export|import|const|let|var|function|class|async|enum|declare|namespace|module)\b|\n*$)/gm, "");
+  out = out.replace(
+    /^\s*(export\s+)?(interface|type)\s+\w+[\s\S]*?(?=\n\s*\n|\n(?:export|import|const|let|var|function|class|async|enum|declare|namespace|module)\b|\n*$)/gm,
+    "",
+  );
 
   // Remove type assertions: `as Type`
   out = out.replace(/\s+as\s+\w[\w.<>\[\]|&,\s]*/g, "");

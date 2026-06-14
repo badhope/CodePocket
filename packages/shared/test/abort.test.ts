@@ -63,10 +63,9 @@ describe("PistonBackend.stream with abort", () => {
     });
     const c = new AbortController();
     const events: string[] = [];
-    const it = backend.stream(
-      { language: "python", files: [{ name: "a.py", content: "print(1)" }] },
-      c.signal,
-    )[Symbol.asyncIterator]();
+    const it = backend
+      .stream({ language: "python", files: [{ name: "a.py", content: "print(1)" }] }, c.signal)
+      [Symbol.asyncIterator]();
     // 主动 abort
     setTimeout(() => c.abort("test"), 5);
     for (;;) {
@@ -128,7 +127,12 @@ describe("convert with AbortSignal", () => {
           void onProgress;
           // 在 backend 内触发 abort 模拟中途取消
           setTimeout(() => c.abort("user cancel mid-way"), 0);
-          return { ok: true, output: "ok", mime: "text/html", pair: { from, to, local: false, hint: "backend" } };
+          return {
+            ok: true,
+            output: "ok",
+            mime: "text/html",
+            pair: { from, to, local: false, hint: "backend" },
+          };
         },
       },
     });

@@ -27,9 +27,7 @@ const slug = "document-convert";
 const tool = computed<ToolMeta | undefined>(() => getToolMeta(slug));
 
 const { snapshot } = useFeatureGate();
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 
 const file = ref<File | null>(null);
 const sourceFormat = ref<DocumentFormat>("md");
@@ -147,7 +145,12 @@ const backend: BackendConverter = {
       const mime = res.headers.get("content-type") ?? "application/octet-stream";
       onProgress?.("done", 1);
       // 构造一个 pair 壳（仅 mime 区分）
-      return { ok: true, output: buf, mime, pair: { from, to, label: `${from} → ${to}`, local: false, hint: "backend" } };
+      return {
+        ok: true,
+        output: buf,
+        mime,
+        pair: { from, to, label: `${from} → ${to}`, local: false, hint: "backend" },
+      };
     } catch (e) {
       if ((e as Error).name === "AbortError") {
         return { ok: false, aborted: true, error: "aborted" };
@@ -254,8 +257,7 @@ const binarySize = computed<number>(() => {
 
 const isBinary = computed<boolean>(() => binarySize.value > 0);
 
-onMounted(() => {
-});
+onMounted(() => {});
 </script>
 
 <template>
@@ -280,9 +282,7 @@ onMounted(() => {
         </label>
         <view class="p convert__name df-text-secondary" v-if="file">
           {{ file.name }}
-          <text class="df-text-muted"
-            >({{ (file.size / 1024).toFixed(1) }} KB · .{{ sourceFormat }})</text
-          >
+          <text class="df-text-muted">({{ (file.size / 1024).toFixed(1) }} KB · .{{ sourceFormat }})</text>
         </view>
         <view class="p df-text-muted df-text-sm" v-else>
           {{ tFor(locale, "convert.dropHint") }}
@@ -305,23 +305,11 @@ onMounted(() => {
           </view>
         </view>
 
-        <button
-          class="df-btn df-btn-primary"
-          :disabled="!file || running || !currentPair"
-          @click="submit"
-        >
-          {{
-            running
-              ? tFor(locale, "convert.converting")
-              : tFor(locale, "convert.run")
-          }}
+        <button class="df-btn df-btn-primary" :disabled="!file || running || !currentPair" @click="submit">
+          {{ running ? tFor(locale, "convert.converting") : tFor(locale, "convert.run") }}
         </button>
 
-        <button
-          v-if="running"
-          class="df-btn df-btn-danger"
-          @click="onCancel"
-        >
+        <button v-if="running" class="df-btn df-btn-danger" @click="onCancel">
           {{ tFor(locale, "common.cancel") }}
         </button>
 
@@ -342,7 +330,9 @@ onMounted(() => {
         <view class="convert__result-head">
           <view class="heading">{{ tFor(locale, "convert.preview") }}</view>
           <button class="df-btn df-btn-sm" @click="downloadResult">
-            {{ tFor(locale, "convert.download") }} ({{ file?.name.replace(/\.[^.]+$/, "") }}.{{ targetFormat }})
+            {{ tFor(locale, "convert.download") }} ({{ file?.name.replace(/\.[^.]+$/, "") }}.{{
+              targetFormat
+            }})
           </button>
         </view>
         <view v-if="previewText" class="pre df-mono-block">{{ previewText.slice(0, 4000) }}</view>

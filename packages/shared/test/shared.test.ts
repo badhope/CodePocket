@@ -305,13 +305,7 @@ describe("i18n messages", () => {
     }
   });
   it("labels all 20 tools in zh-CN", () => {
-    for (const slug of [
-      "json-formatter",
-      "playground",
-      "epoch-converter",
-      "jwt-decoder",
-      "regex-tester",
-    ]) {
+    for (const slug of ["json-formatter", "playground", "epoch-converter", "jwt-decoder", "regex-tester"]) {
       expect(toolLabelFor("zh-CN", slug)).toBeTruthy();
     }
   });

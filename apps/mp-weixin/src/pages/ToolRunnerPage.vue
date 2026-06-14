@@ -5,10 +5,7 @@
  * 支持自动运行（debounce 300ms）、复制、重置、加载示例。
  */
 import { ref, computed, watch, onMounted } from "vue";
-import {
-  getTool as getToolMeta,
-  type ToolMeta,
-} from "@docforge/shared";
+import { getTool as getToolMeta, type ToolMeta } from "@docforge/shared";
 import { getRunner } from "@/tools/runners";
 import type { ToolRunResult } from "@docforge/shared";
 import { SAMPLES } from "@/tools/samples";
@@ -29,9 +26,7 @@ const sample = computed(() => SAMPLES[slug.value]);
 const { snapshot, gate, gateForTool } = useFeatureGate();
 const { add: addRecent } = useRecentTools();
 const { memo: memoTool } = useResultCache();
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 
 const input = ref<string>("");
 const output = ref<string>("");
@@ -201,8 +196,7 @@ watch(
   { deep: true },
 );
 
-onMounted(() => {
-});
+onMounted(() => {});
 
 const gateForThis = computed(() =>
   tool.value ? gateForTool(tool.value) : ({ requiresBackend: false, enabled: true } as const),
@@ -409,7 +403,9 @@ function onLoad(options: Record<string, any>) {
 
     <view class="tool-actions">
       <button class="df-btn df-btn-primary" @click="runNow">{{ tFor(locale, "common.run") }}</button>
-      <button class="df-btn" @click="loadSample" :disabled="!sample">{{ tFor(locale, "common.loadSample") }}</button>
+      <button class="df-btn" @click="loadSample" :disabled="!sample">
+        {{ tFor(locale, "common.loadSample") }}
+      </button>
       <button class="df-btn df-btn-ghost" @click="reset">{{ tFor(locale, "common.reset") }}</button>
       <text class="df-text-muted df-text-xs" v-if="meta">
         <text v-for="(v, k) in meta" :key="String(k)">{{ k }}: {{ v }} · </text>

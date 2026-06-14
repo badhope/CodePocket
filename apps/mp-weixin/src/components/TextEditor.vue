@@ -59,12 +59,8 @@ const onInput = (e: Event) => {
       autocorrect="off"
       @input="onInput"
     />
-    <view
-      v-else
-      class="pre"
-      :class="['df-mono-block', error && 'text-editor__pre--error']"
-    >
-      <text>{{ modelValue || placeholder || '—' }}</text>
+    <view v-else class="pre" :class="['df-mono-block', error && 'text-editor__pre--error']">
+      <text>{{ modelValue || placeholder || "—" }}</text>
     </view>
   </view>
 </template>

@@ -23,13 +23,13 @@ describe("工具注册表", () => {
 
   it("离线工具 >= 26 个", () => {
     const tools = registry.listTools();
-    const offline = tools.filter(t => t.offlineFirst).length;
+    const offline = tools.filter((t) => t.offlineFirst).length;
     expect(offline).toBeGreaterThanOrEqual(26);
   });
 
   it("后端工具 = 2 个 (playground + document-convert)", () => {
     const tools = registry.listTools();
-    const backend = tools.filter(t => t.requiresBackend).length;
+    const backend = tools.filter((t) => t.requiresBackend).length;
     expect(backend).toBe(2);
   });
 
@@ -123,7 +123,7 @@ describe("UUID / Hash / QR", () => {
   });
   it("QR 工具注册", () => {
     const tools = registry.listTools();
-    expect(tools.find(t => t.slug === "qr-generator")).toBeTruthy();
+    expect(tools.find((t) => t.slug === "qr-generator")).toBeTruthy();
   });
 });
 
@@ -183,8 +183,10 @@ describe("Lorem Ipsum", () => {
       expect(text.split(/\s+/).filter(Boolean).length).toBeGreaterThanOrEqual(18);
       // 来自 lorem 词典
       const words = text.toLowerCase().split(/\s+/);
-      const inVocab = words.some(w =>
-        ["lorem","ipsum","dolor","sit","amet","consectetur","elit","sed","do"].includes(w.replace(/\W/g,""))
+      const inVocab = words.some((w) =>
+        ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "elit", "sed", "do"].includes(
+          w.replace(/\W/g, ""),
+        ),
       );
       expect(inVocab).toBe(true);
     } else {

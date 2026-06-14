@@ -262,11 +262,13 @@ H5 端打通代码沙盒与文档转换，行为对齐旧栈。
 `apps/mp-weixin` 壳工程已建，uni-app x + Vue 3 + Vite 编译链打通，业务核心 0 重复复用。
 
 **关键产物**：
+
 - `apps/mp-weixin/{package.json, vite.config.ts, tsconfig.json, eslint.config.mjs, index.html}`
 - `apps/mp-weixin/src/{App.vue, main.ts, manifest.json, pages.json, shims.d.ts}`
 - `apps/mp-weixin/src/pages/index/index.vue`（冒烟页，调 `listTools()` + `mpAdapter`）
 
 **依赖选型**（关键经验）：
+
 - `@dcloudio/*` 用 `vue3` dist-tag → 3.0.0-alpha-5010320260611001（2026-06-11）
   - 注意：latest tag 拉到的 vite-plugin-uni 仍是 2021 年 alpha 不可用
   - vue3 tag 是 DCloud 官方维护的 Vue 3 + Vite 5 兼容线
@@ -283,11 +285,13 @@ H5 端打通代码沙盒与文档转换，行为对齐旧栈。
 | 微信 | `pnpm build:mp-weixin` | `dist/build/mp-weixin/{app.js, app.json, app.wxss, pages/index/*}` | 296K |
 
 **全局验证**：
+
 - `pnpm typecheck:all` ✅ 5/5 包
 - `pnpm lint:all` ✅ 5/5 包
 - `pnpm test:all` ✅ 110 测试（shared 105 + storage 4 + h5 1）
 
 **未做**（后续 M3 主线）：
+
 - 20 工具页迁移到 `apps/mp-weixin/src/pages/tools/*`（用 uni-app `<view>` 写）
 - vue-router 改 `uni.navigateTo` 包装
 - `v-html` 改 `<rich-text>`（H5 端保留 v-html）

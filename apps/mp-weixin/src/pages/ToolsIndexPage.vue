@@ -15,9 +15,7 @@ import {
 } from "@docforge/shared";
 import ToolIcon from "@/components/ToolIcon.vue";
 
-const locale = ref<Locale>(
-  (uni.getStorageSync("docforge.locale") as Locale | null) ?? "en",
-);
+const locale = ref<Locale>((uni.getStorageSync("docforge.locale") as Locale | null) ?? "en");
 
 const query = ref("");
 const all = listTools();
@@ -73,13 +71,12 @@ function getToolUrl(slug: string): string {
     "document-convert": "/pages/DocumentConvertPage",
     "qr-generator": "/pages/QrPage",
     "regex-tester": "/pages/RegexPage",
-    "playground": "/pages/PlaygroundPage",
+    playground: "/pages/PlaygroundPage",
   };
   return specialPages[slug] ?? `/pages/ToolRunnerPage?slug=${slug}`;
 }
 
-onMounted(() => {
-});
+onMounted(() => {});
 </script>
 
 <template>
@@ -103,15 +100,13 @@ onMounted(() => {
     </view>
 
     <view v-if="!hasResults" class="df-empty">
-      <view class="p">{{ tFor(locale, "tools.empty") }} <text class="code">{{ query }}"</text></view>
+      <view class="p"
+        >{{ tFor(locale, "tools.empty") }} <text class="code">{{ query }}"</text></view
+      >
     </view>
 
     <view v-else>
-      <view
-        v-for="cat in CATEGORY_ORDER.filter((c) => grouped[c]?.length)"
-        :key="cat"
-        class="tools-group"
-      >
+      <view v-for="cat in CATEGORY_ORDER.filter((c) => grouped[c]?.length)" :key="cat" class="tools-group">
         <view class="home-section__head" style="margin-bottom: var(--df-space-3)">
           <view class="heading">
             <text>{{ tFor(locale, `tools.category.${cat}`) }}</text>
@@ -122,12 +117,7 @@ onMounted(() => {
           {{ CATEGORY_DESCRIPTIONS[cat] }}
         </view>
         <view class="tool-grid">
-          <navigator
-            v-for="t in grouped[cat]"
-            :key="t.slug"
-            :url="getToolUrl(t.slug)"
-            class="tool-card"
-          >
+          <navigator v-for="t in grouped[cat]" :key="t.slug" :url="getToolUrl(t.slug)" class="tool-card">
             <view class="tool-card__head">
               <view class="tool-card__title">
                 <text class="tool-card__icon">
