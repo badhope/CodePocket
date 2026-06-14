@@ -1,0 +1,27 @@
+{
+  "name": "@docforge/storage",
+  "version": "0.1.0",
+  "private": true,
+  "description": "跨端 KV 存储抽象。H5 用 IndexedDB(localForage) / localStorage；小程序用 uni.setStorageSync；App 用 uni.storage / SQLite。",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./h5": "./src/adapters/h5.ts",
+    "./mp": "./src/adapters/mp.ts",
+    "./app": "./src/adapters/app.ts",
+    "./memory": "./src/adapters/memory.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@docforge/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^6",
+    "vitest": "^4.1.7"
+  }
+}

@@ -1,0 +1,114 @@
+/* DocForge 设计 tokens — Refined Terminal 风
+   - 主色板：zinc 黑灰 + amber 强调
+   - 单色 monospace 字体
+   - 支持 light / dark 主题
+*/
+
+:root {
+  /* ── 主色 ──────────────────────────────────────────── */
+  --df-bg: #fafaf9;
+  --df-bg-elevated: #ffffff;
+  --df-bg-subtle: #f4f4f5;
+  --df-bg-inset: #f4f4f5;
+
+  --df-text: #18181b;
+  --df-text-secondary: #52525b;
+  --df-text-muted: #a1a1aa;
+  --df-text-inverted: #fafaf9;
+
+  --df-border: #e4e4e7;
+  --df-border-strong: #d4d4d8;
+  --df-border-focus: #f59e0b;
+
+  --df-accent: #f59e0b;
+  --df-accent-hover: #d97706;
+  --df-accent-soft: #fef3c7;
+  --df-accent-text: #78350f;
+
+  --df-success: #059669;
+  --df-success-soft: #d1fae5;
+  --df-danger: #dc2626;
+  --df-danger-soft: #fee2e2;
+  --df-info: #0284c7;
+  --df-info-soft: #e0f2fe;
+
+  /* ── 排版 ──────────────────────────────────────────── */
+  --df-font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --df-font-sans: var(--df-font-mono);
+  --df-font-display: var(--df-font-mono);
+  --df-text-xs: 0.75rem;
+  --df-text-sm: 0.8125rem;
+  --df-text-base: 0.9375rem;
+  --df-text-lg: 1.0625rem;
+  --df-text-xl: 1.25rem;
+  --df-text-2xl: 1.5rem;
+  --df-text-3xl: 2rem;
+  --df-leading-tight: 1.25;
+  --df-leading-normal: 1.5;
+  --df-leading-relaxed: 1.65;
+
+  /* ── 间距（4px 倍数）────────────────────────────── */
+  --df-space-0: 0;
+  --df-space-1: 0.25rem;
+  --df-space-2: 0.5rem;
+  --df-space-3: 0.75rem;
+  --df-space-4: 1rem;
+  --df-space-5: 1.25rem;
+  --df-space-6: 1.5rem;
+  --df-space-8: 2rem;
+  --df-space-10: 2.5rem;
+  --df-space-12: 3rem;
+  --df-space-16: 4rem;
+
+  /* ── 圆角 ──────────────────────────────────────────── */
+  --df-radius-none: 0;
+  --df-radius-sm: 0.25rem;
+  --df-radius-md: 0.5rem;
+  --df-radius-lg: 0.75rem;
+  --df-radius-full: 9999px;
+
+  /* ── 阴影 ──────────────────────────────────────────── */
+  --df-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04);
+  --df-shadow-md: 0 2px 4px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.04);
+  --df-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.04);
+
+  /* ── 动效 ──────────────────────────────────────────── */
+  --df-ease: cubic-bezier(0.2, 0, 0, 1);
+  --df-duration-fast: 100ms;
+  --df-duration-base: 180ms;
+  --df-duration-slow: 280ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --df-bg: #0a0a0b;
+    --df-bg-elevated: #131316;
+    --df-bg-subtle: #18181b;
+    --df-bg-inset: #09090b;
+
+    --df-text: #fafafa;
+    --df-text-secondary: #a1a1aa;
+    --df-text-muted: #71717a;
+    --df-text-inverted: #0a0a0b;
+
+    --df-border: #27272a;
+    --df-border-strong: #3f3f46;
+    --df-border-focus: #fbbf24;
+
+    --df-accent: #fbbf24;
+    --df-accent-hover: #f59e0b;
+    --df-accent-soft: #422006;
+    --df-accent-text: #fde68a;
+
+    --df-success: #10b981;
+    --df-success-soft: #022c22;
+    --df-danger: #f87171;
+    --df-danger-soft: #450a0a;
+    --df-info: #38bdf8;
+    --df-info-soft: #082f49;
+
+    --df-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --df-shadow-md: 0 2px 4px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+    --df-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
+  }
+}

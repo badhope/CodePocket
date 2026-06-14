@@ -248,6 +248,7 @@ export async function POST(req: NextRequest) {
           const [doc] = await tx
             .insert(documents)
             .values({
+              id: crypto.randomUUID(),
               userId,
               filename: file.name.slice(0, 255),
               originalName: file.name.slice(0, 255),

@@ -1,0 +1,46 @@
+{
+  "name": "DocForge",
+  "appid": "",
+  "description": "DocForge — 跨端开发者工具集（uni-app x）。20 个工具 / 沙盒 / 文档转换 / 6 种语言。",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "splashscreen": {
+      "alwaysShowBeforeRender": true,
+      "waiting": true,
+      "autoclose": true,
+      "delay": 0
+    },
+    "modules": {},
+    "distribute": {
+      "android": { "permissions": [], "minSdkVersion": 21 },
+      "ios": {},
+      "sdkConfigs": {}
+    }
+  },
+  "quickapp": {},
+  "mp-weixin": {
+    "appid": "wx0000000000000000",
+    "setting": { "urlCheck": false, "es6": true, "minified": true },
+    "usingComponents": true,
+    "lazyCodeLoading": "requiredComponents",
+    "optimization": { "subPackages": true }
+  },
+  "h5": {
+    "title": "DocForge",
+    "router": { "mode": "hash", "base": "/" },
+    "publicPath": "/",
+    "devServer": {
+      "port": 5174,
+      "https": false,
+      "proxy": { "/api": { "target": "http://localhost:3000", "changeOrigin": true } }
+    },
+    "optimization": { "treeShaking": { "enable": true } },
+    "sdkConfigs": {}
+  },
+  "vueVersion": "3"
+}

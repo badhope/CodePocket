@@ -16,9 +16,8 @@ async function checkDatabase(): Promise<HealthCheck> {
   try {
     // Lazy import so health checks do not crash the process if the
     // database module is misconfigured. We exercise a no-op query.
-    const { db } = await import("@/lib/db");
-    const { sql } = await import("drizzle-orm");
-    await db.execute(sql`SELECT 1`);
+    const { sqlite } = await import("@/lib/db");
+    sqlite.prepare("SELECT 1").get();
     return {
       name: "database",
       status: "ok",

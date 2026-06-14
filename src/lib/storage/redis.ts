@@ -3,8 +3,9 @@
  *
  * - Production: Upstash REST Redis (HTTP, edge-friendly).
  * - Local dev: ioredis talking to a self-hosted Redis 7.
+ * - Fallback: In-memory rate limiter (no Redis required).
  *
- * The same Redis backend can be plugged into @upstash/ratelimit by adapting
+ * The same redis backend can be plugged into @upstash/ratelimit by adapting
  * the local ioredis client to the @upstash/redis interface shape.
  */
 
@@ -25,7 +26,7 @@ export type LimitDecision = {
 
 export type LimitFn = (key: string) => Promise<LimitDecision>;
 
-export type Backend = "upstash" | "local" | "none";
+export type Backend = "upstash" | "local" | "memory" | "none";
 
 // ---------------------------------------------------------------------------
 // Client construction
@@ -63,7 +64,46 @@ if (process.env.NODE_ENV !== "production") {
 export function backend(): Backend {
   if (upstash) return "upstash";
   if (local) return "local";
-  return "none";
+  return "memory"; // Fallback to in-memory
+}
+
+// ---------------------------------------------------------------------------
+// In-memory rate limiter (fallback when no Redis)
+// ---------------------------------------------------------------------------
+
+const memoryStore = new Map<string, { timestamps: number[]; expires: number }>();
+
+function slidingWindowMemory(key: string, limit: number, windowMs: number): LimitDecision {
+  const now = Date.now();
+  const cutoff = now - windowMs;
+
+  let entry = memoryStore.get(key);
+  if (!entry || entry.expires < now) {
+    entry = { timestamps: [], expires: now + windowMs };
+    memoryStore.set(key, entry);
+  }
+
+  // Remove expired timestamps
+  entry.timestamps = entry.timestamps.filter((t) => t > cutoff);
+
+  const count = entry.timestamps.length;
+  if (count >= limit) {
+    const oldest = entry.timestamps[0] ?? now;
+    return {
+      success: false,
+      remaining: 0,
+      reset: Math.floor((oldest + windowMs) / 1000),
+      limit,
+    };
+  }
+
+  entry.timestamps.push(now);
+  return {
+    success: true,
+    remaining: limit - count - 1,
+    reset: Math.floor((now + windowMs) / 1000),
+    limit,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -72,8 +112,7 @@ export function backend(): Backend {
 
 /**
  * Return a rate-limit function that talks to whichever backend is available.
- * Throws a clear error if no Redis backend is configured so the route can
- * surface a 503 instead of silently allowing traffic.
+ * Falls back to in-memory rate limiting if no Redis is configured.
  */
 export async function rateLimit(opts: { prefix: string; limit: number; windowMs: number }): Promise<LimitFn> {
   const { prefix, limit, windowMs } = opts;
@@ -105,9 +144,8 @@ export async function rateLimit(opts: { prefix: string; limit: number; windowMs:
   if (local) {
     return async (key: string) => slidingWindowLocal(local, `${prefix}:${key}`, limit, windowMs);
   }
-  throw new Error(
-    "Redis is not configured. Set UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN for production, or REDIS_URL for local development.",
-  );
+  // Fallback to in-memory rate limiting
+  return async (key: string) => slidingWindowMemory(`${prefix}:${key}`, limit, windowMs);
 }
 
 /**
@@ -158,12 +196,10 @@ return {1, limit - count - 1, now + window}
 
 /**
  * @deprecated prefer rateLimit(). Kept for callers that have not migrated yet.
- * Throws if no backend is configured (the new contract: no silent fallbacks).
+ * Returns in-memory implementation if no Redis is configured.
  */
-export function requireRedis(): UpstashRedis | IORedisType {
+export function requireRedis(): UpstashRedis | IORedisType | null {
   if (upstash) return upstash;
   if (local) return local;
-  throw new Error(
-    "Redis is not configured. Set UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN (production) or REDIS_URL (local).",
-  );
+  return null; // No Redis available, use in-memory rate limiting
 }

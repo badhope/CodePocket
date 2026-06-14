@@ -1,3 +1,9 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "infra/*"
+
+# sharp / unrs-resolver 不需要执行 postinstall 脚本（pnpm 10 默认阻止），可加速安装并避免沙盒环境问题
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver

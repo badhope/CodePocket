@@ -1,0 +1,73 @@
+{
+  "pages": [
+    {
+      "path": "pages/HomePage",
+      "style": {
+        "navigationBarTitleText": "DocForge",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/ToolsIndexPage",
+      "style": {
+        "navigationBarTitleText": "工具列表"
+      }
+    },
+    {
+      "path": "pages/ToolRunnerPage",
+      "style": {
+        "navigationBarTitleText": "工具"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "冒烟测试",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/DocumentConvertPage",
+      "style": {
+        "navigationBarTitleText": "文档转换"
+      }
+    },
+    {
+      "path": "pages/MarkdownPreviewPage",
+      "style": {
+        "navigationBarTitleText": "Markdown预览"
+      }
+    },
+    {
+      "path": "pages/QrPage",
+      "style": {
+        "navigationBarTitleText": "二维码生成"
+      }
+    },
+    {
+      "path": "pages/RegexPage",
+      "style": {
+        "navigationBarTitleText": "正则测试"
+      }
+    },
+    {
+      "path": "pages/PlaygroundPage",
+      "style": {
+        "navigationBarTitleText": "代码执行"
+      }
+    },
+    {
+      "path": "pages/NotFoundPage",
+      "style": {
+        "navigationBarTitleText": "页面未找到"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "DocForge",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F8F8F8"
+  },
+  "condition": { "current": 0, "list": [] }
+}
