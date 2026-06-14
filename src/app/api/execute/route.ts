@@ -49,10 +49,7 @@ function buildPackageBootstrap(pistonLanguage: string, packages: string[]): stri
       const gemCommands = packages
         .map((p) => `system("gem install --no-document --user-install ${p}")`)
         .join("\n");
-      return [
-        gemCommands,
-        "$LOAD_PATH.concat(Dir[File.join(Gem.user_dir, 'gems', '*', 'lib')])",
-      ].join("\n");
+      return [gemCommands, "$LOAD_PATH.concat(Dir[File.join(Gem.user_dir, 'gems', '*', 'lib')])"].join("\n");
     }
     case "php": {
       const composerCmds = packages
@@ -166,7 +163,6 @@ export async function POST(req: Request) {
   });
 
   const result = await executeCode(
-
     {
       language: meta.pistonLanguage,
       version: parsed.data.version ?? meta.defaultVersion,

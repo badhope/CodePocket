@@ -10,14 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  ArrowLeftRight,
-  Copy,
-  Download,
-  Eraser,
-  RefreshCw,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeftRight, Copy, Download, Eraser, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import * as T from "@/lib/tools/client-tools";
 
