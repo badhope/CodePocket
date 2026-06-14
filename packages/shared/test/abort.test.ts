@@ -34,7 +34,7 @@ describe("abort utils", () => {
     }
     const out: number[] = [];
     const it = withAbort(src(), c.signal)[Symbol.asyncIterator]();
-    let next = await it.next();
+    const next = await it.next();
     out.push(next.value as number);
     c.abort("stop");
     await expect(it.next()).rejects.toThrowError(AbortError);

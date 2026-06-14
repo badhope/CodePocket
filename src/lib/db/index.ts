@@ -57,7 +57,7 @@ function getSqliteInstance(): DatabaseType.Database {
 }
 export const sqlite = new Proxy({} as DatabaseType.Database, {
   get(_target, prop) {
-    return (getSqliteInstance() as any)[prop];
+    return (getSqliteInstance() as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
 export type Database = ReturnType<typeof drizzle<typeof schema>>;

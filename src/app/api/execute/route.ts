@@ -185,6 +185,7 @@ export async function POST(req: Request) {
   if (isAuthenticated) {
     try {
       await db.insert(executions).values({
+        id: crypto.randomUUID(),
         userId: session.user.id,
         sessionId,
         language,

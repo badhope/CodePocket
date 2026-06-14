@@ -88,7 +88,7 @@ function slidingWindowMemory(key: string, limit: number, windowMs: number): Limi
   
   const count = entry.timestamps.length;
   if (count >= limit) {
-    const oldest = entry.timestamps[0];
+    const oldest = entry.timestamps[0] ?? now;
     return {
       success: false,
       remaining: 0,

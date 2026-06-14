@@ -2,7 +2,7 @@ import {
   sqliteTable,
   text,
   integer,
-  blob,
+  primaryKey,
 } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import type { AdapterAccountType } from "next-auth/adapters";
@@ -30,6 +30,7 @@ export const users = sqliteTable("user", {
 export const accounts = sqliteTable(
   "account",
   {
+    id: text("id").primaryKey(),
     userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -45,7 +46,7 @@ export const accounts = sqliteTable(
     session_state: text("session_state"),
   },
   (t) => ({
-    pk: { columns: [t.provider, t.providerAccountId], primaryKey: true },
+    uniqueProviderAccount: primaryKey({ columns: [t.provider, t.providerAccountId] }),
   }),
 );
 
@@ -60,12 +61,13 @@ export const sessions = sqliteTable("session", {
 export const verificationTokens = sqliteTable(
   "verificationToken",
   {
+    id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     token: text("token").notNull(),
     expires: integer("expires", { mode: "timestamp" }).notNull(),
   },
   (t) => ({
-    pk: { columns: [t.identifier, t.token], primaryKey: true },
+    uniqueIdentifierToken: primaryKey({ columns: [t.identifier, t.token] }),
   }),
 );
 
@@ -272,6 +274,7 @@ export const teams = sqliteTable("team", {
 export const teamMembers = sqliteTable(
   "team_member",
   {
+    id: text("id").primaryKey(),
     teamId: text("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
@@ -283,7 +286,7 @@ export const teamMembers = sqliteTable(
     joinedAt: integer("joined_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   },
   (t) => ({
-    pk: { columns: [t.teamId, t.userId], primaryKey: true },
+    uniqueTeamUser: { columns: [t.teamId, t.userId], primaryKey: true },
   }),
 );
 
