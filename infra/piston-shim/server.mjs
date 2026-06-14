@@ -24,11 +24,8 @@
  */
 import express from "express";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, writeFile, chmod, readFile, mkdir } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { existsSync } from "node:fs";
+import { mkdtemp, rm, writeFile, chmod, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const PORT = parseInt(process.env.PISTON_SHIM_PORT ?? "2000", 10);
 const BIND = process.env.PISTON_SHIM_BIND ?? "127.0.0.1";
@@ -171,7 +168,7 @@ const RUNTIMES = [
         env: { ...process.env, GOFLAGS: "-mod=mod", CGO_ENABLED: "0" },
       };
     },
-    run: (cwd, files) => {
+    run: (cwd, _files) => {
       const exe = path.join(cwd, "main_bin");
       return { cmd: exe, args: [], env: process.env };
     },
@@ -187,7 +184,7 @@ const RUNTIMES = [
       const exe = path.join(cwd, "main_bin");
       return { cmd: "rustc", args: [entry.absolute, "-O", "-o", exe], env: process.env };
     },
-    run: (cwd, files) => ({ cmd: path.join(cwd, "main_bin"), args: [], env: process.env }),
+    run: (cwd, _files) => ({ cmd: path.join(cwd, "main_bin"), args: [], env: process.env }),
     extensions: [".rs"],
   },
   {
@@ -252,7 +249,7 @@ const RUNTIMES = [
 // ---------------------------------------------------------------------------
 // Runtime lookup
 // ---------------------------------------------------------------------------
-function findRuntime(language, version) {
+function findRuntime(language, _version) {
   // version is optional in our shim; we ignore it and return the first
   // matching language. This keeps DocForge happy because it always
   // requests *.*
@@ -286,7 +283,7 @@ function clampInt(v, dflt, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-async function runCommand({ cmd, args, env, cwd, stdin, stdinFromFile, timeLimitMs, memLimitMb, label }) {
+async function runCommand({ cmd, args, env, cwd, stdin, stdinFromFile, timeLimitMs, memLimitMb: _memLimitMb, label }) {
   return new Promise((resolve) => {
     const start = Date.now();
     const child = spawn(cmd, args, {
@@ -386,8 +383,8 @@ async function executeJob(req) {
     compile_timeout,
     run_memory_limit,
     compile_memory_limit,
-    run_cpu_time,
-    compile_cpu_time,
+    run_cpu_time: _run_cpu_time,
+    compile_cpu_time: _compile_cpu_time,
   } = req;
 
   const runtime = findRuntime(language, version);
@@ -437,7 +434,7 @@ async function executeJob(req) {
       await writeFile(materialised[0].absolute, "", { mode: 0o600 });
     }
 
-    const timeLimitMs = clampInt(run_timeout, DEFAULT_TIME_LIMIT_MS, 100, 60_000);
+    const timeLimitMs = clampInt(run_timeout, DEFAULT_TIME_LIMIT_MS, 100, 120_000);
     const compileTimeMs = clampInt(compile_timeout, DEFAULT_CPU_TIME_MS, 100, 60_000);
     const memLimitMb = clampInt(
       typeof run_memory_limit === "number" ? Math.floor(run_memory_limit / (1024 * 1024)) : undefined,
@@ -596,7 +593,6 @@ app.get("/api/v2/health", (_req, res) => {
 app.use((_req, res) => res.status(404).json({ message: "Not Found" }));
 
 app.listen(PORT, BIND, () => {
-  // eslint-disable-next-line no-console
   console.log(
     `[piston-shim] listening on http://${BIND}:${PORT}  runtimes=${RUNTIMES.length}  data_dir=${DATA_DIR}  net=${DISABLE_NETWORK ? "off" : "on"}`,
   );

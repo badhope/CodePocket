@@ -335,7 +335,7 @@ export function convertHtmlToMarkdown(html: string): Promise<string> {
   try {
     const md = turndownService.turndown(html);
     return Promise.resolve(md);
-  } catch (err) {
+  } catch (_err) {
     // Fall back to a coarse plain-text extraction so the caller still
     // gets a usable result.
     const text = html

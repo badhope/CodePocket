@@ -39,7 +39,6 @@ import { LANGUAGES, getLanguage, type LanguageMeta } from "@/lib/execution";
 import { cn } from "@/lib/utils";
 import { LANGUAGE_LIST } from "@/lib/execution";
 import { ECOSYSTEMS, type EcosystemConfig, type PackageEcosystem } from "@/lib/packages";
-import { useBackendStatus } from "@/lib/system/backend-status";
 import { useFeatureGate } from "@/lib/system/feature-gate";
 import { LockedOverlay } from "@/components/system/locked-overlay";
 

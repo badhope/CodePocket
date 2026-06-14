@@ -21,7 +21,6 @@ export default function GlobalError({
   const tBs = useTranslations("backendStatus");
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error("[docforge:error-boundary]", error);
   }, [error]);
 

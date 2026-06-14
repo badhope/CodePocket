@@ -21,6 +21,7 @@ const SUPPORTED_LANGUAGES = [
   "sql",
   "html",
   "css",
+  "perl",
 ] as const;
 
 const limitsSchema = z.object({
@@ -52,6 +53,24 @@ export const executeSchema = z.object({
   runTimeoutMs: z.number().int().min(100).max(60_000).default(10_000),
   limits: limitsSchema.optional(),
   runOnly: z.boolean().default(false),
+  packages: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(128)
+        // Allow most common package-name shapes:
+        //   python: numpy
+        //   npm:    @scope/name, name
+        //   ruby:   gem-name
+        //   php:    vendor/package
+        //   perl:   Some::Module
+        // We block shell metacharacters so an attacker can't break out of
+        // the bootstrap we inject in the execute route.
+        .regex(/^[\w@.\/_: -]+$/),
+    )
+    .max(20)
+    .default([]),
 });
 
 export type ExecuteInput = z.infer<typeof executeSchema>;

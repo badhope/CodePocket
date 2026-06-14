@@ -21,6 +21,7 @@ const SUPPORTED_LANGUAGES = [
   "sql",
   "html",
   "css",
+  "perl",
 ] as const;
 type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -119,6 +120,8 @@ const defaultCodeFor = (lang: LanguageMeta): string => {
         "end",
         "",
       ].join("\n");
+    case "perl":
+      return `# Perl\nprint "Hello, DocForge!\\n";\n\nfor my $i (1..3) {\n    print "Count: $i\\n";\n}\n`;
     case "sql":
       return `-- SQL\nSELECT 'Hello, DocForge!' AS greeting;\n`;
     case "html":
@@ -406,6 +409,20 @@ const all = (): LanguageMeta[] => [
     supportsStdin: false,
     compiled: false,
     category: "markup",
+  },
+  {
+    id: "perl",
+    label: "Perl",
+    monacoLanguage: "perl",
+    pistonLanguage: "perl",
+    defaultVersion: "5.36.0",
+    extensions: [".pl", ".pm"],
+    icon: "🐪",
+    runCommand: "perl {filename}",
+    defaultCode: "",
+    supportsStdin: true,
+    compiled: false,
+    category: "scripting",
   },
 ];
 
