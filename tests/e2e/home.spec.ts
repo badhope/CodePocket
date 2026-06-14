@@ -6,7 +6,7 @@ const ELEM_TIMEOUT = 30000;
 test.describe("home page", () => {
   test("renders hero heading", async ({ page }) => {
     await page.goto("/en", { timeout: NAV_TIMEOUT });
-    await expect(page.getByRole("heading", { name: /DocForge/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "DocForge", exact: true })).toBeVisible({
       timeout: ELEM_TIMEOUT,
     });
   });

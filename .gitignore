@@ -79,3 +79,7 @@ apps/*/node_modules/
 packages/*/dist/
 packages/*/node_modules/
 **/coverage/
+
+# Redis runtime artifacts (created when local redis-server runs)
+dump.rdb
+appendonly.aof

@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BackendGate } from "@/components/system/backend-gate";
 import {
-  Plus,
   FileText,
   ArrowRight,
   Upload,

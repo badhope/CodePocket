@@ -6,8 +6,6 @@ import type {
   ConversionOptions,
   ConversionProgressCallback,
   ConversionResult,
-  InputFormat,
-  OutputFormat,
 } from "./types";
 import {
   ConversionError,

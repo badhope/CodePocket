@@ -20,6 +20,16 @@ const eslintConfig = defineConfig([
           "ts-check": false,
         },
       ],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_",
+          "destructuredArrayIgnorePattern": "^_",
+          "ignoreRestSiblings": true,
+        },
+      ],
     },
   },
   globalIgnores([
