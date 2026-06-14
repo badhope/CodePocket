@@ -71,3 +71,7 @@ miniprogram/node_modules/
 
 # Static export staging (created by build-gh-pages.sh)
 .next-static-staging/
+
+# Redis runtime artifacts (created when local redis-server runs)
+dump.rdb
+appendonly.aof
