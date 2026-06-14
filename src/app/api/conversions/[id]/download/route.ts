@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { conversions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getOutputFilename, getMimeType } from "@/lib/convert";
+import { getMimeType } from "@/lib/convert";
 import { errors } from "@/lib/api/response";
 
 interface RouteContext {

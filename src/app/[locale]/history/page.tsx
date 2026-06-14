@@ -4,11 +4,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { conversions, documents } from "@/lib/db/schema";
 import { eq, desc, count, and, like, or } from "drizzle-orm";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { BackendGate } from "@/components/system/backend-gate";
-import { History as HistoryIcon, ArrowRight, FileText, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { History as HistoryIcon } from "lucide-react";
 import { HistoryList } from "@/components/history/history-list";
 
 interface SearchParams {
