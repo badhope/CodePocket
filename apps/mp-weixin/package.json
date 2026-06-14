@@ -1,0 +1,43 @@
+{
+  "name": "@docforge/mp-weixin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DocForge 微信小程序前端（M3）。uni-app x + Vue 3 + Vite。复用 @docforge/shared 业务核心，未来同时输出 H5 / 微信 / 支付宝 / App。",
+  "type": "module",
+  "scripts": {
+    "dev:h5": "uni",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:h5": "uni build",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "echo 'no tests in shell app — see packages/shared/test' && exit 0"
+  },
+  "dependencies": {
+    "@docforge/shared": "workspace:*",
+    "@docforge/storage": "workspace:*",
+    "@docforge/ui": "workspace:*",
+    "pinia": "^2.2.4",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-app": "npm:@dcloudio/uni-app@vue3",
+    "@dcloudio/uni-app-plus": "npm:@dcloudio/uni-app-plus@vue3",
+    "@dcloudio/uni-components": "npm:@dcloudio/uni-components@vue3",
+    "@dcloudio/uni-h5": "npm:@dcloudio/uni-h5@vue3",
+    "@dcloudio/uni-mp-weixin": "npm:@dcloudio/uni-mp-weixin@vue3",
+    "@dcloudio/uni-cli-shared": "npm:@dcloudio/uni-cli-shared@vue3",
+    "@dcloudio/uni-stacktracey": "npm:@dcloudio/uni-stacktracey@vue3",
+    "@dcloudio/vite-plugin-uni": "npm:@dcloudio/vite-plugin-uni@vue3",
+    "@eslint/js": "^9.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.10.0",
+    "globals": "^15.0.0",
+    "sass": "^1.77.0",
+    "typescript": "^5.4.5",
+    "vite": "5.2.8",
+    "vue-tsc": "^2.0.6"
+  }
+}

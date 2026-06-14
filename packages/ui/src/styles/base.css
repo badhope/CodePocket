@@ -1,0 +1,1055 @@
+/* DocForge 原子 CSS — Refined Terminal 风
+   全部 monospace 字体。命名空间 .df- 避免与第三方冲突。
+   跨端（H5 / MP / App）可用的最小集。
+*/
+
+/* ── 基础排版 ──────────────────────────────────── */
+body {
+  margin: 0;
+  font-family: var(--df-font-sans);
+  font-size: var(--df-text-base);
+  line-height: var(--df-leading-normal);
+  color: var(--df-text);
+  background: var(--df-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
+}
+
+code,
+pre,
+.df-mono {
+  font-family: var(--df-font-mono);
+  font-feature-settings: "calt" 0, "liga" 0;
+}
+
+/* ── 容器 ──────────────────────────────────────── */
+.df-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+.df-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--df-space-6);
+  box-sizing: border-box;
+}
+
+/* ── 排版工具类 ────────────────────────────────── */
+.df-h1 {
+  font-size: var(--df-text-3xl);
+  font-weight: 700;
+  line-height: var(--df-leading-tight);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--df-space-4);
+}
+.df-h2 {
+  font-size: var(--df-text-2xl);
+  font-weight: 600;
+  line-height: var(--df-leading-tight);
+  letter-spacing: -0.01em;
+  margin: var(--df-space-8) 0 var(--df-space-3);
+}
+.df-h3 {
+  font-size: var(--df-text-lg);
+  font-weight: 600;
+  margin: 0 0 var(--df-space-2);
+}
+.df-eyebrow {
+  font-size: var(--df-text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--df-text-muted);
+}
+.df-text-sm {
+  font-size: var(--df-text-sm);
+}
+.df-text-xs {
+  font-size: var(--df-text-xs);
+}
+.df-text-muted {
+  color: var(--df-text-muted);
+}
+.df-text-secondary {
+  color: var(--df-text-secondary);
+}
+.df-text-accent {
+  color: var(--df-accent);
+}
+.df-text-success {
+  color: var(--df-success);
+}
+.df-text-danger {
+  color: var(--df-danger);
+}
+
+/* ── 卡片 ──────────────────────────────────────── */
+.df-card {
+  background: var(--df-bg-elevated);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-md);
+  padding: var(--df-space-4);
+  box-shadow: var(--df-shadow-sm);
+}
+.df-card-interactive {
+  cursor: pointer;
+  transition:
+    border-color var(--df-duration-base) var(--df-ease),
+    box-shadow var(--df-duration-base) var(--df-ease),
+    transform var(--df-duration-base) var(--df-ease);
+}
+.df-card-interactive:hover {
+  border-color: var(--df-border-strong);
+  box-shadow: var(--df-shadow-md);
+  transform: translateY(-1px);
+}
+.df-card-interactive:active {
+  transform: translateY(0);
+}
+
+/* ── 按钮 ──────────────────────────────────────── */
+.df-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--df-space-2);
+  padding: var(--df-space-2) var(--df-space-4);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-sm);
+  background: var(--df-bg-elevated);
+  color: var(--df-text);
+  font-family: var(--df-font-mono);
+  font-size: var(--df-text-sm);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background var(--df-duration-fast) var(--df-ease),
+    border-color var(--df-duration-fast) var(--df-ease),
+    color var(--df-duration-fast) var(--df-ease);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.df-btn:hover {
+  background: var(--df-bg-subtle);
+  border-color: var(--df-border-strong);
+}
+.df-btn:active {
+  transform: translateY(0.5px);
+}
+.df-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.df-btn:focus-visible {
+  outline: 2px solid var(--df-accent);
+  outline-offset: 2px;
+}
+
+.df-btn-primary {
+  background: var(--df-text);
+  border-color: var(--df-text);
+  color: var(--df-text-inverted);
+}
+.df-btn-primary:hover {
+  background: var(--df-text-secondary);
+  border-color: var(--df-text-secondary);
+}
+.df-btn-accent {
+  background: var(--df-accent);
+  border-color: var(--df-accent);
+  color: var(--df-accent-text);
+}
+.df-btn-accent:hover {
+  background: var(--df-accent-hover);
+  border-color: var(--df-accent-hover);
+}
+.df-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--df-text-secondary);
+}
+.df-btn-ghost:hover {
+  background: var(--df-bg-subtle);
+  color: var(--df-text);
+}
+.df-btn-sm {
+  padding: var(--df-space-1) var(--df-space-3);
+  font-size: var(--df-text-xs);
+}
+
+/* ── 表单 ──────────────────────────────────────── */
+.df-input,
+.df-textarea,
+.df-select {
+  width: 100%;
+  padding: var(--df-space-2) var(--df-space-3);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-sm);
+  background: var(--df-bg-inset);
+  color: var(--df-text);
+  font-family: var(--df-font-mono);
+  font-size: var(--df-text-sm);
+  line-height: var(--df-leading-normal);
+  box-sizing: border-box;
+  transition:
+    border-color var(--df-duration-fast) var(--df-ease),
+    background var(--df-duration-fast) var(--df-ease);
+}
+.df-input:focus,
+.df-textarea:focus,
+.df-select:focus {
+  outline: none;
+  border-color: var(--df-accent);
+  background: var(--df-bg-elevated);
+}
+.df-textarea {
+  resize: vertical;
+  min-height: 10rem;
+  tab-size: 2;
+}
+.df-textarea-tall {
+  min-height: 24rem;
+}
+
+/* ── 标签 / 徽章 ───────────────────────────────── */
+.df-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--df-space-1);
+  padding: 2px var(--df-space-2);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-sm);
+  background: var(--df-bg-subtle);
+  font-size: var(--df-text-xs);
+  font-weight: 500;
+  color: var(--df-text-secondary);
+  line-height: 1.4;
+}
+.df-tag-accent {
+  border-color: var(--df-accent);
+  background: var(--df-accent-soft);
+  color: var(--df-accent-text);
+}
+.df-tag-success {
+  border-color: var(--df-success);
+  background: var(--df-success-soft);
+  color: var(--df-success);
+}
+.df-tag-danger {
+  border-color: var(--df-danger);
+  background: var(--df-danger-soft);
+  color: var(--df-danger);
+}
+
+/* ── 状态点 ────────────────────────────────────── */
+.df-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--df-radius-full);
+  background: var(--df-text-muted);
+}
+.df-dot-on {
+  background: var(--df-success);
+  box-shadow: 0 0 0 3px var(--df-success-soft);
+}
+.df-dot-off {
+  background: var(--df-danger);
+}
+.df-dot-warn {
+  background: var(--df-accent);
+}
+
+/* ── 布局 ──────────────────────────────────────── */
+.df-row {
+  display: flex;
+  gap: var(--df-space-3);
+  align-items: center;
+}
+.df-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-3);
+}
+.df-stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-2);
+}
+.df-grid {
+  display: grid;
+  gap: var(--df-space-4);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.df-grid-sm {
+  display: grid;
+  gap: var(--df-space-3);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+@media (max-width: 480px) {
+  .df-grid,
+  .df-grid-sm {
+    grid-template-columns: 1fr;
+  }
+}
+.df-spacer {
+  flex: 1;
+}
+
+/* ── 分隔 ──────────────────────────────────────── */
+.df-divider {
+  height: 1px;
+  background: var(--df-border);
+  margin: var(--df-space-4) 0;
+  border: none;
+}
+
+/* ── 空状态 / 错误 ─────────────────────────────── */
+.df-empty {
+  padding: var(--df-space-8);
+  text-align: center;
+  color: var(--df-text-muted);
+  border: 1px dashed var(--df-border);
+  border-radius: var(--df-radius-md);
+}
+
+/* ── 高亮选中行（diff / json） ─────────────────── */
+.df-mono-block {
+  font-family: var(--df-font-mono);
+  font-size: var(--df-text-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--df-bg-inset);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-sm);
+  padding: var(--df-space-3);
+  overflow: auto;
+  max-height: 28rem;
+}
+
+/* ── 状态横幅（feature gate / banner） ─────────── */
+.df-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-3);
+  padding: var(--df-space-3) var(--df-space-4);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-md);
+  background: var(--df-bg-subtle);
+  font-size: var(--df-text-sm);
+}
+.df-banner-warn {
+  border-color: var(--df-accent);
+  background: var(--df-accent-soft);
+  color: var(--df-accent-text);
+}
+.df-banner-danger {
+  border-color: var(--df-danger);
+  background: var(--df-danger-soft);
+  color: var(--df-danger);
+}
+
+/* ── App shell（H5 顶栏 / 主区 / 页脚 + 小程序同源样式） ── */
+.app-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+.app-main {
+  padding: var(--df-space-6) 0;
+  padding-bottom: calc(var(--df-space-8) + env(safe-area-inset-bottom, 0));
+}
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--df-space-6);
+}
+@media (max-width: 720px) {
+  .app-container {
+    padding: 0 var(--df-space-4);
+  }
+  .app-main {
+    padding: var(--df-space-4) 0;
+    padding-bottom: calc(var(--df-space-6) + env(safe-area-inset-bottom, 0));
+  }
+}
+
+/* ── 顶栏 ─────────────────────────────────────── */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--df-space-3);
+  height: calc(56px + env(safe-area-inset-top, 0));
+  padding: env(safe-area-inset-top, 0) var(--df-space-4) 0;
+  background: color-mix(in srgb, var(--df-bg-elevated) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--df-border);
+}
+@media (min-width: 720px) {
+  .app-header {
+    padding: env(safe-area-inset-top, 0) var(--df-space-6) 0;
+  }
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-2);
+  font-weight: 700;
+  font-size: var(--df-text-base);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--df-text);
+}
+.app-brand__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--df-radius-sm);
+  background: linear-gradient(135deg, var(--df-text) 0%, var(--df-text-secondary) 100%);
+  color: var(--df-accent);
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: var(--df-shadow-sm);
+  transition: transform var(--df-duration-base) var(--df-ease);
+}
+.app-brand:hover .app-brand__mark {
+  transform: rotate(-4deg) scale(1.05);
+}
+.app-brand__name {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+.app-brand__name::before {
+  content: "$ ";
+  color: var(--df-accent);
+  font-weight: 600;
+}
+.app-nav {
+  display: flex;
+  gap: var(--df-space-1);
+}
+.app-nav a {
+  padding: var(--df-space-2) var(--df-space-3);
+  font-size: var(--df-text-sm);
+  color: var(--df-text-secondary);
+  text-decoration: none;
+  border-radius: var(--df-radius-sm);
+  transition: background var(--df-duration-fast) var(--df-ease);
+}
+.app-nav a:hover {
+  background: var(--df-bg-subtle);
+  color: var(--df-text);
+}
+.app-nav a.router-link-active {
+  color: var(--df-text);
+  background: var(--df-bg-subtle);
+}
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-3);
+}
+
+/* ── 工具页布局 ─────────────────────────────── */
+.tool-page {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--df-space-5);
+}
+.tool-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--df-space-4);
+  flex-wrap: wrap;
+}
+.tool-page__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-1);
+}
+.tool-page__title h1 {
+  margin: 0;
+  font-size: var(--df-text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-2);
+}
+.tool-page__title h1 .df-eyebrow {
+  font-weight: 500;
+}
+.tool-page__title-head {
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-3);
+}
+.tool-page__title-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--df-radius-md);
+  background: var(--df-accent-soft);
+  color: var(--df-accent-text);
+  flex-shrink: 0;
+}
+.tool-page__title-icon :deep(svg) {
+  width: 22px;
+  height: 22px;
+}
+.tool-page__title p {
+  margin: 0;
+  color: var(--df-text-secondary);
+  font-size: var(--df-text-sm);
+  max-width: 60ch;
+}
+.tool-page__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-2);
+  flex-wrap: wrap;
+}
+.tool-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-2);
+}
+.tool-page__section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--df-space-2);
+}
+.tool-page__section-label h2 {
+  margin: 0;
+  font-size: var(--df-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--df-text-muted);
+}
+
+/* ── 首页 Hero ─────────────────────────────── */
+.home-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--df-space-6);
+  padding: var(--df-space-10) 0 var(--df-space-12);
+  border-bottom: 1px solid var(--df-border);
+  margin-bottom: var(--df-space-10);
+  align-items: center;
+}
+@media (min-width: 960px) {
+  .home-hero {
+    grid-template-columns: 1.2fr 1fr;
+    gap: var(--df-space-10);
+  }
+}
+.home-hero__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-3);
+}
+.home-hero__eyebrow {
+  color: var(--df-accent);
+  font-size: var(--df-text-sm);
+  font-weight: 500;
+  font-family: var(--df-font-mono);
+}
+.home-hero__eyebrow::before {
+  content: "// ";
+  color: var(--df-text-muted);
+}
+.home-hero h1 {
+  font-size: clamp(2.25rem, 4.5vw, 3.75rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+.home-hero h1 .accent {
+  color: var(--df-accent);
+  background: linear-gradient(
+    180deg,
+    transparent 60%,
+    color-mix(in srgb, var(--df-accent) 22%, transparent) 60%
+  );
+  padding: 0 0.05em;
+}
+.home-hero__lead {
+  font-size: var(--df-text-lg);
+  color: var(--df-text-secondary);
+  max-width: 56ch;
+  margin: 0;
+  line-height: 1.6;
+}
+.home-hero__cta {
+  display: flex;
+  gap: var(--df-space-3);
+  margin-top: var(--df-space-3);
+  flex-wrap: wrap;
+}
+.home-hero__art {
+  position: relative;
+  border-radius: var(--df-radius-lg);
+  background:
+    radial-gradient(
+      ellipse at 30% 20%,
+      color-mix(in srgb, var(--df-accent) 18%, transparent) 0%,
+      transparent 60%
+    ),
+    linear-gradient(180deg, var(--df-bg-elevated), var(--df-bg-subtle));
+  border: 1px solid var(--df-border);
+  overflow: hidden;
+  min-height: 280px;
+  box-shadow: var(--df-shadow-lg);
+}
+.home-hero__art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--df-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--df-border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.45;
+  mask-image: linear-gradient(180deg, black 0%, black 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, black 0%, black 60%, transparent 100%);
+  pointer-events: none;
+}
+
+.home-stats {
+  display: flex;
+  gap: var(--df-space-8);
+  margin-top: var(--df-space-4);
+  flex-wrap: wrap;
+}
+.home-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--df-space-3);
+  border-left: 2px solid var(--df-accent);
+}
+.home-stat__num {
+  font-size: var(--df-text-2xl);
+  font-weight: 700;
+  color: var(--df-text);
+  font-variant-numeric: tabular-nums;
+}
+.home-stat__label {
+  font-size: var(--df-text-xs);
+  color: var(--df-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--df-font-mono);
+}
+
+/* ── Hero art: 终端窗口 ───────────────────── */
+.home-terminal {
+  position: absolute;
+  inset: var(--df-space-6);
+  display: flex;
+  flex-direction: column;
+  background: var(--df-bg-elevated);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-md);
+  overflow: hidden;
+  box-shadow: var(--df-shadow-md);
+}
+.home-terminal__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-2);
+  padding: var(--df-space-2) var(--df-space-3);
+  border-bottom: 1px solid var(--df-border);
+  background: var(--df-bg-subtle);
+  font-size: var(--df-text-xs);
+  color: var(--df-text-muted);
+  font-family: var(--df-font-mono);
+}
+.home-terminal__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--df-border-strong);
+}
+.home-terminal__dot--red {
+  background: #ef4444aa;
+}
+.home-terminal__dot--amber {
+  background: #f59e0b99;
+}
+.home-terminal__dot--green {
+  background: #10b98199;
+}
+.home-terminal__title {
+  margin-left: auto;
+}
+.home-terminal__body {
+  flex: 1;
+  padding: var(--df-space-3) var(--df-space-4);
+  font-family: var(--df-font-mono);
+  font-size: var(--df-text-xs);
+  line-height: 1.7;
+  color: var(--df-text-secondary);
+  overflow-x: auto;
+  white-space: pre;
+  scrollbar-width: thin;
+}
+@media (max-width: 720px) {
+  .home-terminal__body {
+    font-size: 11px;
+    line-height: 1.6;
+  }
+}
+.home-terminal__body .prompt {
+  color: var(--df-accent);
+  user-select: none;
+}
+.home-terminal__body .cmd {
+  color: var(--df-text);
+}
+.home-terminal__body .ok {
+  color: var(--df-success);
+}
+.home-terminal__body .dim {
+  color: var(--df-text-muted);
+}
+.home-terminal__body .hi {
+  color: var(--df-accent);
+}
+
+/* ── 分类区块头 ─────────────────────────── */
+.home-section {
+  margin-bottom: var(--df-space-10);
+}
+.home-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--df-space-3);
+  margin-bottom: var(--df-space-4);
+  padding-bottom: var(--df-space-2);
+  border-bottom: 1px solid var(--df-border);
+}
+.home-section__head h2 {
+  font-size: var(--df-text-lg);
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--df-space-2);
+}
+.home-section__head h2 .count {
+  font-size: var(--df-text-xs);
+  font-weight: 500;
+  color: var(--df-text-muted);
+  font-family: var(--df-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.home-section__head .more {
+  font-size: var(--df-text-xs);
+  color: var(--df-text-secondary);
+  text-decoration: none;
+  font-family: var(--df-font-mono);
+}
+.home-section__head .more:hover {
+  color: var(--df-accent);
+}
+
+/* ── Featured callout（首页"玩 Playgroud"大卡） ── */
+.feature-callout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--df-space-5);
+  padding: var(--df-space-6);
+  background: var(--df-bg-elevated);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-lg);
+  margin-bottom: var(--df-space-10);
+  position: relative;
+  overflow: hidden;
+}
+@media (min-width: 720px) {
+  .feature-callout {
+    grid-template-columns: 1.2fr 1fr;
+    align-items: center;
+  }
+}
+.feature-callout::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 100% 0%,
+    color-mix(in srgb, var(--df-accent) 12%, transparent),
+    transparent 60%
+  );
+  pointer-events: none;
+}
+.feature-callout__copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-2);
+}
+.feature-callout__eyebrow {
+  color: var(--df-accent);
+  font-size: var(--df-text-xs);
+  font-weight: 500;
+  font-family: var(--df-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.feature-callout__copy h2 {
+  margin: 0;
+  font-size: var(--df-text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.feature-callout__copy p {
+  margin: 0;
+  color: var(--df-text-secondary);
+  font-size: var(--df-text-base);
+  line-height: 1.6;
+  max-width: 56ch;
+}
+.feature-callout__cta {
+  display: flex;
+  gap: var(--df-space-2);
+  margin-top: var(--df-space-2);
+  flex-wrap: wrap;
+}
+.feature-callout__preview {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--df-radius-md);
+  background: var(--df-bg-inset);
+  border: 1px solid var(--df-border);
+  padding: var(--df-space-3);
+  font-family: var(--df-font-mono);
+  font-size: var(--df-text-xs);
+  line-height: 1.7;
+  color: var(--df-text-secondary);
+  overflow: hidden;
+  min-height: 180px;
+}
+.feature-callout__preview .ln {
+  color: var(--df-text-muted);
+  user-select: none;
+  display: inline-block;
+  width: 1.5em;
+}
+.feature-callout__preview .kw {
+  color: var(--df-accent);
+}
+.feature-callout__preview .str {
+  color: var(--df-success);
+}
+.feature-callout__preview .cmt {
+  color: var(--df-text-muted);
+  font-style: italic;
+}
+
+/* ── 工具网格 + 卡片 ───────────────────────── */
+.tool-grid {
+  display: grid;
+  gap: var(--df-space-3);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+@media (max-width: 480px) {
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-2);
+  padding: var(--df-space-4);
+  background: var(--df-bg-elevated);
+  border: 1px solid var(--df-border);
+  border-radius: var(--df-radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color var(--df-duration-base) var(--df-ease),
+    box-shadow var(--df-duration-base) var(--df-ease),
+    transform var(--df-duration-base) var(--df-ease);
+  position: relative;
+  overflow: hidden;
+}
+.tool-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--df-accent) 4%, transparent) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--df-duration-base) var(--df-ease);
+  pointer-events: none;
+}
+.tool-card:hover {
+  border-color: var(--df-border-strong);
+  box-shadow: var(--df-shadow-md);
+  transform: translateY(-1px);
+}
+.tool-card:hover::before {
+  opacity: 1;
+}
+.tool-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--df-space-2);
+}
+.tool-card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--df-space-2);
+  font-weight: 600;
+  font-size: var(--df-text-base);
+}
+.tool-card__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--df-radius-sm);
+  background: var(--df-bg-subtle);
+  color: var(--df-text-secondary);
+  flex-shrink: 0;
+  transition:
+    background var(--df-duration-base) var(--df-ease),
+    color var(--df-duration-base) var(--df-ease),
+    transform var(--df-duration-base) var(--df-ease);
+}
+.tool-card:hover .tool-card__icon {
+  background: var(--df-accent-soft);
+  color: var(--df-accent-text);
+  transform: scale(1.05);
+}
+.tool-card__icon :deep(svg) {
+  width: 18px;
+  height: 18px;
+}
+.tool-card__desc {
+  font-size: var(--df-text-sm);
+  color: var(--df-text-secondary);
+  line-height: 1.5;
+}
+.tool-card__meta {
+  display: flex;
+  gap: var(--df-space-2);
+  margin-top: var(--df-space-1);
+  font-size: var(--df-text-xs);
+  color: var(--df-text-muted);
+}
+
+/* ── 搜索框 ─────────────────────────────────── */
+.tool-search {
+  position: relative;
+  margin-bottom: var(--df-space-6);
+}
+.tool-search input {
+  padding-left: var(--df-space-8);
+  font-size: var(--df-text-base);
+}
+.tool-search::before {
+  content: "/";
+  position: absolute;
+  left: var(--df-space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--df-accent);
+  font-weight: 600;
+  font-family: var(--df-font-mono);
+}
+
+/* ── 复制按钮 flash ─────────────────────────── */
+.copy-flash {
+  animation: copyFlash 0.6s var(--df-ease);
+}
+@keyframes copyFlash {
+  0% {
+    background: var(--df-success-soft);
+    border-color: var(--df-success);
+  }
+  100% {
+    background: var(--df-bg-elevated);
+    border-color: var(--df-border);
+  }
+}
+
+/* ── 错误条 ────────────────────────────────── */
+.error-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--df-space-2);
+  padding: var(--df-space-3);
+  background: var(--df-danger-soft);
+  border: 1px solid var(--df-danger);
+  border-radius: var(--df-radius-sm);
+  color: var(--df-danger);
+  font-size: var(--df-text-sm);
+  font-family: var(--df-font-mono);
+  white-space: pre-wrap;
+}
+.error-bar::before {
+  content: "✕";
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── feature gate 横幅 ─────────────────────── */
+.feature-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--df-space-3);
+  padding: var(--df-space-3) var(--df-space-4);
+  background: var(--df-accent-soft);
+  border: 1px solid var(--df-accent);
+  border-radius: var(--df-radius-md);
+  color: var(--df-accent-text);
+  font-size: var(--df-text-sm);
+}
+.feature-banner__icon {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* ── 页脚 ─────────────────────────────────── */
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--df-space-3);
+  flex-wrap: wrap;
+  padding: var(--df-space-4) var(--df-space-6);
+  padding-bottom: calc(var(--df-space-4) + env(safe-area-inset-bottom, 0));
+  border-top: 1px solid var(--df-border);
+  font-size: var(--df-text-xs);
+  color: var(--df-text-muted);
+}

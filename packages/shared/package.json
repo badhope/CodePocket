@@ -1,0 +1,48 @@
+{
+  "name": "@docforge/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DocForge 框架无关业务核心：工具注册表 / 校验器 / 类型 / 工具函数。可被 H5、微信小程序、Android/iOS App、Node 后端共用。",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tools": "./src/tools/index.ts",
+    "./tools/*": "./src/tools/*.ts",
+    "./validators": "./src/validators/index.ts",
+    "./validators/*": "./src/validators/*.ts",
+    "./execution": "./src/execution/index.ts",
+    "./execution/*": "./src/execution/*.ts",
+    "./api-client": "./src/api-client/index.ts",
+    "./api-client/*": "./src/api-client/*.ts",
+    "./system": "./src/system/index.ts",
+    "./system/*": "./src/system/*.ts",
+    "./i18n": "./src/i18n/index.ts",
+    "./convert": "./src/convert/index.ts",
+    "./cache": "./src/cache/index.ts",
+    "./types": "./src/types/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./utils/*": "./src/utils/*.ts"
+  },
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.5.0",
+    "marked": "^17.0.1",
+    "pdf-lib": "^1.17.1",
+    "qrcode-generator": "^1.4.4",
+    "tslib": "^2.7.0",
+    "turndown": "^7.2.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/turndown": "^5.0.5",
+    "typescript": "^6",
+    "vitest": "^4.1.7"
+  }
+}

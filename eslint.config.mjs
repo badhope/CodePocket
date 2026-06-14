@@ -31,8 +31,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
-    "miniprogram/**",
     "scripts/**",
+    "apps/mp-weixin/**",
   ]),
 ]);
 

@@ -44,6 +44,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm typecheck:all
 
   test:
     name: Test
@@ -59,6 +60,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      - run: pnpm test:all
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,3 +88,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
       - run: pnpm build
+      - run: pnpm build:h5
+      - name: Upload H5 build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h5-dist
+          path: apps/h5/dist/

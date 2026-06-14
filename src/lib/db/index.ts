@@ -1,39 +1,34 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 import * as schema from "./schema";
+import path from "path";
+import fs from "fs";
 
 const globalForDb = globalThis as unknown as {
-  conn: ReturnType<typeof postgres> | undefined;
   dbInstance: ReturnType<typeof drizzle<typeof schema>> | undefined;
 };
 
-function resolveUrl(): string {
-  const url = process.env.POSTGRES_URL;
-  if (url && url.length > 0) return url;
-  if (process.env.NEXT_PHASE === "phase-production-build") {
-    // Build phase never actually opens a connection; this just needs to parse.
-    return "postgres://placeholder:placeholder@127.0.0.1:5432/placeholder";
+function resolveDbPath(): string {
+  const dbPath = process.env.SQLITE_DB_PATH ?? path.join(process.cwd(), "data", "docforge.db");
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
-  throw new Error("Database is not configured. Set POSTGRES_URL in your environment.");
+  return dbPath;
 }
 
 function createDb() {
-  const conn = postgres(resolveUrl(), {
-    max: process.env.POSTGRES_URL ? 10 : 1,
-    idle_timeout: 20,
-    connect_timeout: 10,
-    prepare: false,
-    no_prepare: true,
-    onnotice: () => {},
-    connection: { application_name: "onlinecode" },
-  });
-  if (process.env.POSTGRES_URL && process.env.NODE_ENV !== "production") {
-    globalForDb.conn = conn;
-  }
-  return drizzle(conn, { schema, casing: "snake_case" });
+  const dbPath = resolveDbPath();
+  const sqlite = new Database(dbPath);
+  
+  // Enable WAL mode for better concurrency
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("synchronous = NORMAL");
+  
+  return drizzle(sqlite, { schema, casing: "snake_case" });
 }
 
-const dbInstance: ReturnType<typeof drizzle<typeof schema>> = createDb();
+const dbInstance: ReturnType<typeof drizzle<typeof schema>> = globalForDb.dbInstance ?? createDb();
 if (process.env.NODE_ENV !== "production") globalForDb.dbInstance = dbInstance;
 
 const dbProxy = new Proxy(dbInstance, {
@@ -47,4 +42,22 @@ const dbProxy = new Proxy(dbInstance, {
 
 export const db = dbProxy as ReturnType<typeof drizzle<typeof schema>>;
 export { schema };
+
+// 重新导出底层的 better-sqlite3 实例（用于健康检查、原始 SQL 等场景）
+import DatabaseType from "better-sqlite3";
+let _sqliteInstance: DatabaseType.Database | null = null;
+function getSqliteInstance(): DatabaseType.Database {
+  if (!_sqliteInstance) {
+    const dbPath = resolveDbPath();
+    _sqliteInstance = new Database(dbPath);
+    _sqliteInstance.pragma("journal_mode = WAL");
+    _sqliteInstance.pragma("synchronous = NORMAL");
+  }
+  return _sqliteInstance;
+}
+export const sqlite = new Proxy({} as DatabaseType.Database, {
+  get(_target, prop) {
+    return (getSqliteInstance() as any)[prop];
+  },
+});
 export type Database = ReturnType<typeof drizzle<typeof schema>>;

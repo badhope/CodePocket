@@ -71,3 +71,11 @@ miniprogram/node_modules/
 
 # Static export staging (created by build-gh-pages.sh)
 .next-static-staging/
+
+# Monorepo (apps + packages)
+apps/*/dist/
+apps/*/.vite/
+apps/*/node_modules/
+packages/*/dist/
+packages/*/node_modules/
+**/coverage/
