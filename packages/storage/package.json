@@ -22,6 +22,6 @@
   },
   "devDependencies": {
     "typescript": "^6",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.9"
   }
 }

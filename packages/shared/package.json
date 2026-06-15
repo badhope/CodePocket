@@ -43,6 +43,6 @@
   "devDependencies": {
     "@types/turndown": "^5.0.5",
     "typescript": "^6",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.9"
   }
 }
