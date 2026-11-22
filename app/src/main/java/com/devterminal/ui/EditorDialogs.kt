@@ -91,6 +91,8 @@ fun SettingsDialog(
     onAutoCloseChange: (Boolean) -> Unit,
     onShowLineNumbersChange: (Boolean) -> Unit,
     onAiConfigChange: (url: String, key: String, model: String) -> Unit,
+    onMcpConfigChange: (enabled: Boolean, endpoint: String) -> Unit,
+    onPluginsEnabledChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onOpenLocalModels: () -> Unit = {},
 ) {
@@ -98,6 +100,8 @@ fun SettingsDialog(
     var aiUrl by remember { mutableStateOf(settings.aiBaseUrl) }
     var aiKey by remember { mutableStateOf(settings.aiApiKey) }
     var aiModel by remember { mutableStateOf(settings.aiModel) }
+    var mcpEnabled by remember { mutableStateOf(settings.mcpEnabled) }
+    var mcpEndpoint by remember { mutableStateOf(settings.mcpEndpoint) }
 
     QuietDialog(onDismiss = onDismiss, title = "设置") {
         Spacer(Modifier.height(Dimens.xs))
@@ -302,6 +306,39 @@ fun SettingsDialog(
         )
         Spacer(Modifier.height(Dimens.sm))
         TextButton(onClick = onOpenLocalModels) { Text("打开本地模型管理") }
+
+        Spacer(Modifier.height(Dimens.xl))
+        SectionLabel("MCP / 项目插件")
+        Spacer(Modifier.height(6.dp))
+        QuietSwitchRow(
+            label = "启用 MCP 工具",
+            hint = "连接 Streamable HTTP MCP 服务，只读工具自动执行，带副作用工具仍需审批",
+            checked = mcpEnabled,
+            onChange = { mcpEnabled = it },
+        )
+        QuietTextField(
+            value = mcpEndpoint,
+            onValueChange = { mcpEndpoint = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = "https://example.com/mcp",
+            mono = true,
+        )
+        Text(
+            "端点可能包含 token，已存入加密偏好；留空则不连接。",
+            style = MaterialTheme.typography.labelSmall,
+            color = cs.muted,
+        )
+        TextButton(
+            onClick = { onMcpConfigChange(mcpEnabled, mcpEndpoint.trim()) },
+            enabled = mcpEndpoint.isBlank() || mcpEndpoint.startsWith("http"),
+        ) { Text("保存 MCP 配置") }
+        Spacer(Modifier.height(Dimens.sm))
+        QuietSwitchRow(
+            label = "启用项目 JS 插件",
+            hint = "执行 .codepocket/plugins 下的 run(input)，沙箱禁止 Java/文件/网络访问",
+            checked = settings.pluginsEnabled,
+            onChange = onPluginsEnabledChange,
+        )
     }
 }
 
@@ -738,7 +775,9 @@ private fun importPurePythonPackage(context: android.content.Context, uri: Uri):
             if (relative.startsWith("/") || relative.contains("..")) return false
             val f = File(dest, relative)
             val root = dest.canonicalFile
-            if (!f.canonicalFile.toPath().startsWith(root.toPath())) return false
+            val rootPrefix = root.path + File.separator
+            val target = f.canonicalFile.path
+            if (target != root.path && !target.startsWith(rootPrefix)) return false
             f.parentFile?.mkdirs()
             zf.getInputStream(e).use { inp -> f.outputStream().use { out -> inp.copyTo(out) } }
         }

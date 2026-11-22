@@ -2,6 +2,8 @@ package com.devterminal.model
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
@@ -33,18 +35,25 @@ class ModelDownloadManager(private val repository: ModelRepository) {
         repository.ensureDir()
         val part = repository.partFile(spec)
         val existing = if (part.isFile) part.length() else 0L
+        // 进程在“下载完成、改名之前”被杀会留下完整 .part：直接校验，别再用 Range 撞 416。
+        if (existing == spec.sizeBytes) {
+            onProgress(ModelDownloadProgress(spec.id, spec.sizeBytes, spec.sizeBytes, verifying = true))
+            return@withContext verifyAndInstall(spec, part, onProgress)
+        }
+        if (existing > spec.sizeBytes) part.delete()
+        val restartExisting = if (part.isFile) part.length() else 0L
         val free = repository.freeBytes()
-        val needed = (spec.sizeBytes - existing).coerceAtLeast(0L)
-        if (free in 1..needed) {
+        val needed = (spec.sizeBytes - restartExisting).coerceAtLeast(0L)
+        if (needed > 0 && free < needed) {
             throw IllegalStateException("存储空间不足：还需 ${needed / 1024 / 1024}MB")
         }
 
         val conn = (URL(spec.url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 60_000
-            setRequestProperty("User-Agent", "CodePocket/0.0.19 (Android; llama.cpp)")
+            setRequestProperty("User-Agent", "CodePocket/0.0.21 (Android; llama.cpp)")
             setRequestProperty("Accept-Encoding", "identity")
-            if (existing > 0) setRequestProperty("Range", "bytes=$existing-")
+            if (restartExisting > 0) setRequestProperty("Range", "bytes=$restartExisting-")
         }
 
         try {
@@ -53,7 +62,7 @@ class ModelDownloadManager(private val repository: ModelRepository) {
             if (code != HttpURLConnection.HTTP_OK && code != HttpURLConnection.HTTP_PARTIAL) {
                 throw IllegalStateException("模型下载失败：HTTP $code")
             }
-            val startBytes = if (append) existing else 0L
+            val startBytes = if (append) restartExisting else 0L
             if (!append && part.exists()) part.delete()
             val remaining = conn.contentLengthLong.takeIf { it > 0 } ?: (spec.sizeBytes - startBytes)
             val total = (startBytes + remaining).coerceAtLeast(spec.sizeBytes)
@@ -65,6 +74,7 @@ class ModelDownloadManager(private val repository: ModelRepository) {
                     val buffer = ByteArray(256 * 1024)
                     var lastReport = 0L
                     while (true) {
+                        currentCoroutineContext().ensureActive()
                         val read = input.read(buffer)
                         if (read < 0) break
                         output.write(buffer, 0, read)
@@ -79,21 +89,7 @@ class ModelDownloadManager(private val repository: ModelRepository) {
             if (part.length() != spec.sizeBytes) {
                 throw IllegalStateException("模型文件不完整：${part.length()}/${spec.sizeBytes}")
             }
-            onProgress(ModelDownloadProgress(spec.id, part.length(), spec.sizeBytes, verifying = true))
-            val actual = sha256(part)
-            if (!actual.equals(spec.sha256, ignoreCase = true)) {
-                part.delete()
-                throw IllegalStateException("SHA-256 校验失败：文件已删除，请重试")
-            }
-            val target = repository.modelFile(spec)
-            if (target.exists()) target.delete()
-            if (!part.renameTo(target)) {
-                part.copyTo(target, overwrite = true)
-                part.delete()
-            }
-            repository.writeVerified(spec)
-            onProgress(ModelDownloadProgress(spec.id, spec.sizeBytes, spec.sizeBytes))
-            target
+            verifyAndInstall(spec, part, onProgress)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -103,15 +99,41 @@ class ModelDownloadManager(private val repository: ModelRepository) {
         }
     }
 
+    private suspend fun verifyAndInstall(
+        spec: LocalModelSpec,
+        part: File,
+        onProgress: (ModelDownloadProgress) -> Unit,
+    ): File {
+        if (part.length() != spec.sizeBytes) {
+            throw IllegalStateException("模型文件不完整：${part.length()}/${spec.sizeBytes}")
+        }
+        onProgress(ModelDownloadProgress(spec.id, part.length(), spec.sizeBytes, verifying = true))
+        val actual = sha256(part)
+        if (!actual.equals(spec.sha256, ignoreCase = true)) {
+            part.delete()
+            throw IllegalStateException("SHA-256 校验失败：文件已删除，请重试")
+        }
+        val target = repository.modelFile(spec)
+        if (target.exists()) target.delete()
+        if (!part.renameTo(target)) {
+            part.copyTo(target, overwrite = true)
+            part.delete()
+        }
+        repository.writeVerified(spec)
+        onProgress(ModelDownloadProgress(spec.id, spec.sizeBytes, spec.sizeBytes))
+        return target
+    }
+
     fun cancelPartial(spec: LocalModelSpec) {
         repository.partFile(spec).delete()
     }
 
-    private fun sha256(file: File): String {
+    private suspend fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
             val buffer = ByteArray(1024 * 1024)
             while (true) {
+                currentCoroutineContext().ensureActive()
                 val read = input.read(buffer)
                 if (read < 0) break
                 digest.update(buffer, 0, read)

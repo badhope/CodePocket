@@ -4,7 +4,7 @@
 
 ---
 
-## 已实现（v0.0.19 本地模型版）
+## 已实现（v0.0.21 本地模型 + 会话回放）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
@@ -22,10 +22,13 @@
 - ✅ `LanguageService`：Python / Kotlin / Java / JS / TS / Lua 文件符号大纲，行号可跳转
 - ✅ 命令面板新增「符号大纲」，当前文件函数/类一屏看完，点击直达
 - ✅ Agent 会话 JSONL：每次任务落盘，重启自动恢复最近一次时间线
+- ✅ Agent 历史会话：最近 20 个会话可回放、删除，保留 30 个文件
 - ✅ llama.cpp JNI：arm64 `libllama_jni.so`，静态链接 llama/ggml，16KB 对齐
 - ✅ 本地模型管理：MiniCPM5-1B / 2B 下载、断点续传、SHA-256 校验、删除
 - ✅ `LocalLlamaProvider`：Agent 可完全离线跑本地 GGUF，6GB/8GB 内存门槛
 - ✅ 设置页与命令面板新增「本地模型」入口
+- ✅ `ProviderRegistry`：云端/本地可用性判断收敛到一处
+- ✅ 项目技能目录：`.codepocket/skills` 下的 Markdown 注入 Agent 提示词
 
 ## v0.0.14 基线
 
@@ -47,7 +50,7 @@
 - ✅ 解释器隔离：每次运行后清理用户新增 `sys.modules` 与 `sys.path` 改动
 - ✅ 输出完整性：三引擎 1024 缓冲 + 100ms/256 行分批上屏 + 丢行统计
 - ✅ 错误与诊断：完整 Python traceback、Java/原生崩溃日志 About 页出口
-- ✅ Release 构建：R8 压缩后 APK 从 95MB 降到约 32MB，JNI/运行时 keep 规则已补齐
+- ✅ Release 构建：R8 压缩后 APK 从 95MB 降到约 39MB（含 6.6MB 本地推理桥），JNI/运行时 keep 规则已补齐
 - ✅ AI 流式回复支持 180s 总超时、120s 空闲超时与手动取消
 
 ---
@@ -75,6 +78,7 @@
 - 📋 终端面板（真实 PTY 风格，可跑交互命令）
 
 ### 生态与平台
+- ✅ MCP 工具 / 项目自定义命令 / Rhino 沙箱插件
 - 📋 应用商店上架（GitCode Releases / 第三方商店）
 - 📋 模板市场：社区贡献项目模板
 - 📋 插件机制（语言服务器协议 LSP 支持）

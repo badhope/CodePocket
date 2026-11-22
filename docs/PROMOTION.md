@@ -46,13 +46,13 @@
 
 ---
 
-## 三、发布公告（v0.0.14 模板）
+## 三、发布公告（v0.0.21 模板）
 
-### 标题：CodePocket v0.0.14 发布：手机上的离线多语言 IDE，装完就能跑
+### 标题：CodePocket v0.0.21 发布：手机上的离线多语言 IDE，装完就能跑
 
 正文：
 
-> CodePocket（原 DevTerminal）v0.0.14 正式发布 🎉
+> CodePocket（原 DevTerminal）v0.0.21 正式发布 🎉
 >
 > **核心变化：从 WebAssembly 原型迁移到原生引擎**
 > - 🐍 **原生 CPython 3.13**：NDK 交叉编译，ARM64 直跑，不再有 WASM 性能损耗；

@@ -281,11 +281,12 @@ filesDir/checkpoints/
 
 ### Phase 4：生态扩展
 
-- [ ] `ProviderRegistry`（云端/本地/未来第三方）
-- [ ] MCP client（HTTP/SSE，先只读工具）
-- [ ] 自定义命令 / `SKILL.md` 目录
-- [ ] 多会话
-- [ ] 插件运行时（优先 JS，复用 Rhino；默认关闭）
+- [x] `ProviderRegistry`（云端/本地，统一可用性判断）
+- [x] MCP client（Streamable HTTP + SSE data，只读工具自动执行、副作用工具审批）
+- [x] 项目技能目录：`.codepocket/skills/*.md` 注入提示词（最多 3 个文件 / 1500 字符）
+- [x] 命令面板自定义命令：`.codepocket/commands` 下的 Markdown 填入 Agent
+- [x] 多会话：最近 20 个会话回放 / 删除，文件保留 30 个
+- [x] 项目 JS 插件：`.codepocket/plugins` + Rhino 沙箱，默认关闭，仅 `run(input)`
 
 ---
 

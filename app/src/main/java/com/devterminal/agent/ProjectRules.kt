@@ -16,8 +16,9 @@ object ProjectRules {
                 val window = workspace.readText(path, 1, 80)
                 if (window.content.isBlank()) null else "来源 $path：\n${window.content.trim()}"
             }.getOrNull()
-        }
+        }.toMutableList()
+        ProjectSkills.read(workspace)?.let { parts += it }
         if (parts.isEmpty()) return null
-        return parts.joinToString("\n\n").take(MAX_CHARS)
+        return parts.joinToString("\n\n").take(MAX_CHARS + 1500)
     }
 }

@@ -55,6 +55,7 @@ fun AgentPanelDialog(
     onApprove: () -> Unit,
     onReject: () -> Unit,
     onRestoreCheckpoint: () -> Unit,
+    onOpenHistory: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -126,6 +127,19 @@ fun AgentPanelDialog(
                 onApprove = onApprove,
                 onReject = onReject,
             )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(onClick = onOpenHistory, enabled = !busy) {
+                Text(
+                    "历史会话",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.muted,
+                )
+            }
         }
 
         if (checkpointCount > 0 && !busy) {

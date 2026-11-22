@@ -34,6 +34,17 @@ class ProjectRulesTest {
     }
 
     @Test
+    fun `reads project skills`() {
+        val root = temp.newFolder("project")
+        File(root, ".codepocket/skills").mkdirs()
+        File(root, ".codepocket/skills/python.md").writeText("改完 Python 必须跑 unittest。")
+        val rules = ProjectRules.read(LocalWorkspace(root))
+
+        assertTrue(rules!!.contains("改完 Python 必须跑 unittest"))
+        assertTrue(rules.contains(".codepocket/skills/python.md"))
+    }
+
+    @Test
     fun `returns null when no rules`() {
         assertNull(ProjectRules.read(LocalWorkspace(temp.newFolder("empty"))))
     }

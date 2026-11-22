@@ -41,6 +41,9 @@ sealed interface Overlay {
     /** 本地模型下载与管理 */
     data object LocalModels : Overlay
 
+    /** Agent 历史会话回放 */
+    data object AgentHistory : Overlay
+
     /** 环境自检 */
     data object Diagnostics : Overlay
 

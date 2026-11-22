@@ -1,16 +1,16 @@
 # CodePocket「口袋码」用户手册
 
-> 版本：v0.0.19 · 适用：Android 8.0+（Python 需 ARM64；JavaScript/Lua 任意 ABI）
+> 版本：v0.0.21 · 适用：Android 8.0+（Python 需 ARM64；JavaScript/Lua 任意 ABI）
 
 ---
 
 ## 1. 安装
 
-1. 从 [Releases](https://gitcode.com/badhope/CodePocket/releases) 下载 release APK（约 32MB，debug 约 50MB）；
+1. 从 [Releases](https://gitcode.com/badhope/CodePocket/releases) 下载 release APK（约 39MB，debug 约 56MB）；
 2. 手机允许"安装未知来源应用"（不同厂商路径不同，一般在 设置 → 安全 → 未知来源）；
 3. 安装后打开，首次运行会自动解压内置 Python 标准库（约 1~5 秒，之后秒开）。
 
-> 提示：release 约 32MB，因为内置了完整的 CPython 3.13 原生运行时 + 标准库。装完即离线，无需再下载任何东西。
+> 提示：release 约 39MB，因为内置了完整 CPython 3.13 原生运行时、标准库与 arm64 本地推理桥。装完即离线，无需再下载任何东西；本地模型权重按需下载。
 
 ---
 
@@ -25,6 +25,10 @@
 命令面板搜「本地模型」，可下载 MiniCPM5-1B（约 656MB，6GB+ 设备）或 MiniCPM5-2B（约 1.45GB，8GB+ 设备）。下载支持断点续传，完成后做 SHA-256 校验；在设置里开启「Agent 使用本地模型」后，Agent 不再发网络请求。
 
 模型权重不打包进 APK，卸载 App 后系统会清掉外部目录里的模型文件。
+
+### 3.1 Agent 历史会话
+
+Agent 面板底部有「历史会话」。点开后列出最近 20 次任务的任务描述、时间、事件数和是否结束；点一条回放完整工具轨迹，也可以单独删除。记录只追加、不会自动重跑，适合排查「上次它到底改了哪几行」。会话文件保留最近 30 个。
 
 ---
 
@@ -109,6 +113,12 @@
 - 设置 → AI 助手 → 填写 Base URL、API Key、模型名；
 - 功能：解释当前文件、分析报错、生成单元测试；
 - **隐私**：代码只会发送到你配置的端点；不配置则完全不联网。
+- **项目规则**：项目根目录的 `AGENTS.md`、`.codepocket/rules.md` 会自动注入；
+  `.codepocket/skills/*.md` 里的短技能说明也会按文件名顺序注入（最多 3 个）。
+- **自定义命令**：`.codepocket/commands/*.md` 会出现在命令面板，选中后正文填入 Agent 输入框。
+- **MCP**：设置里填 Streamable HTTP 端点并开启；只读工具自动执行，副作用工具仍要批准。
+- **JS 插件**：设置里开启后，`.codepocket/plugins/*.js` 的 `run(input)` 会成为 Agent 工具，
+  在 Rhino 沙箱运行，不能访问 Java/文件/网络；默认关闭。
 
 ---
 
@@ -122,6 +132,7 @@
 | 自动换行 / 行号 | 开关 |
 | 运行超时 | 秒数（默认 120） |
 | AI 助手 | 端点 / 密钥 / 模型 |
+| MCP / 插件 | MCP 端点、项目 JS 插件开关 |
 
 ---
 

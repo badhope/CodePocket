@@ -33,21 +33,30 @@ class JsonAgentDecisionParser : AgentDecisionParser {
         val action = json.optString("action", "").trim().lowercase()
         val tool = json.optString("tool", "").trim()
         val answer = json.optString("answer", "").trim()
+        // MiniCPM/部分端侧模型的 XML tool_call 里常用 {"name":..., "arguments":...}
+        val function = json.optJSONObject("function")
+        val fallbackTool = json.optString("name").trim()
+            .ifEmpty { function?.optString("name").orEmpty().trim() }
 
         return when {
             action == "final" || (action.isEmpty() && answer.isNotEmpty()) ->
                 if (answer.isEmpty()) AgentDecision.Invalid("final 缺少 answer", raw.take(500))
                 else AgentDecision.Final(answer)
 
-            (action == "tool" || action == "call" || action.isEmpty()) && tool.isNotEmpty() -> {
+            (action == "tool" || action == "call" || action.isEmpty()) &&
+                (tool.isNotEmpty() || fallbackTool.isNotEmpty()) -> {
+                val name = tool.ifEmpty { fallbackTool }
                 val args = HashMap<String, String>()
                 val arguments = json.optJSONObject("arguments")
+                    ?: function?.optJSONObject("arguments")
+                    ?: json.optString("arguments").takeIf { it.trim().startsWith("{") }
+                        ?.let { runCatching { JSONObject(it) }.getOrNull() }
                 if (arguments != null) {
                     arguments.keys().forEach { key ->
                         args[key] = arguments.opt(key)?.toString() ?: ""
                     }
                 }
-                AgentDecision.ToolCall(tool, args)
+                AgentDecision.ToolCall(name, args)
             }
 
             else -> AgentDecision.Invalid("action/tool 不完整", raw.take(500))

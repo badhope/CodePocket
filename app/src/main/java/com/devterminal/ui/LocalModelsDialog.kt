@@ -99,7 +99,7 @@ fun LocalModelsDialog(
                         horizontalArrangement = Arrangement.End,
                     ) {
                         Text(
-                            if (item.progress >= 0) "${(item.progress * 100).toInt()}%" else "校验中…",
+                            if (item.verifying) "校验中…" else "${(item.progress.coerceAtLeast(0f) * 100).toInt()}%",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.muted,
                         )

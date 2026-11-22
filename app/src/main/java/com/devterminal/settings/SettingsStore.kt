@@ -69,6 +69,12 @@ data class AppSettings(
     /** true 时 Agent 优先使用已下载的本地 GGUF，不再发网络请求。 */
     val useLocalModel: Boolean = false,
     val localModelId: String = "minicpm5-1b",
+    // ---------- 生态扩展 ----------
+    /** MCP Streamable HTTP 端点；为空表示未配置。 */
+    val mcpEnabled: Boolean = false,
+    val mcpEndpoint: String = "",
+    /** 项目 `.codepocket/plugins` 的 JS 工具，默认关闭。 */
+    val pluginsEnabled: Boolean = false,
     // ---------- Git ----------
     val gitUserName: String = "",
     val gitUserEmail: String = "",
@@ -162,6 +168,9 @@ class SettingsStore(context: Context) {
         aiConfigured = prefs.getBoolean(KEY_AI_CONFIGURED, false),
         useLocalModel = prefs.getBoolean(KEY_USE_LOCAL_MODEL, false),
         localModelId = prefs.getString(KEY_LOCAL_MODEL_ID, "minicpm5-1b") ?: "minicpm5-1b",
+        mcpEnabled = prefs.getBoolean(KEY_MCP_ENABLED, false),
+        mcpEndpoint = encrypted.getString(KEY_MCP_ENDPOINT, "") ?: "",
+        pluginsEnabled = prefs.getBoolean(KEY_PLUGINS_ENABLED, false),
         gitUserName = prefs.getString(KEY_GIT_NAME, "") ?: "",
         gitUserEmail = prefs.getString(KEY_GIT_EMAIL, "") ?: "",
         gitRemoteUrl = encrypted.getString(KEY_GIT_REMOTE, "") ?: "",
@@ -184,6 +193,8 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_AI_CONFIGURED, s.aiConfigured)
             .putBoolean(KEY_USE_LOCAL_MODEL, s.useLocalModel)
             .putString(KEY_LOCAL_MODEL_ID, s.localModelId)
+            .putBoolean(KEY_MCP_ENABLED, s.mcpEnabled)
+            .putBoolean(KEY_PLUGINS_ENABLED, s.pluginsEnabled)
             .putString(KEY_GIT_NAME, s.gitUserName)
             .putString(KEY_GIT_EMAIL, s.gitUserEmail)
             .apply()
@@ -191,6 +202,7 @@ class SettingsStore(context: Context) {
         encrypted.edit()
             .putString(KEY_AI_KEY, s.aiApiKey)
             .putString(KEY_GIT_REMOTE, s.gitRemoteUrl)
+            .putString(KEY_MCP_ENDPOINT, s.mcpEndpoint)
             .apply()
     }
 
@@ -259,6 +271,9 @@ class SettingsStore(context: Context) {
         const val KEY_AI_CONFIGURED = "ai_configured"
         const val KEY_USE_LOCAL_MODEL = "use_local_model"
         const val KEY_LOCAL_MODEL_ID = "local_model_id"
+        const val KEY_MCP_ENABLED = "mcp_enabled"
+        const val KEY_MCP_ENDPOINT = "mcp_endpoint"
+        const val KEY_PLUGINS_ENABLED = "plugins_enabled"
         const val KEY_GIT_NAME = "git_user_name"
         const val KEY_GIT_EMAIL = "git_user_email"
         const val KEY_GIT_REMOTE = "git_remote_url"

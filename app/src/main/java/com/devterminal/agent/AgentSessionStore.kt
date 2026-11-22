@@ -2,6 +2,7 @@ package com.devterminal.agent
 
 import org.json.JSONObject
 import java.io.File
+import java.util.UUID
 
 data class AgentSessionMeta(
     val id: String,
@@ -27,7 +28,7 @@ class AgentSessionStore(private val dir: File) {
 
     fun create(projectPath: String, task: String): String {
         ensureDir()
-        val id = "${System.currentTimeMillis()}-${(0..999).random()}"
+        val id = "${System.currentTimeMillis()}-${UUID.randomUUID().toString().take(8)}"
         val meta = JSONObject()
             .put("type", "session_meta")
             .put("id", id)

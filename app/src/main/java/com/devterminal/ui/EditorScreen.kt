@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.outlined.MenuOpen
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.FileDownload
@@ -142,6 +143,7 @@ private val overlaySaver = run {
         Named("globalSearch", Overlay.GlobalSearch),
         Named("symbols", Overlay.Symbols),
         Named("localModels", Overlay.LocalModels),
+        Named("agentHistory", Overlay.AgentHistory),
         Named("diagnostics", Overlay.Diagnostics),
         Named("runConfig", Overlay.RunConfig),
         Named("settings", Overlay.Settings),
@@ -764,6 +766,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "gsearch" -> overlay = Overlay.GlobalSearch
                     "symbols" -> { vm.loadSymbols(); overlay = Overlay.Symbols }
                     "models" -> { vm.refreshLocalModels(); overlay = Overlay.LocalModels }
+                    "agentHistory" -> { vm.loadAgentSessions(); overlay = Overlay.AgentHistory }
                     "runconfig" -> overlay = Overlay.RunConfig
                     "preview" -> vm.togglePreview()
                     "export" -> exportLauncher.launch(vm.suggestedExportName())
@@ -838,8 +841,22 @@ fun EditorScreen(vm: EditorViewModel) {
             onApprove = vm::approveAgentPatch,
             onReject = vm::rejectAgentPatch,
             onRestoreCheckpoint = vm::restoreAgentCheckpoint,
+            onOpenHistory = { vm.loadAgentSessions(); overlay = Overlay.AgentHistory },
             onCancel = vm::cancelAgent,
             onDismiss = { vm.cancelAgent(); closeOverlay() }
+        )
+    }
+
+    if (overlay == Overlay.AgentHistory) {
+        AgentHistoryDialog(
+            sessions = ui.agentSessions,
+            loading = ui.agentSessionsLoading,
+            onOpen = { id ->
+                vm.openAgentSession(id)
+                overlay = Overlay.Agent
+            },
+            onDelete = vm::deleteAgentSession,
+            onDismiss = ::closeOverlay,
         )
     }
 
@@ -929,6 +946,12 @@ fun EditorScreen(vm: EditorViewModel) {
                         aiConfigured = url.isNotBlank()
                     )
                 )
+            },
+            onMcpConfigChange = { enabled, endpoint ->
+                vm.updateSettings(ui.settings.copy(mcpEnabled = enabled, mcpEndpoint = endpoint))
+            },
+            onPluginsEnabledChange = { enabled ->
+                vm.updateSettings(ui.settings.copy(pluginsEnabled = enabled))
             },
             onDismiss = ::closeOverlay,
             onOpenLocalModels = {
@@ -1235,6 +1258,8 @@ private fun buildCommands(
         Icons.Filled.AccountTree) { onCommand("symbols") })
     add(Command("models", "本地模型", "下载 MiniCPM5 / 离线 Agent",
         Icons.Filled.AutoAwesome) { onCommand("models") })
+    add(Command("agentHistory", "Agent 历史会话", "回放之前的工具轨迹",
+        Icons.Filled.AccountTree) { onCommand("agentHistory") })
     add(Command("copyout", "复制全部输出", "写入剪贴板",
         Icons.Filled.ContentCopy) { vm.copyOutput() })
     add(Command("newfile", "新建文件", "在项目根创建",
@@ -1249,6 +1274,17 @@ private fun buildCommands(
         Icons.Filled.Settings) { onCommand("settings") })
     add(Command("about", "关于 CodePocket", "版本与开源许可",
         Icons.Outlined.Info) { onCommand("about") })
+    ui.customCommands.forEach { cmd ->
+        add(Command(
+            "cmd-${cmd.id}",
+            "命令：${cmd.title}",
+            cmd.description.ifBlank { "项目自定义 Agent 指令" },
+            Icons.Filled.Bolt
+        ) {
+            vm.prefillAgent(cmd.body)
+            onCommand("agent")
+        })
+    }
     // 代码片段：按当前文件语言过滤，避免 Python 文件里冒出来 Lua 片段
     val currentSpec = LanguageRegistry.forFile(ui.currentFile)
     com.devterminal.engine.Snippets.forLanguage(currentSpec.id).forEach { s ->

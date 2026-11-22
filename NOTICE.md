@@ -48,7 +48,17 @@
   `extensions/theme-*`），已转换为 tm4e 兼容格式并去除注释。
 - 许可证：**MIT**（VS Code 项目）。版权与许可声明随文件与仓库分发保留。
 
-## 7. AndroidX / Jetpack Compose / Kotlin / androidx.webkit
+## 7. llama.cpp（本地 GGUF 推理）
+
+- 项目地址：https://github.com/ggml-org/llama.cpp
+- 许可证：**MIT**
+- 使用方式：以官方源码交叉编译为 Android arm64 静态库，再由自写 JNI
+  （`native/llama_jni/llama_jni.cpp`）薄封装为 `libllama_jni.so` 随 APK 分发。
+- 合规说明：APK 内二进制由 llama.cpp 源码构建；源码与构建脚本见仓库 `native/` 与文档。
+- 模型权重（MiniCPM5-1B / 2B GGUF）：**Apache-2.0**，不随 APK 分发，由用户在
+  ModelScope 页面下载，遵循模型卡条款。
+
+## 8. AndroidX / Jetpack Compose / Kotlin / androidx.webkit
 
 - 许可证：Apache-2.0
 - 通过 Maven Central 分发的官方 Android 组件。

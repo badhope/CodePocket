@@ -66,6 +66,26 @@ static std::vector<llama_token> tokenize(const std::string &text) {
     return tokens;
 }
 
+static std::string fit_prompt(const std::string &system, const std::string &user, size_t maxPromptTokens) {
+    std::string current = user;
+    for (int attempt = 0; attempt < 16; ++attempt) {
+        std::string prompt = apply_template(system, current);
+        auto tokens = tokenize(prompt);
+        if (tokens.size() <= maxPromptTokens) return prompt;
+        if (current.empty()) break;
+        // 按完整行丢弃最旧的历史，保留 system 和最近观察，避免从 UTF-8 中间截断。
+        size_t cut = current.size() / 6;
+        if (cut == 0) cut = 1;
+        size_t newline = current.find('\n', cut);
+        if (newline == std::string::npos) {
+            current.clear();
+        } else {
+            current.erase(0, newline + 1);
+        }
+    }
+    return apply_template(system, current);
+}
+
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_devterminal_model_LocalLlama_nativeInit(JNIEnv *, jobject) {
@@ -120,18 +140,21 @@ Java_com_devterminal_model_LocalLlama_nativeGenerate(
     }
     const char *system = env->GetStringUTFChars(jsystem, nullptr);
     const char *user = env->GetStringUTFChars(juser, nullptr);
-    std::string prompt = apply_template(std::string(system), std::string(user));
+    std::string systemText(system);
+    std::string userText(user);
     env->ReleaseStringUTFChars(jsystem, system);
     env->ReleaseStringUTFChars(juser, user);
 
+    // 给生成预留 token；绝不能把 system 指令从开头截掉，否则 JSON 协议和工具清单先丢。
+    const int limit = maxTokens > 0 ? maxTokens : 512;
+    const size_t reserved = static_cast<size_t>(limit) + 32;
+    const size_t maxPrompt = static_cast<size_t>(g_n_ctx) > reserved + 512
+            ? static_cast<size_t>(g_n_ctx) - reserved
+            : 512;
+    std::string prompt = fit_prompt(systemText, userText, maxPrompt);
     auto tokens = tokenize(prompt);
     if (tokens.empty()) {
         return env->NewStringUTF("提示词分词失败");
-    }
-    // 端侧只保留最后一个窗口，避免手机内存被旧 KV 吃掉。
-    const size_t max_prompt = static_cast<size_t>(g_n_ctx - 256);
-    if (tokens.size() > max_prompt) {
-        tokens.erase(tokens.begin(), tokens.begin() + (tokens.size() - max_prompt));
     }
 
     llama_memory_clear(llama_get_memory(g_ctx), true);
@@ -152,8 +175,8 @@ Java_com_devterminal_model_LocalLlama_nativeGenerate(
         return env->NewStringUTF("本地模型解码失败");
     }
 
-    const int limit = maxTokens > 0 ? maxTokens : 512;
     std::string output;
+    const int32_t promptTokens = static_cast<int32_t>(tokens.size());
     for (int i = 0; i < limit; i++) {
         llama_token id = llama_sampler_sample(g_sampler, g_ctx, -1);
         if (llama_vocab_is_eog(llama_model_get_vocab(g_model), id)) break;
@@ -163,8 +186,17 @@ Java_com_devterminal_model_LocalLlama_nativeGenerate(
                                         piece, sizeof(piece), 0, false);
         if (n > 0) output.append(piece, static_cast<size_t>(n));
 
-        llama_batch next = llama_batch_get_one(&id, 1);
-        if (llama_decode(g_ctx, next) != 0) break;
+        // 显式 position：单 token batch 若复用 0 位置会把 KV 覆盖掉。
+        llama_batch next = llama_batch_init(1, 0, 1);
+        next.token[0] = id;
+        next.pos[0] = static_cast<llama_pos>(promptTokens + i);
+        next.n_seq_id[0] = 1;
+        next.seq_id[0][0] = 0;
+        next.logits[0] = 1;
+        next.n_tokens = 1;
+        int32_t rcNext = llama_decode(g_ctx, next);
+        llama_batch_free(next);
+        if (rcNext != 0) break;
     }
     return env->NewStringUTF(output.c_str());
 }

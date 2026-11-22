@@ -14,8 +14,8 @@ android {
         applicationId = "com.devterminal"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 19
-        versionName = "0.0.19"
+        versionCode = 21
+        versionName = "0.0.21"
         vectorDrawables { useSupportLibrary = true }
         // 原生 CPython 引擎：只打 arm64（当前覆盖绝大多数 Android 设备）
         ndk { abiFilters += "arm64-v8a" }
