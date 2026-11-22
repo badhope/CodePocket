@@ -4,7 +4,7 @@
 
 ---
 
-## 已实现（v0.0.15 Agent 预览）
+## 已实现（v0.0.16 Agent 验证）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
@@ -13,6 +13,8 @@
 - ✅ `CheckpointStore`：SHA-256 内容寻址快照，不污染用户 Git 仓库
 - ✅ Agent 面板：工具轨迹、观察结果、diff、批准/拒绝、停止
 - ✅ 云端 `ModelProvider`（OpenAI 兼容端点，复用 `AiClient`）
+- ✅ `run_file` / `run_tests`：受限执行项目内文件，Python unittest discover，输出尾部回读
+- ✅ Agent 面板「撤销本次 Agent 修改」：确认后从最近检查点恢复
 
 ## v0.0.14 基线
 

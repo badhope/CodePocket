@@ -13,7 +13,7 @@ class ApprovalPolicy(
     val autoApproveWrites: Boolean = false,
 ) {
     fun requiresApproval(spec: ToolSpec): Boolean =
-        spec.mutatesWorkspace && !autoApproveWrites
+        (spec.mutatesWorkspace || spec.executesCommand) && !autoApproveWrites
 }
 
 fun interface ApprovalHandler {
@@ -104,7 +104,7 @@ class AgentLoop(
 
                     emit(AgentEvent.ToolCall(call.id, call.name, call.arguments))
 
-                    if (tool.spec.mutatesWorkspace && approvalPolicy.requiresApproval(tool.spec)) {
+                    if (approvalPolicy.requiresApproval(tool.spec)) {
                         val proposal = buildProposal(call)
                         emit(proposal)
                         val approved = try {
@@ -168,6 +168,14 @@ class AgentLoop(
 
     private fun buildProposal(call: ToolCall): AgentEvent.PatchProposed {
         val path = call.arguments["path"].orEmpty()
+        if (call.name != "apply_patch") {
+            val detail = call.arguments.entries.joinToString("\n") { "${it.key}=${it.value.take(200)}" }
+            return AgentEvent.PatchProposed(
+                proposalId = call.id,
+                paths = listOfNotNull(path.takeIf { it.isNotBlank() }),
+                diff = "工具：${call.name}\n$detail",
+            )
+        }
         val start = call.arguments["start"]?.toIntOrNull()
         val end = call.arguments["end"]?.toIntOrNull()
         val replacement = call.arguments["replacement"].orEmpty()

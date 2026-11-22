@@ -12,12 +12,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,14 +47,18 @@ fun AgentPanelDialog(
     configured: Boolean,
     inputDraft: String,
     pendingProposal: AgentEvent.PatchProposed?,
+    lastCheckpoint: AgentEvent.Checkpoint?,
+    checkpointCount: Int,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onApprove: () -> Unit,
     onReject: () -> Unit,
+    onRestoreCheckpoint: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val listState = rememberLazyListState()
+    var confirmRestore by remember { mutableStateOf(false) }
     LaunchedEffect(events.size, pendingProposal, busy) {
         if (events.isNotEmpty()) {
             runCatching { listState.animateScrollToItem(events.size - 1) }
@@ -113,6 +122,21 @@ fun AgentPanelDialog(
             )
         }
 
+        if (checkpointCount > 0 && !busy) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = { confirmRestore = true }) {
+                    Text(
+                        "撤销本次 Agent 修改（$checkpointCount 个检查点）",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.muted,
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(Dimens.sm))
         QuietTextField(
             value = inputDraft,
@@ -123,6 +147,28 @@ fun AgentPanelDialog(
             enabled = !busy,
             imeAction = androidx.compose.ui.text.input.ImeAction.Send,
             onImeAction = { if (inputDraft.isNotBlank() && !busy) onSend() },
+        )
+    }
+
+    if (confirmRestore) {
+        AlertDialog(
+            onDismissRequest = { confirmRestore = false },
+            title = { Text("恢复到 Agent 修改前") },
+            text = {
+                Text(
+                    "将把本次修改过的文件（${lastCheckpoint?.label ?: "检查点"}）恢复为快照内容。" +
+                        "当前未保存的编辑会丢失，确定继续？",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRestore = false
+                    onRestoreCheckpoint()
+                }) { Text("恢复") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRestore = false }) { Text("取消") }
+            },
         )
     }
 }
@@ -140,7 +186,7 @@ private fun ApprovalCard(
     ) {
         Column(Modifier.padding(Dimens.sm)) {
             Text(
-                "待批准：${proposal.paths.joinToString().ifBlank { "修改文件" }}",
+                "待批准：${proposal.paths.joinToString().ifBlank { "执行工具" }}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -157,7 +203,7 @@ private fun ApprovalCard(
                 horizontalArrangement = Arrangement.End,
             ) {
                 TextButton(onClick = onReject) { Text("拒绝") }
-                TextButton(onClick = onApprove) { Text("批准写入") }
+                TextButton(onClick = onApprove) { Text("批准执行") }
             }
         }
     }

@@ -15,9 +15,12 @@ import com.devterminal.agent.tools.ApplyPatchTool
 import com.devterminal.agent.tools.ListFilesTool
 import com.devterminal.agent.tools.ReadFileTool
 import com.devterminal.agent.tools.SearchTextTool
+import com.devterminal.agent.tools.RunFileTool
+import com.devterminal.agent.tools.RunTestsTool
 import com.devterminal.model.OpenAiCompatibleProvider
 import com.devterminal.workspace.LocalWorkspace
 import com.devterminal.engine.AiClient
+import com.devterminal.engine.EngineCommandRunner
 import com.devterminal.engine.EnvironmentInstaller
 import com.devterminal.engine.ExecutionService
 import com.devterminal.engine.FriendlyError
@@ -127,6 +130,8 @@ data class UiState(
     val agentInputDraft: String = "",
     val agentPendingCall: ToolCall? = null,
     val agentPendingProposal: AgentEvent.PatchProposed? = null,
+    val lastAgentCheckpoint: AgentEvent.Checkpoint? = null,
+    val agentCheckpoints: List<AgentEvent.Checkpoint> = emptyList(),
     // ---------- 全局搜索（v0.3） ----------
     val globalSearching: Boolean = false,
     val globalResults: List<SearchHit> = emptyList(),
@@ -167,6 +172,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var aiCancelRequested = false
     private var agentJob: Job? = null
     private var agentApproval: CompletableDeferred<Boolean>? = null
+    private var activeCheckpointStore: CheckpointStore? = null
     /** 当前这次运行使用的引擎，stop/sendInput 必须打到同一个实例 */
     private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
@@ -499,6 +505,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val st = _ui.value
         // 防止重复点击导致多个进程并发、输出互相穿插
         if (st.running) return
+        if (st.agentBusy) {
+            _ui.update { it.copy(message = "Agent 正在执行，先停止 Agent 再运行", messageSeq = it.messageSeq + 1) }
+            return
+        }
         val file = st.currentFile ?: run {
             _ui.update { it.copy(message = "请先打开一个文件", messageSeq = it.messageSeq + 1) }
             return
@@ -1217,6 +1227,56 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun restoreAgentCheckpoint() {
+        val st = _ui.value
+        val store = activeCheckpointStore
+        val projectDir = currentProject
+        val events = st.agentCheckpoints.ifEmpty { listOfNotNull(st.lastAgentCheckpoint) }
+        if (events.isEmpty() || store == null || projectDir == null) {
+            _ui.update { it.copy(message = "没有可恢复的 Agent 检查点", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val all = store.list().associateBy { it.id }
+                    val restored = LinkedHashSet<String>()
+                    var failure: String? = null
+                    for (event in events.reversed()) {
+                        val checkpoint = all[event.checkpointId]
+                        if (checkpoint == null) {
+                            failure = "检查点不存在：${event.checkpointId}"
+                            break
+                        }
+                        runCatching { store.restore(checkpoint) }
+                            .onSuccess { restored.addAll(checkpoint.files) }
+                            .onFailure { failure = it.message ?: "检查点恢复失败" }
+                        if (failure != null) break
+                    }
+                    if (failure != null) error(failure) else restored.toList()
+                }
+            }
+            result.onSuccess { files ->
+                reloadAfterAgent(files, projectDir)
+                _ui.update {
+                    it.copy(
+                        lastAgentCheckpoint = null,
+                        agentCheckpoints = emptyList(),
+                        message = "已撤销本次 Agent 修改（${files.size} 个文件）",
+                        messageSeq = it.messageSeq + 1,
+                    )
+                }
+            }.onFailure { e ->
+                _ui.update {
+                    it.copy(
+                        message = "恢复失败：${e.message}",
+                        messageSeq = it.messageSeq + 1,
+                    )
+                }
+            }
+        }
+    }
+
     private fun startAgentTask(task: String) {
         val st = _ui.value
         if (!st.settings.aiConfigured) {
@@ -1233,6 +1293,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (st.agentBusy) return
+        if (st.running) {
+            _ui.update { it.copy(message = "先停止正在运行的程序", messageSeq = it.messageSeq + 1) }
+            return
+        }
         if (st.dirty) {
             _ui.update {
                 it.copy(message = "先保存当前文件，再让 Agent 修改", messageSeq = it.messageSeq + 1)
@@ -1248,8 +1312,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
         val checkpoints = CheckpointStore(File(context.filesDir, "agent-checkpoints"), workspace)
         val provider = OpenAiCompatibleProvider(st.settings)
+        val runner = runtimes?.let { EngineCommandRunner(context, it, projectDir) }
         val tools = ToolRegistry(
-            listOf(ReadFileTool(), ListFilesTool(), SearchTextTool(), ApplyPatchTool())
+            listOf(
+                ReadFileTool(), ListFilesTool(), SearchTextTool(), ApplyPatchTool(),
+                RunFileTool(runner), RunTestsTool(runner),
+            )
         )
         val loop = AgentLoop(
             workspace = workspace,
@@ -1264,12 +1332,15 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             },
         )
 
+        activeCheckpointStore = checkpoints
         _ui.update {
             it.copy(
                 agentBusy = true,
                 agentEvents = emptyList(),
                 agentPendingCall = null,
                 agentPendingProposal = null,
+                lastAgentCheckpoint = null,
+                agentCheckpoints = emptyList(),
             )
         }
         agentJob = viewModelScope.launch {
@@ -1277,6 +1348,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 loop.run(task) { event ->
                     if (event is AgentEvent.PatchProposed) {
                         _ui.update { it.copy(agentPendingProposal = event) }
+                    }
+                    if (event is AgentEvent.Checkpoint) {
+                        _ui.update {
+                            it.copy(
+                                lastAgentCheckpoint = event,
+                                agentCheckpoints = it.agentCheckpoints + event,
+                            )
+                        }
                     }
                     _ui.update {
                         it.copy(agentEvents = (it.agentEvents + event).takeLast(200))

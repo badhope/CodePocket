@@ -329,7 +329,7 @@ Phase 1 首批：
 
 - `agent/AgentDecision.kt`：文本 JSON 决策协议
 - `agent/AgentLoop.kt`：工具循环、审批、检查点、失败回读
-- `agent/tools/*`：四个 ACI 工具
+- `agent/tools/*`：六个 ACI 工具（含 `run_file` / `run_tests`）
 - `model/ModelProvider.kt`、`model/OpenAiCompatibleProvider.kt`
 - `ui/AgentPanel.kt` + AI 面板入口
 
@@ -343,4 +343,6 @@ Phase 1 首批：
 - `AgentLoop` 支持 JSON 决策协议、最多 8 步、写前审批、内容寻址检查点、失败回读。
 - UI：AI 助手内新增「Agent 模式」入口，Agent 面板显示工具轨迹、观察结果、diff 与批准按钮。
 - 单测：`testDebugUnitTest` 70 个用例通过；`assembleDebug` / `assembleRelease`（跳过 lintVital）通过。
-- 未做：`run_file` / `run_tests`、本地 llama.cpp、RepoMap、真机验证。
+- `run_file` / `run_tests` 已接：运行项目内可运行文件、Python unittest discover，输出尾部回读。
+- Agent 面板新增「撤销本次 Agent 修改」，确认后从最近检查点恢复。
+- 未做：本地 llama.cpp、RepoMap、真机验证。

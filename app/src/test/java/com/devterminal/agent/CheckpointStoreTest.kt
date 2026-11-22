@@ -52,6 +52,24 @@ class CheckpointStoreTest {
     }
 
     @Test
+    fun `multiple snapshots can be restored in reverse order`() {
+        val project = temp.newFolder("project")
+        val storeDir = temp.newFolder("checkpoints")
+        val file = File(project, "a.txt").apply { writeText("v1") }
+        val store = CheckpointStore(storeDir, LocalWorkspace(project))
+
+        val first = store.snapshot("before v2", listOf("a.txt"))
+        file.writeText("v2")
+        val second = store.snapshot("before v3", listOf("a.txt"))
+        file.writeText("v3")
+
+        store.restore(second)
+        assertEquals("v2", file.readText())
+        store.restore(first)
+        assertEquals("v1", file.readText())
+    }
+
+    @Test
     fun `delete removes snapshot metadata`() {
         val project = temp.newFolder("project")
         val storeDir = temp.newFolder("checkpoints")

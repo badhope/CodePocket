@@ -820,10 +820,13 @@ fun EditorScreen(vm: EditorViewModel) {
             configured = ui.settings.aiConfigured,
             inputDraft = ui.agentInputDraft,
             pendingProposal = ui.agentPendingProposal,
+            lastCheckpoint = ui.lastAgentCheckpoint,
+            checkpointCount = ui.agentCheckpoints.size,
             onInputChange = vm::onAgentInputChanged,
             onSend = vm::sendAgentInput,
             onApprove = vm::approveAgentPatch,
             onReject = vm::rejectAgentPatch,
+            onRestoreCheckpoint = vm::restoreAgentCheckpoint,
             onCancel = vm::cancelAgent,
             onDismiss = { vm.cancelAgent(); closeOverlay() }
         )

@@ -11,6 +11,8 @@ data class ToolSpec(
     val description: String,
     val parameters: Map<String, String> = emptyMap(),
     val mutatesWorkspace: Boolean = false,
+    /** 会启动进程/执行命令；即使不写文件也必须审批。 */
+    val executesCommand: Boolean = false,
 )
 
 data class ToolCall(
