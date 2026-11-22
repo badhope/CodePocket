@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.22)
+project(codepocket_llama LANGUAGES C CXX)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(LLAMA_SRC "${LLAMA_SRC}" CACHE PATH "llama.cpp source directory")
+
+if(NOT EXISTS "${LLAMA_SRC}/include/llama.h")
+    message(FATAL_ERROR "LLAMA_SRC is not a llama.cpp checkout: ${LLAMA_SRC}")
+endif()
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_APP OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_COMMON OFF CACHE BOOL "" FORCE)
+set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+set(GGML_LLAMAFILE OFF CACHE BOOL "" FORCE)
+set(GGML_BACKEND_DL OFF CACHE BOOL "" FORCE)
+set(GGML_CPU_ALL_VARIANTS OFF CACHE BOOL "" FORCE)
+
+add_subdirectory("${LLAMA_SRC}" "${CMAKE_BINARY_DIR}/llama.cpp")
+
+add_library(llama_jni SHARED llama_jni.cpp)
+target_include_directories(llama_jni PRIVATE "${LLAMA_SRC}/include" "${LLAMA_SRC}/ggml/include")
+target_link_libraries(llama_jni PRIVATE llama android log)
+target_compile_options(llama_jni PRIVATE -O2 -fPIC)
+target_link_options(llama_jni PRIVATE -Wl,-z,max-page-size=16384)

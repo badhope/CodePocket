@@ -19,7 +19,7 @@ object EngineProvider {
 
     fun create(context: Context): RunEngine {
         checkNativeRuntime(context)
-        Log.i(TAG, "使用原生 CPython 3.13.9 (arm64-v8a) 引擎")
+        Log.i(TAG, "使用原生 CPython 3.13.9 (arm64-v8a) + Rhino/LuaJ 纯 Java 运行时")
         return NativeEngine(context)
     }
 

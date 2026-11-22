@@ -3,7 +3,10 @@ package com.devterminal.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -56,7 +59,25 @@ fun PreviewPane(
             settings.javaScriptEnabled = false   // 静态渲染，不执行脚本
             settings.allowFileAccess = false
             settings.allowContentAccess = false
+            // 预览只允许内联 data: 内容；远程图片/CSS/iframe 一律不加载。
+            // 否则 Markdown 里一个 ![](https://...) 就能把用户 IP 和打开时间发出去。
+            settings.blockNetworkLoads = true
+            settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
             isVerticalScrollBarEnabled = true
+            webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView,
+                    request: WebResourceRequest
+                ): WebResourceResponse? {
+                    val scheme = request.url.scheme.orEmpty().lowercase()
+                    return if (scheme == "data" || scheme == "about") null else blockedResponse()
+                }
+
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                    // 预览内不跳转，外部链接交给用户手动“浏览器打开”。
+                    return true
+                }
+            }
         }
     }
     val bg = cs.surface.toArgb()
@@ -116,3 +137,7 @@ fun PreviewPane(
         }
     }
 }
+
+/** 把预览里所有非 data/about 请求替换成空响应，彻底断网。 */
+private fun blockedResponse(): WebResourceResponse =
+    WebResourceResponse("text/plain", "utf-8", java.io.ByteArrayInputStream(ByteArray(0)))

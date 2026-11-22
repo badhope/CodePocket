@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 128" width="470" height="128" role="img" aria-label="DevTerminal">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 128" width="520" height="128" role="img" aria-label="CodePocket">
   <!-- mark chip on light background -->
   <rect x="8" y="16" width="96" height="96" rx="22" fill="#FFFFFF" stroke="#E3E0DA" stroke-width="2"/>
   <rect x="32" y="44" width="48" height="41" rx="8" fill="#0F172A"/>
@@ -6,7 +6,7 @@
   <path d="M60 71 L74 71" fill="none" stroke="#4F46E5" stroke-width="6" stroke-linecap="round"/>
   <!-- wordmark -->
   <text x="122" y="84" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif"
-        font-size="52" font-weight="700" letter-spacing="-1">
-    <tspan fill="#1B1F24">Dev</tspan><tspan fill="#4A63D9">Terminal</tspan>
-  </text>
+        font-size="48" font-weight="700" fill="#1B1F24">Code</text>
+  <text x="255" y="84" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif"
+        font-size="48" font-weight="700" fill="#4A63D9">Pocket</text>
 </svg>

@@ -55,7 +55,9 @@ fun AiPanelDialog(
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onQuick: (String) -> Unit,
+    onCancel: () -> Unit,
     onInsertCode: (String) -> Unit,
+    onOpenAgent: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -93,12 +95,18 @@ fun AiPanelDialog(
                     }
                     if (busy) {
                         item {
-                            MonoText(
-                                "AI 思考中…",
-                                fontSize = 11,
-                                color = MaterialTheme.colorScheme.muted,
-                                modifier = Modifier.padding(vertical = Dimens.xs)
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                MonoText(
+                                    "AI 思考中…",
+                                    fontSize = 11,
+                                    color = MaterialTheme.colorScheme.muted,
+                                    modifier = Modifier.weight(1f).padding(vertical = Dimens.xs)
+                                )
+                                TextButton(onClick = onCancel) { Text("取消") }
+                            }
                         }
                     }
                 }
@@ -123,6 +131,18 @@ fun AiPanelDialog(
                             else MaterialTheme.colorScheme.muted
                         )
                     }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onOpenAgent, enabled = !busy) {
+                    Text(
+                        "Agent 模式：让 AI 读项目、改文件",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

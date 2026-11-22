@@ -82,4 +82,12 @@ class GitManagerTest {
         assertFalse(git.commitAll(dir, "m", "a", "a@b.c").contains("已提交"))
         assertFalse(git.push(dir, "https://u:t@example.com/x.git").contains("已推送"))
     }
+
+    @Test
+    fun `远程 URL 落盘前剥离 token 但保留主机与路径`() {
+        val raw = "https://badhope:ghp_secret123@github.com/badhope/CodePocket.git"
+        assertEquals("https://github.com/badhope/CodePocket.git", git.tokenlessUrl(raw))
+        assertEquals("https://github.com/badhope/CodePocket.git", git.tokenlessUrl("https://github.com/badhope/CodePocket.git"))
+        assertEquals("ssh://git@github.com/badhope/CodePocket.git", git.tokenlessUrl("ssh://git@github.com/badhope/CodePocket.git"))
+    }
 }

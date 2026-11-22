@@ -4,12 +4,39 @@
 
 ---
 
-## 已实现（v1.0.0 基线）
+## 已实现（v0.0.21 本地模型 + 会话回放）
 
-- ✅ 原生 CPython 3.13 运行引擎（ARM64，零外部依赖）
+- ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
+- ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
+- ✅ ACI 工具：`read_file` / `list_files` / `search_text` / `apply_patch`，全部限制输出大小
+- ✅ `AgentLoop`：JSON 决策协议、最多 8 步、写前审批、失败回读
+- ✅ `CheckpointStore`：SHA-256 内容寻址快照，不污染用户 Git 仓库
+- ✅ Agent 面板：工具轨迹、观察结果、diff、批准/拒绝、停止
+- ✅ 云端 `ModelProvider`（OpenAI 兼容端点，复用 `AiClient`）
+- ✅ `run_file` / `run_tests`：受限执行项目内文件，Python unittest discover，输出尾部回读
+- ✅ Agent 面板「撤销本次 Agent 修改」：确认后按逆序恢复整轮全部检查点
+- ✅ `RepoMapBuilder`：任务关键词排序、符号提取、2200 字符预算、大文件与二进制跳过
+- ✅ `ContextBuilder`：系统提示词预算、RepoMap 裁剪、历史消息按字符预算压缩
+- ✅ 项目规则：自动读取 `AGENTS.md` / `.codepocket/rules.md`，注入 Agent 提示词
+- ✅ Agent 文件 IO 全部切到 `Dispatchers.IO`，扫描项目不再阻塞主线程
+- ✅ `LanguageService`：Python / Kotlin / Java / JS / TS / Lua 文件符号大纲，行号可跳转
+- ✅ 命令面板新增「符号大纲」，当前文件函数/类一屏看完，点击直达
+- ✅ Agent 会话 JSONL：每次任务落盘，重启自动恢复最近一次时间线
+- ✅ Agent 历史会话：最近 20 个会话可回放、删除，保留 30 个文件
+- ✅ llama.cpp JNI：arm64 `libllama_jni.so`，静态链接 llama/ggml，16KB 对齐
+- ✅ 本地模型管理：MiniCPM5-1B / 2B 下载、断点续传、SHA-256 校验、删除
+- ✅ `LocalLlamaProvider`：Agent 可完全离线跑本地 GGUF，6GB/8GB 内存门槛
+- ✅ 设置页与命令面板新增「本地模型」入口
+- ✅ `ProviderRegistry`：云端/本地可用性判断收敛到一处
+- ✅ 项目技能目录：`.codepocket/skills` 下的 Markdown 注入 Agent 提示词
+
+## v0.0.14 基线
+
+
+- ✅ 三种可运行语言：Python（原生 CPython 3.13，ARM64）、JavaScript（Rhino，纯 Java）、Lua（LuaJ，纯 Java）
 - ✅ JNI 桥：stdin/stdout/stderr 三路桥接、死循环中断、`input()` 交互
-- ✅ 标准库全量随包（纯 Python + C 扩展：math/json/socket/ssl/sqlite3/ctypes…）
-- ✅ Sora Editor 编辑器（18 种语言高亮、补全、查找替换、全局搜索）
+- ✅ 标准库随包（2314 条纯 Python 模块，剔除 5247 个 `__pycache__`；C 扩展走 jniLibs：math/json/socket/ssl/sqlite3/ctypes…）
+- ✅ Sora Editor 编辑器（20 种语言高亮、补全、查找替换、全局搜索；3 种可运行 + 17 种编辑级）
 - ✅ 文件树 / 多 Tab / 项目模板 / 多项目切换 / SAF 导入导出
 - ✅ 离线 Git（JGit：init/commit/push/pull）
 - ✅ Markdown / HTML 分屏预览、PNG 查看
@@ -17,6 +44,14 @@
 - ✅ AI 助手（BYOK，OpenAI 兼容端点）
 - ✅ 会话恢复、前台服务保活、崩溃日志
 - ✅ 修复：`__file__` 等模块属性注入、并发运行状态机、停止兜底
+- ✅ 数据完整性：切项目/关脏 Tab/打开文件前强制落盘，保存失败即中止操作
+- ✅ 安全加固：预览断网、SAF 文件名清洗、Zip Slip 路径校验、Git token 不落盘
+- ✅ 16KB 页对齐：`libpybridge.so` 与 jniLibs 全部 58 个 `.so` 均为 `0x4000`
+- ✅ 解释器隔离：每次运行后清理用户新增 `sys.modules` 与 `sys.path` 改动
+- ✅ 输出完整性：三引擎 1024 缓冲 + 100ms/256 行分批上屏 + 丢行统计
+- ✅ 错误与诊断：完整 Python traceback、Java/原生崩溃日志 About 页出口
+- ✅ Release 构建：R8 压缩后 APK 从 95MB 降到约 39MB（含 6.6MB 本地推理桥），JNI/运行时 keep 规则已补齐
+- ✅ AI 流式回复支持 180s 总超时、120s 空闲超时与手动取消
 
 ---
 
@@ -26,7 +61,7 @@
   - 途径：本地交叉编译 wheel 或预构建 wheel 打包，离线导入；
   - 依赖：构建工具链扩展（`scripts/` 新增 wheel 打包流程）。
 - 🔄 离线包管理增强：图形化导入 `.whl`、模块可用性清单
-- 🔄 官网站点更新：品牌页 + 下载 + 文档（`site/` 目录）
+- ✅ 官网站点更新：CodePocket 品牌页、下载、文档与社交卡片（`site/` 目录；演示视频仍为早期录屏）
 
 ---
 
@@ -43,6 +78,7 @@
 - 📋 终端面板（真实 PTY 风格，可跑交互命令）
 
 ### 生态与平台
+- ✅ MCP 工具 / 项目自定义命令 / Rhino 沙箱插件
 - 📋 应用商店上架（GitCode Releases / 第三方商店）
 - 📋 模板市场：社区贡献项目模板
 - 📋 插件机制（语言服务器协议 LSP 支持）

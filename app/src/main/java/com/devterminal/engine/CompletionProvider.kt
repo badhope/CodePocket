@@ -6,6 +6,8 @@ package com.devterminal.engine
  * 为什么不接 LSP：完整的 language server 是独立进程 + JSON-RPC，在手机上
  * 内存和启动开销都不划算，而且离线场景下补全需求主要是「关键字 + 常见库符号」。
  * 这里用静态词表覆盖 80% 的日常场景，零进程开销。
+ *
+ * 语言档案由 [LanguageRegistry] 的 [CompletionProfile] 提供，不再和运行枚举耦合。
  */
 object CompletionProvider {
 
@@ -32,14 +34,6 @@ object CompletionProvider {
         "math", "random", "os", "sys", "json", "time", "datetime", "re",
         "collections", "itertools", "functools", "typing"
     )
-
-    /**
-     * 常见第三方库名（仅作 import 补全提示，**未随 APK 预装**）。
-     * 离线环境只带 Python 标准库；要用这些库，用户需自行把对应 arm64 wheel
-     * 放进项目目录或安装到 site-packages。这里不补全 numpy/pandas/matplotlib，
-     * 避免误导用户以为它们开箱即用。
-     */
-    private val PY_THIRD_PARTY = listOf("flask", "requests")
 
     private val PY_MODULE_METHODS = mapOf(
         "math" to listOf("sqrt", "pow", "floor", "ceil", "pi", "e", "sin", "cos", "tan", "log", "exp"),
@@ -73,42 +67,88 @@ object CompletionProvider {
         "Map" to listOf("put()", "get()", "containsKey()", "keySet()", "values()", "size()", "remove()")
     )
 
-    // 静态词表是常量，没必要每次弹补全都重建一遍（原来的实现每敲一次都新建上百个 Item）
+    private val JS_KEYWORDS = listOf(
+        "function", "return", "if", "else", "for", "while", "do", "switch", "case",
+        "break", "continue", "const", "let", "var", "class", "extends", "new", "this",
+        "try", "catch", "finally", "throw", "typeof", "instanceof", "in", "of",
+        "async", "await", "yield", "null", "undefined", "true", "false"
+    )
+
+    private val JS_BUILTINS = listOf(
+        "console", "log", "print", "input", "Math", "JSON", "Array", "Object",
+        "String", "Number", "Boolean", "Date", "RegExp", "Map", "Set", "Promise",
+        "parseInt", "parseFloat", "isNaN", "encodeURIComponent", "decodeURIComponent"
+    )
+
+    private val JS_METHODS = listOf(
+        "map", "filter", "reduce", "forEach", "find", "some", "every", "push",
+        "pop", "slice", "splice", "join", "split", "replace", "includes",
+        "indexOf", "trim", "toUpperCase", "toLowerCase", "keys", "values", "entries"
+    )
+
+    private val LUA_KEYWORDS = listOf(
+        "function", "return", "if", "then", "else", "elseif", "end", "for", "while",
+        "repeat", "until", "do", "local", "break", "in", "and", "or", "not",
+        "nil", "true", "false", "goto"
+    )
+
+    private val LUA_BUILTINS = listOf(
+        "print", "input", "type", "tostring", "tonumber", "pairs", "ipairs",
+        "next", "select", "pcall", "xpcall", "error", "assert", "setmetatable",
+        "getmetatable", "rawget", "rawset", "table", "string", "math", "io", "os"
+    )
+
+    private val LUA_METHODS = listOf(
+        "insert", "remove", "concat", "sort", "sub", "upper", "lower", "len",
+        "format", "find", "match", "gsub", "gmatch", "random", "floor", "ceil",
+        "sqrt", "abs", "max", "min", "time", "clock"
+    )
+
+    // 静态词表是常量，没必要每次弹补全都重建一遍
     private val PY_BASE: List<Item> by lazy { buildPyItems() }
     private val JAVA_BASE: List<Item> by lazy { buildJavaItems() }
+    private val JS_BASE: List<Item> by lazy { buildJsItems() }
+    private val LUA_BASE: List<Item> by lazy { buildLuaItems() }
 
     // 文档符号按「语言 + 文本哈希」缓存：正则扫全文很贵，但同一次编辑里文本大多没变
     @Volatile private var docCacheKey = 0
-    @Volatile private var docCacheLang: Language? = null
+    @Volatile private var docCacheLang: CompletionProfile? = null
     @Volatile private var docCacheValue: List<Item> = emptyList()
 
     /**
      * 获取补全候选。
-     * @param language 语言
+     * @param profile 补全档案（由 LanguageRegistry 给出）
      * @param prefix 当前已输入的前缀（用于过滤）
      * @param documentText 当前文档全文（用于提取用户自定义符号）
      */
     fun candidates(
-        language: Language,
+        profile: CompletionProfile,
         prefix: String,
         documentText: String
     ): List<Item> {
-        val key = 31 * language.hashCode() + documentText.hashCode()
-        val docSymbols = if (key == docCacheKey && language == docCacheLang) {
+        val key = 31 * profile.hashCode() + documentText.hashCode()
+        val docSymbols = if (key == docCacheKey && profile == docCacheLang) {
             docCacheValue
         } else {
-            val fresh = when (language) {
-                Language.PYTHON -> extractPySymbols(documentText)
-                Language.JAVA -> extractJavaSymbols(documentText)
+            val fresh = when (profile) {
+                CompletionProfile.PYTHON -> extractPySymbols(documentText)
+                CompletionProfile.JAVA -> extractJavaSymbols(documentText)
+                CompletionProfile.JAVASCRIPT, CompletionProfile.TYPESCRIPT -> extractJsSymbols(documentText)
+                CompletionProfile.LUA -> extractLuaSymbols(documentText)
+                CompletionProfile.KOTLIN -> extractJavaSymbols(documentText)
+                CompletionProfile.PLAIN -> emptyList()
             }
             docCacheKey = key
-            docCacheLang = language
+            docCacheLang = profile
             docCacheValue = fresh
             fresh
         }
-        val base = when (language) {
-            Language.PYTHON -> PY_BASE
-            Language.JAVA -> JAVA_BASE
+        val base = when (profile) {
+            CompletionProfile.PYTHON -> PY_BASE
+            CompletionProfile.JAVA, CompletionProfile.KOTLIN -> JAVA_BASE
+            CompletionProfile.JAVASCRIPT, CompletionProfile.TYPESCRIPT -> JS_BASE
+            CompletionProfile.LUA -> LUA_BASE
+            CompletionProfile.PLAIN -> emptyList()
         } + docSymbols
         val p = prefix.trim()
         val filtered = if (p.isEmpty()) base else base.filter { it.text.startsWith(p, ignoreCase = true) }
@@ -122,9 +162,8 @@ object CompletionProvider {
         PY_KEYWORDS.forEach { add(Item(it, Kind.KEYWORD, "关键字")) }
         PY_BUILTINS.forEach { add(Item(it, Kind.BUILTIN, "内置函数")) }
         PY_MODULES.forEach { add(Item(it, Kind.MODULE, "标准库")) }
-        PY_THIRD_PARTY.forEach { add(Item(it, Kind.MODULE, "第三方库·需自装")) }
         PY_MODULE_METHODS.forEach { (mod, methods) ->
-            methods.forEach { add(Item(it, Kind.METHOD, "${mod} 模块")) }
+            methods.forEach { add(Item(it, Kind.METHOD, "$mod 模块")) }
         }
     }
 
@@ -132,8 +171,20 @@ object CompletionProvider {
         JAVA_KEYWORDS.forEach { add(Item(it, Kind.KEYWORD, "关键字")) }
         JAVA_CLASSES.forEach { add(Item(it, Kind.CLASS, "常用类")) }
         JAVA_METHODS.forEach { (cls, methods) ->
-            methods.forEach { add(Item(it, Kind.METHOD, "${cls} 方法")) }
+            methods.forEach { add(Item(it, Kind.METHOD, "$cls 方法")) }
         }
+    }
+
+    private fun buildJsItems(): List<Item> = buildList {
+        JS_KEYWORDS.forEach { add(Item(it, Kind.KEYWORD, "关键字")) }
+        JS_BUILTINS.forEach { add(Item(it, Kind.BUILTIN, "内置对象")) }
+        JS_METHODS.forEach { add(Item(it, Kind.METHOD, "常用方法")) }
+    }
+
+    private fun buildLuaItems(): List<Item> = buildList {
+        LUA_KEYWORDS.forEach { add(Item(it, Kind.KEYWORD, "关键字")) }
+        LUA_BUILTINS.forEach { add(Item(it, Kind.BUILTIN, "内置函数")) }
+        LUA_METHODS.forEach { add(Item(it, Kind.METHOD, "常用方法")) }
     }
 
     /** 从 Python 文档里抽取用户定义的函数/类名 */
@@ -167,6 +218,33 @@ object CompletionProvider {
                     items.add(Item(name, Kind.METHOD, "本文件方法"))
                 }
             }
+        return items.toList()
+    }
+
+    /** 从 JS 文档里抽取函数/类/常量名 */
+    private fun extractJsSymbols(text: String): List<Item> {
+        val items = mutableListOf<Item>()
+        Regex("""\bfunction\s+(\w+)""").findAll(text).forEach {
+            items.add(Item(it.groupValues[1], Kind.METHOD, "本文件函数"))
+        }
+        Regex("""\bclass\s+(\w+)""").findAll(text).forEach {
+            items.add(Item(it.groupValues[1], Kind.CLASS, "本文件类"))
+        }
+        Regex("""\b(?:const|let|var)\s+(\w+)""").findAll(text).take(20).forEach {
+            items.add(Item(it.groupValues[1], Kind.BUILTIN, "变量"))
+        }
+        return items.toList()
+    }
+
+    /** 从 Lua 文档里抽取 function 名 */
+    private fun extractLuaSymbols(text: String): List<Item> {
+        val items = mutableListOf<Item>()
+        Regex("""\bfunction\s+([\w.:]+)""").findAll(text).forEach {
+            items.add(Item(it.groupValues[1], Kind.METHOD, "本文件函数"))
+        }
+        Regex("""\blocal\s+(\w+)\s*=\s*""").findAll(text).take(20).forEach {
+            items.add(Item(it.groupValues[1], Kind.BUILTIN, "变量"))
+        }
         return items.toList()
     }
 }

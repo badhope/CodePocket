@@ -31,12 +31,15 @@ class ExecutionService : Service() {
         const val ACTION_START = "com.devterminal.action.START"
         const val ACTION_STOP = "com.devterminal.action.STOP"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_TAG = "tag"
+        private const val DEFAULT_TAG = "run"
 
-        /** 启动前台服务（幂等，重复调用安全） */
-        fun start(context: Context, title: String) {
+        /** 启动前台服务（幂等，重复调用安全）；tag 用来区分运行/下载，互不误停。 */
+        fun start(context: Context, title: String, tag: String = DEFAULT_TAG) {
             val intent = Intent(context, ExecutionService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_TAG, tag)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -45,13 +48,18 @@ class ExecutionService : Service() {
             }
         }
 
-        /** 停止前台服务 */
-        fun stop(context: Context) {
+        /** 停止指定 tag；只有没有其它任务时才真正撤掉通知。 */
+        fun stop(context: Context, tag: String = DEFAULT_TAG) {
             context.startService(
-                Intent(context, ExecutionService::class.java).apply { action = ACTION_STOP }
+                Intent(context, ExecutionService::class.java).apply {
+                    action = ACTION_STOP
+                    putExtra(EXTRA_TAG, tag)
+                }
             )
         }
     }
+
+    private val activeTitles = linkedMapOf<String, String>()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -63,11 +71,21 @@ class ExecutionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                val tag = intent?.getStringExtra(EXTRA_TAG) ?: "run"
+                activeTitles.remove(tag)
+                if (activeTitles.isEmpty()) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                } else {
+                    activeTitles.values.lastOrNull()?.let {
+                        startForeground(NOTIFICATION_ID, buildNotification(it))
+                    }
+                }
             }
             else -> {
+                val tag = intent?.getStringExtra(EXTRA_TAG) ?: "run"
                 val title = intent?.getStringExtra(EXTRA_TITLE) ?: "代码运行中"
+                activeTitles[tag] = title
                 startForeground(NOTIFICATION_ID, buildNotification(title))
             }
         }
@@ -89,6 +107,11 @@ class ExecutionService : Service() {
         }
     }
 
+    override fun onDestroy() {
+        activeTitles.clear()
+        super.onDestroy()
+    }
+
     private fun buildNotification(title: String): Notification {
         val pending = PendingIntent.getActivity(
             this, 0,
@@ -96,7 +119,7 @@ class ExecutionService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("DevTerminal")
+            .setContentTitle("CodePocket")
             .setContentText(title)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pending)

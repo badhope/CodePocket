@@ -65,11 +65,23 @@ data class AppSettings(
      * 否则「未配置」引导永远不出现，用户一点 AI 动作就直接发请求然后必然失败。
      */
     val aiConfigured: Boolean = false,
+    // ---------- 本地模型 ----------
+    /** true 时 Agent 优先使用已下载的本地 GGUF，不再发网络请求。 */
+    val useLocalModel: Boolean = false,
+    val localModelId: String = "minicpm5-1b",
+    // ---------- 生态扩展 ----------
+    /** MCP Streamable HTTP 端点；为空表示未配置。 */
+    val mcpEnabled: Boolean = false,
+    val mcpEndpoint: String = "",
+    /** 项目 `.codepocket/plugins` 的 JS 工具，默认关闭。 */
+    val pluginsEnabled: Boolean = false,
     // ---------- Git ----------
     val gitUserName: String = "",
     val gitUserEmail: String = "",
     /** 敏感：远程地址可能内嵌 token（https://user:token@host/repo.git），存加密 SharedPreferences */
-    val gitRemoteUrl: String = ""
+    val gitRemoteUrl: String = "",
+    /** Keystore 不可用时敏感字段退回明文 prefs；设置页需明确提示，不能假装已加密 */
+    val encryptionFallback: Boolean = false
 ) {
     companion object {
         const val DEFAULT_AI_BASE_URL = "http://127.0.0.1:11434/v1"
@@ -154,9 +166,15 @@ class SettingsStore(context: Context) {
         aiModel = prefs.getString(KEY_AI_MODEL, AppSettings.DEFAULT_AI_MODEL)
             ?: AppSettings.DEFAULT_AI_MODEL,
         aiConfigured = prefs.getBoolean(KEY_AI_CONFIGURED, false),
+        useLocalModel = prefs.getBoolean(KEY_USE_LOCAL_MODEL, false),
+        localModelId = prefs.getString(KEY_LOCAL_MODEL_ID, "minicpm5-1b") ?: "minicpm5-1b",
+        mcpEnabled = prefs.getBoolean(KEY_MCP_ENABLED, false),
+        mcpEndpoint = encrypted.getString(KEY_MCP_ENDPOINT, "") ?: "",
+        pluginsEnabled = prefs.getBoolean(KEY_PLUGINS_ENABLED, false),
         gitUserName = prefs.getString(KEY_GIT_NAME, "") ?: "",
         gitUserEmail = prefs.getString(KEY_GIT_EMAIL, "") ?: "",
-        gitRemoteUrl = encrypted.getString(KEY_GIT_REMOTE, "") ?: ""
+        gitRemoteUrl = encrypted.getString(KEY_GIT_REMOTE, "") ?: "",
+        encryptionFallback = encryptedIsFallback
     )
 
     fun save(s: AppSettings) {
@@ -173,6 +191,10 @@ class SettingsStore(context: Context) {
             .putString(KEY_AI_URL, s.aiBaseUrl)
             .putString(KEY_AI_MODEL, s.aiModel)
             .putBoolean(KEY_AI_CONFIGURED, s.aiConfigured)
+            .putBoolean(KEY_USE_LOCAL_MODEL, s.useLocalModel)
+            .putString(KEY_LOCAL_MODEL_ID, s.localModelId)
+            .putBoolean(KEY_MCP_ENABLED, s.mcpEnabled)
+            .putBoolean(KEY_PLUGINS_ENABLED, s.pluginsEnabled)
             .putString(KEY_GIT_NAME, s.gitUserName)
             .putString(KEY_GIT_EMAIL, s.gitUserEmail)
             .apply()
@@ -180,6 +202,7 @@ class SettingsStore(context: Context) {
         encrypted.edit()
             .putString(KEY_AI_KEY, s.aiApiKey)
             .putString(KEY_GIT_REMOTE, s.gitRemoteUrl)
+            .putString(KEY_MCP_ENDPOINT, s.mcpEndpoint)
             .apply()
     }
 
@@ -246,6 +269,11 @@ class SettingsStore(context: Context) {
         const val KEY_AI_KEY = "ai_api_key"
         const val KEY_AI_MODEL = "ai_model"
         const val KEY_AI_CONFIGURED = "ai_configured"
+        const val KEY_USE_LOCAL_MODEL = "use_local_model"
+        const val KEY_LOCAL_MODEL_ID = "local_model_id"
+        const val KEY_MCP_ENABLED = "mcp_enabled"
+        const val KEY_MCP_ENDPOINT = "mcp_endpoint"
+        const val KEY_PLUGINS_ENABLED = "plugins_enabled"
         const val KEY_GIT_NAME = "git_user_name"
         const val KEY_GIT_EMAIL = "git_user_email"
         const val KEY_GIT_REMOTE = "git_remote_url"

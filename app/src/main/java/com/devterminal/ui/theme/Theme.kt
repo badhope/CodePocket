@@ -110,7 +110,7 @@ private val QuietTypography = Typography(
 )
 
 @Composable
-fun DevTerminalTheme(
+fun CodePocketTheme(
     themeMode: String = ThemeModes.DARK,
     content: @Composable () -> Unit
 ) {

@@ -41,23 +41,42 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
      * @throws java.io.IOException 网络/端点错误时抛出，message 为可读说明
      */
     fun chat(system: String, history: List<ChatMessage>, userMessage: String): String {
+        return chatMessages(
+            system = system,
+            messages = history + ChatMessage("user", userMessage),
+            maxTokens = 1200,
+        )
+    }
+
+    /**
+     * 非流式、显式消息列表调用。Agent 循环需要把工具观察结果作为后续消息
+     * 追加进上下文，而不是每次只带一个 userMessage。
+     */
+    fun chatMessages(
+        system: String,
+        messages: List<ChatMessage>,
+        maxTokens: Int = 2000,
+    ): String {
         val base = settings.aiBaseUrl.trimEnd('/')
         val url = URL("$base/chat/completions")
 
-        val messages = JSONArray()
-        messages.put(JSONObject().put("role", "system").put("content", system))
-        history.forEach { m ->
-            messages.put(JSONObject().put("role", m.role).put("content", m.content))
+        val payloadMessages = JSONArray()
+        payloadMessages.put(JSONObject().put("role", "system").put("content", system))
+        messages.forEach { m ->
+            payloadMessages.put(JSONObject().put("role", m.role).put("content", m.content))
         }
-        messages.put(JSONObject().put("role", "user").put("content", userMessage))
 
         val body = JSONObject()
             .put("model", settings.aiModel.ifBlank { "qwen2.5-coder:3b" })
-            .put("messages", messages)
-            .put("temperature", 0.3)
-            .put("max_tokens", 1200)
+            .put("messages", payloadMessages)
+            .put("temperature", 0.2)
+            .put("max_tokens", maxTokens.coerceIn(256, 4096))
             .toString()
 
+        return request(url, body)
+    }
+
+    private fun request(url: URL, body: String): String {
         val conn = url.openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "POST"
@@ -90,7 +109,7 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
      * 流式对话（SSE）。返回一个冷 Flow，逐段吐出模型生成的增量文本。
      *
      * 约定：
-     * - connect 超时 8s；read 不设整体超时，靠收集方取消（取消时 awaitClose 断开连接）。
+     * - connect 超时 8s；read 空闲超时 120s；外层再套 180s 总超时，避免模型卡死时永久等待。
      * - 每收到一个 `data: {...}` 帧，提取 `choices[0].delta.content` 并 emit。
      * - 收到 `data: [DONE]` 正常结束；HTTP 错误或解析失败以异常形式终结 Flow。
      *
@@ -126,7 +145,7 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
                 conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     connectTimeout = TimeUnit.SECONDS.toMillis(8).toInt()
-                    readTimeout = 0 // 流式：不设整体读超时，靠收集方取消
+                    readTimeout = TimeUnit.SECONDS.toMillis(120).toInt() // 流空闲超时：模型卡死时不再无限等
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
                     setRequestProperty("Accept", "text/event-stream")
@@ -186,8 +205,8 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
     companion object {
         /** 内置系统提示词：明确告知运行环境与回答风格 */
         const val SYSTEM_PROMPT =
-            "你是 DevTerminal 的编程助手。用户在安卓手机上的 IDE 里写 Python / Java。" +
-            "回答要求：中文、简洁、直接给结论和代码，" +
+            "你是 CodePocket 的编程助手。用户在安卓手机上的离线 IDE 里写 Python / JavaScript / Lua。" +
+            "另有 Java/Kotlin/TypeScript 等编辑级语言。回答要求：中文、简洁、直接给结论和代码，" +
             "代码用 Markdown 代码块标注语言，避免冗长解释。"
 
         /** 从报错输出中提取要发给 AI 的错误上下文（截断防 token 爆炸） */

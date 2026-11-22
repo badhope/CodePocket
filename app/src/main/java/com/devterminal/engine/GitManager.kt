@@ -110,7 +110,7 @@ class GitManager {
         val git = openOrNull(dir) ?: return "还不是 Git 仓库：请先「初始化仓库」"
         return git.use { g ->
             guarded("推送") {
-                ensureRemote(g, remoteUrl)
+                ensureRemote(g, tokenlessUrl(remoteUrl))
                 val cmd = g.push().setRemote("origin")
                 credentials(remoteUrl)?.let { cmd.setCredentialsProvider(it) }
                 val updates = cmd.call().asSequence()
@@ -127,7 +127,7 @@ class GitManager {
         val git = openOrNull(dir) ?: return "还不是 Git 仓库：请先「初始化仓库」"
         return git.use { g ->
             guarded("拉取") {
-                ensureRemote(g, remoteUrl)
+                ensureRemote(g, tokenlessUrl(remoteUrl))
                 val cmd = g.pull().setRemote("origin")
                 credentials(remoteUrl)?.let { cmd.setCredentialsProvider(it) }
                 val result = cmd.call()
@@ -160,10 +160,17 @@ class GitManager {
     /** 写入 user.name / user.email，保证 commit 在未配置全局 gitconfig 时也能完成 */
     private fun saveIdentity(g: Git, userName: String, userEmail: String) {
         val cfg = g.repository.config
-        cfg.setString("user", null, "name", userName.ifBlank { "devterminal" })
+        cfg.setString("user", null, "name", userName.ifBlank { "CodePocket" })
         cfg.setString("user", null, "email", userEmail.ifBlank { "dev@terminal.local" })
         cfg.save()
     }
+
+    /**
+     * 只把去掉 userinfo 的 URL 写进 .git/config。
+     * token 只存在加密设置里，运行时通过 CredentialsProvider 传入，绝不明文落盘。
+     */
+    internal fun tokenlessUrl(url: String): String =
+        url.trim().replaceFirst(Regex("^(https?://)[^/@]+:[^@]*@"), "$1")
 
     /** origin 不存在或地址变化时写入 URL 与 fetch 规则 */
     private fun ensureRemote(g: Git, remoteUrl: String) {

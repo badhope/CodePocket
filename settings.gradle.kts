@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DevTerminal"
+rootProject.name = "CodePocket"
 include(":app")

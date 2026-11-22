@@ -99,13 +99,14 @@ fun FileTree(
         } else {
             // weight(1f)：文件树要吃掉顶栏「项目」标签之外的剩余纵向空间，
             // 否则目录一长，底部文件就被裁在抽屉外。
-            // 注：子树仍在 item 内递归 emit（回收不彻底），摊平为 flatNodes 留作后续优化。
+            // 先摊平成可见列表再交给 LazyColumn：复用同一批 item，避免递归 emit 导致
+            // 展开深层目录时整棵子树反复重组。
+            val visible = remember(root, expanded.toMap()) { flattenVisible(root, expanded) }
             LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                val topChildren = root.children.ifEmpty { listOf(root) }
-                items(topChildren, key = { it.path }) { node ->
+                items(visible, key = { it.node.path }) { flat ->
                     TreeNode(
-                        node = node,
-                        depth = 0,
+                        node = flat.node,
+                        depth = flat.depth,
                         expanded = expanded,
                         selectedPath = selectedPath,
                         onFileClick = onFileClick,
@@ -116,6 +117,24 @@ fun FileTree(
             }
         }
     }
+}
+
+private data class FlatNode(val node: FileNode, val depth: Int)
+
+/**
+ * 把「展开状态」翻译成一维可见列表。
+ * 只遍历当前展开的分支，折叠目录的子树完全不进入 LazyColumn。
+ */
+private fun flattenVisible(root: FileNode, expanded: Map<String, Boolean>): List<FlatNode> {
+    val out = ArrayList<FlatNode>()
+    fun walk(node: FileNode, depth: Int) {
+        out += FlatNode(node, depth)
+        if (node.isDirectory && expanded[node.path] == true) {
+            node.children.forEach { walk(it, depth + 1) }
+        }
+    }
+    root.children.ifEmpty { listOf(root) }.forEach { walk(it, 0) }
+    return out
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -214,11 +233,6 @@ private fun TreeNode(
                 fontSize = 10,
                 modifier = Modifier.padding(end = 2.dp)
             )
-        }
-    }
-    if (node.isDirectory && isOpen) {
-        node.children.forEach { child ->
-            TreeNode(child, depth + 1, expanded, selectedPath, onFileClick, onFileLongPress, gitStatus)
         }
     }
 }

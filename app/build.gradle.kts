@@ -14,8 +14,8 @@ android {
         applicationId = "com.devterminal"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 14
-        versionName = "1.0.0"
+        versionCode = 21
+        versionName = "0.0.21"
         vectorDrawables { useSupportLibrary = true }
         // 原生 CPython 引擎：只打 arm64（当前覆盖绝大多数 Android 设备）
         ndk { abiFilters += "arm64-v8a" }
@@ -28,7 +28,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 压缩 DEX：debug 包 95MB 里 classes.dex 约 44MB，release 必须收缩
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             // 演示阶段复用 debug 签名，正式发布请替换为自己的 keystore
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -104,6 +109,12 @@ dependencies {
     // ===== Markdown 解析：实时预览用（纯 Kotlin，GFM 方言） =====
     implementation(libs.intellij.markdown)
 
+    // ===== 纯 Java 运行时：Rhino (JS) / LuaJ (Lua)，无 native/16KB =====
+    implementation(libs.rhino)
+    implementation(libs.luaj)
+
     // 单元测试：纯 JVM 逻辑（如报错行解析）不依赖 Android 框架，可直接跑
     testImplementation(libs.junit)
+    // Android 的 org.json 在 JVM 单测里是 stub；补一份真实实现给 AgentDecisionParser 测试
+    testImplementation("org.json:json:20240303")
 }

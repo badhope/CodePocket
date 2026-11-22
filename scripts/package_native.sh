@@ -64,7 +64,8 @@ ls "$PREFIX/include/python3.13/Python.h" >/dev/null
   -o "$JDIR/libpybridge.so" \
   "$APP/src/main/cpp/pybridge.c" \
   -L"$JDIR" -lpython3.13 \
-  -lm -ldl -llog -Wl,--no-undefined
+  -lm -ldl -llog -Wl,--no-undefined \
+  -Wl,-z,max-page-size=16384
 ls -la "$JDIR/libpybridge.so"
 
 echo "== 4. 打包纯 .py 标准库到 assets/python-stdlib.zip =="
@@ -77,14 +78,19 @@ src, out = sys.argv[1], sys.argv[2]
 count = 0
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
     for root, dirs, files in os.walk(src):
+        # __pycache__ 是字节码缓存，占标准库体积 3/4，却能在首次 import 时自动重建；
+        # 不进 zip 可把 60MB 降到 12MB 左右，显著缩短首启解压时间。
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
         if "lib-dynload" in root:
             continue  # C 扩展走 jniLibs，不进 zip
         for f in files:
+            if f.endswith(".pyc"):
+                continue
             p = os.path.join(root, f)
             arc = "lib/python3.13/" + os.path.relpath(p, src)
             z.write(p, arc)
             count += 1
-print(f"packed {count} pure-python files")
+print(f"packed {count} pure-python files (pycache excluded)")
 PY
 ls -la "$APP/src/main/assets/python-stdlib.zip"
 

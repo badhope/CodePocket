@@ -1,8 +1,8 @@
 package com.devterminal.ui
 
 import android.os.Bundle
+import com.devterminal.engine.CompletionProfile
 import com.devterminal.engine.CompletionProvider
-import com.devterminal.engine.Language as DevLanguage
 import io.github.rosemoe.sora.lang.Language
 import io.github.rosemoe.sora.lang.analysis.AnalyzeManager
 import io.github.rosemoe.sora.lang.completion.CompletionItem
@@ -28,7 +28,7 @@ import io.github.rosemoe.sora.widget.SymbolPairMatch
  */
 class StaticCompletionLanguage(
     private val delegate: Language,
-    private val devLanguage: DevLanguage,
+    private val devLanguage: CompletionProfile,
     /** 供后台线程读取当前文档全文 */
     private val documentSupplier: () -> String
 ) : Language {

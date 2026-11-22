@@ -262,7 +262,7 @@ fun OutputPanel(
                         val color = when {
                             line.startsWith("[err]") || line.startsWith("[启动失败]") -> cs.error
                             line.startsWith("——") -> cs.muted
-                            line.startsWith("[DevTerminal]") || line.startsWith("[执行]") -> cs.muted
+                            line.startsWith("[CodePocket]") || line.startsWith("[执行]") -> cs.muted
                             line.startsWith("💡") -> cs.secondary
                             else -> cs.onSurface.copy(alpha = 0.88f)
                         }

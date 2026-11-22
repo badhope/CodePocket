@@ -29,8 +29,20 @@ sealed interface Overlay {
     /** AI 助手 */
     data object Ai : Overlay
 
+    /** Agent 模式：可读写项目的工具循环 */
+    data object Agent : Overlay
+
     /** 全局搜索 */
     data object GlobalSearch : Overlay
+
+    /** 当前文件符号大纲 */
+    data object Symbols : Overlay
+
+    /** 本地模型下载与管理 */
+    data object LocalModels : Overlay
+
+    /** Agent 历史会话回放 */
+    data object AgentHistory : Overlay
 
     /** 环境自检 */
     data object Diagnostics : Overlay

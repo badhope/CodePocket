@@ -1,31 +1,76 @@
 package com.devterminal.ui
 
+import android.annotation.SuppressLint
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.devterminal.engine.EnvDiagnostics
 import com.devterminal.engine.EnvReport
+import com.devterminal.agent.AgentEvent
+import com.devterminal.agent.AgentLoop
+import com.devterminal.agent.ApprovalHandler
+import com.devterminal.agent.CheckpointStore
+import com.devterminal.agent.ContextBuilder
+import com.devterminal.agent.ProjectCommand
+import com.devterminal.agent.ProjectCommands
+import com.devterminal.agent.ProjectPlugins
+import com.devterminal.agent.Tool
+import com.devterminal.agent.AgentSessionStore
+import com.devterminal.agent.AgentSessionMeta
+import com.devterminal.agent.ToolCall
+import com.devterminal.agent.ToolRegistry
+import com.devterminal.agent.tools.ApplyPatchTool
+import com.devterminal.agent.tools.ListFilesTool
+import com.devterminal.agent.tools.ReadFileTool
+import com.devterminal.agent.tools.SearchTextTool
+import com.devterminal.agent.tools.RunFileTool
+import com.devterminal.agent.tools.RunTestsTool
+import com.devterminal.agent.tools.JsPluginTool
+import com.devterminal.agent.tools.McpTool
+import com.devterminal.agent.mcp.McpClient
+import com.devterminal.model.OpenAiCompatibleProvider
+import com.devterminal.model.LocalLlamaProvider
+import com.devterminal.model.LocalModelUiState
+import com.devterminal.model.LocalModelSpec
+import com.devterminal.model.AgentProviderChoice
+import com.devterminal.model.ModelCatalog
+import com.devterminal.model.ModelDownloadManager
+import com.devterminal.model.ModelRepository
+import com.devterminal.model.ProviderRegistry
+import com.devterminal.workspace.LocalWorkspace
+import com.devterminal.language.CodeSymbol
+import com.devterminal.language.LanguageService
 import com.devterminal.engine.AiClient
+import com.devterminal.engine.EngineCommandRunner
 import com.devterminal.engine.EnvironmentInstaller
 import com.devterminal.engine.ExecutionService
 import com.devterminal.engine.FriendlyError
 import com.devterminal.engine.GitManager
-import com.devterminal.engine.Language
+import com.devterminal.engine.LanguageRegistry
+import com.devterminal.engine.LanguageSpec
+import com.devterminal.engine.RuntimeRegistry
 import com.devterminal.engine.RunEvent
 import com.devterminal.engine.RunRequest
 import com.devterminal.engine.RunEngine
 import com.devterminal.engine.EngineProvider
 import com.devterminal.project.FileNode
 import com.devterminal.project.ProjectManager
+import com.devterminal.project.sanitizeFileName
 import com.devterminal.project.Templates
 import com.devterminal.settings.resolvesDark
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import java.io.File
 
 enum class EnvState { PREPARING, READY, ERROR }
@@ -64,8 +109,6 @@ data class UiState(
     val installProgress: Float = -1f,
     /** 运行配置：命令行参数（空格分隔） */
     val runArgs: String = "",
-    /** 运行配置：Java 主类全限定名（留空=自动探测） */
-    val mainClass: String = "",
     /** 用户设置 */
     val settings: com.devterminal.settings.AppSettings = com.devterminal.settings.AppSettings(),
     /** 顶部打开的文件 Tab 列表 */
@@ -102,6 +145,26 @@ data class UiState(
     val aiMessages: List<AiClient.ChatMessage> = emptyList(),
     val aiBusy: Boolean = false,
     val aiInputDraft: String = "",
+    // ---------- Agent（v0.4） ----------
+    val agentEvents: List<AgentEvent> = emptyList(),
+    val agentBusy: Boolean = false,
+    val agentInputDraft: String = "",
+    val agentPendingCall: ToolCall? = null,
+    val agentPendingProposal: AgentEvent.PatchProposed? = null,
+    val lastAgentCheckpoint: AgentEvent.Checkpoint? = null,
+    val agentCheckpoints: List<AgentEvent.Checkpoint> = emptyList(),
+    // ---------- 符号大纲（v0.0.18） ----------
+    val symbolOutline: List<CodeSymbol> = emptyList(),
+    val symbolsLoading: Boolean = false,
+    // ---------- Agent 会话恢复（v0.0.21） ----------
+    val agentRecovered: Boolean = false,
+    val agentSessions: List<AgentSessionMeta> = emptyList(),
+    val agentSessionsLoading: Boolean = false,
+    // ---------- 项目扩展 ----------
+    val customCommands: List<ProjectCommand> = emptyList(),
+    // ---------- 本地模型（v0.0.21） ----------
+    val localModels: List<LocalModelUiState> = emptyList(),
+    val localModelsLoading: Boolean = false,
     // ---------- 全局搜索（v0.3） ----------
     val globalSearching: Boolean = false,
     val globalResults: List<SearchHit> = emptyList(),
@@ -125,6 +188,7 @@ data class UiState(
 
 class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
+    @SuppressLint("StaticFieldLeak") // Application context，生命周期与进程一致
     private val context = app.applicationContext
     private val installer = EnvironmentInstaller(context)
 
@@ -136,9 +200,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * EngineProvider.create 会抛 IllegalStateException；放字段初始化器会在 ViewModel
      * 构造期直接闪退，走不到 MissingToolchainScreen。这里改 lateinit + runCatching 兜底。
      */
-    private lateinit var engine: RunEngine
+    private var pythonEngine: RunEngine? = null
+    private var runtimes: RuntimeRegistry? = null
+    private var aiJob: Job? = null
+    private var aiCancelRequested = false
+    private var agentJob: Job? = null
+    private var agentApproval: CompletableDeferred<Boolean>? = null
+    private var activeCheckpointStore: CheckpointStore? = null
+    /** 当前这次运行使用的引擎，stop/sendInput 必须打到同一个实例 */
+    private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
     private val settingsStore = com.devterminal.settings.SettingsStore(context)
+    private val agentSessions = AgentSessionStore(File(context.filesDir, "agent-sessions"))
+    private var agentSessionId: String? = null
+    private val modelRepository = ModelRepository(
+        context.getExternalFilesDir("models") ?: File(context.filesDir, "models")
+    )
+    private val modelDownloads = ModelDownloadManager(modelRepository)
+    private val providerRegistry = ProviderRegistry(modelRepository)
+    private var modelDownloadJob: Job? = null
+    private var modelDownloadBusy = false
 
     private val _ui = MutableStateFlow(UiState(settings = settingsStore.load()))
     val ui: StateFlow<UiState> = _ui.asStateFlow()
@@ -153,6 +234,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         prepareEnvironment()
+        restoreLastAgentSession()
+        refreshLocalModels()
     }
 
     private fun prepareEnvironment() {
@@ -174,33 +257,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             // P1-2：在协程内构造引擎，构造失败（缺 .so/错 ABI/缺 stdlib.zip）不闪退，
             // 而是置 ERROR 态，由 MissingToolchainScreen + 重试按钮接管。
             val engineOk = withContext(Dispatchers.IO) {
-                runCatching { engine = EngineProvider.create(context) }.isSuccess
+                runCatching { pythonEngine = EngineProvider.create(context) }.isSuccess
             }
-            if (!engineOk) {
-                _ui.update { it.copy(
-                    envState = EnvState.ERROR,
-                    envMessage = "Python 运行时加载失败",
-                    message = "原生 CPython 运行时初始化失败，请确认 APK 完整安装后重试。",
-                    messageSeq = it.messageSeq + 1
-                ) }
-                return@launch
-            }
+            // 即使 Python 原生库不可用（非 arm64 / 资产缺失），也把纯 Java 的 JS/Lua 撑起来。
+            runtimes = RuntimeRegistry(pythonEngine)
+            pythonEngine?.warmup()
+            runtimes?.warmup()
 
-            // 预热原生解释器：用户点「运行」时无需干等启动开销
-            engine.warmup()
-
-            // 环境自检：报告当前能力（Python 可用、Java 暂不可用）
             val hasGit = withContext(Dispatchers.IO) { git.isGitInstalled() }
             _ui.update { it.copy(
                 envState = EnvState.READY,
-                envMessage = "离线环境就绪（Python · CPython 3.13.9 arm64）",
+                envMessage = if (engineOk) "离线环境就绪（Python · JavaScript · Lua）"
+                             else "JavaScript / Lua 就绪（Python 当前不可用）",
                 installProgress = -1f,
                 gitInstalled = hasGit,
-                output = listOf(
-                    "[DevTerminal] 离线运行环境已就绪，全程无需联网。",
-                    "[DevTerminal] Python 由原生 CPython 3.13.9（arm64）执行，随 APK 打包。",
-                    "[DevTerminal] 说明：Java（JVM）暂仅支持编辑与语法高亮，运行能力后续开放。"
-                )
+                output = buildList {
+                    add("[CodePocket] 离线环境已就绪，全程无需联网。")
+                    if (engineOk) add("[CodePocket] Python 由原生 CPython 执行；JavaScript 由 Rhino、Lua 由 LuaJ 执行。")
+                    else add("[CodePocket] Python 原生库不可用（常见于非 arm64 设备），JavaScript/Lua 仍可运行。")
+                    add("[CodePocket] 其余 17 种语言提供编辑、语法高亮与静态补全。")
+                }
             ) }
             restoreSession()
             // 后台跑一次自检，不阻塞用户开始写代码
@@ -287,14 +363,50 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- 项目 / 文件 ----------
 
     fun openProject(dir: File) {
+        viewModelScope.launch {
+            // 切项目前先把当前脏文件落盘；失败就不切，绝不静默丢代码。
+            if (!persistCurrentIfDirty()) return@launch
+            if (_ui.value.dirty) {
+                _ui.update { it.copy(message = "保存期间有新输入，已取消切换", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
+            switchProject(dir)
+        }
+    }
+
+    /** 实际的工程切换：只做状态清理，不负责保存。 */
+    private fun switchProject(dir: File) {
         currentProject = dir
-        // P2-4：切换项目清空已开 Tab / 当前文件，与 newProject() 行为一致，
-        // 避免上一个项目的 Tab 仍指向旧路径。
         _ui.update {
             it.copy(openTabs = emptyList(), currentFile = null, editorText = "", dirty = false)
         }
         refreshTree()
         saveSession()
+    }
+
+    /**
+     * 保存当前文件（如果有脏改动）。
+     * 返回 false 表示写入失败；调用方应中止切项目/关 Tab。
+     * 写入后再次比对文本，防止保存期间的输入被 dirty=false 误抹掉。
+     */
+    private suspend fun persistCurrentIfDirty(): Boolean {
+        val st = _ui.value
+        val file = st.currentFile ?: return true
+        if (!st.dirty) return true
+        val snapshot = st.editorText
+        val ok = runCatching {
+            withContext(Dispatchers.IO) { projects.write(file.absolutePath, snapshot) }
+        }.isSuccess
+        if (!ok) {
+            _ui.update { it.copy(message = "保存失败，操作已取消：${file.name}", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        _ui.update { cur ->
+            if (cur.currentFile?.absolutePath == file.absolutePath && cur.editorText == snapshot) {
+                cur.copy(dirty = false)
+            } else cur
+        }
+        return true
     }
 
     /** P2-7：按最近修改时间取最近 8 个项目，供命令面板「最近打开」 */
@@ -307,8 +419,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val dir = currentProject ?: return
         // 递归遍历目录属于阻塞 IO，放到后台线程
         viewModelScope.launch {
-            val tree = withContext(Dispatchers.IO) { projects.buildTree(dir) }
-            _ui.update { it.copy(tree = tree) }
+            val (tree, commands) = withContext(Dispatchers.IO) {
+                val t = projects.buildTree(dir)
+                val c = runCatching { ProjectCommands.read(LocalWorkspace(dir)) }
+                    .getOrElse { emptyList() }
+                t to c
+            }
+            _ui.update { it.copy(tree = tree, customCommands = commands) }
         }
     }
 
@@ -319,7 +436,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 自动保存：切走前先落盘，避免改动丢失
         if (st.settings.autoSave && st.dirty && previous != null) {
             viewModelScope.launch {
-                withContext(Dispatchers.IO) { projects.write(previous.absolutePath, st.editorText) }
+                val ok = runCatching {
+                    withContext(Dispatchers.IO) { projects.write(previous.absolutePath, st.editorText) }
+                }.isSuccess
+                if (!ok) {
+                    _ui.update { it.copy(message = "保存失败，已取消切换：${previous.name}",
+                        messageSeq = it.messageSeq + 1) }
+                    return@launch
+                }
                 doOpenFile(file)
             }
         } else {
@@ -335,7 +459,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     currentFile = file,
                     editorText = content,
                     dirty = false,
-                    languageLabel = languageLabelOf(file),
+                    languageLabel = LanguageRegistry.labelOf(file),
                     // 切到不可预览的文件时自动收起预览分屏，避免留下空面板
                     previewVisible = st.previewVisible && isPreviewable(file),
                     // 打开新文件自动挂到 Tab 条上（已打开的不重复加）
@@ -353,9 +477,28 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val st = _ui.value
         val idx = st.openTabs.indexOfFirst { it.absolutePath == file.absolutePath }
         if (idx < 0) return
+        val closingCurrent = st.currentFile?.absolutePath == file.absolutePath
+        if (closingCurrent && st.dirty) {
+            viewModelScope.launch {
+                if (!persistCurrentIfDirty()) return@launch
+                if (_ui.value.dirty) {
+                    _ui.update { it.copy(message = "保存期间有新输入，请再关一次", messageSeq = it.messageSeq + 1) }
+                    return@launch
+                }
+                closeTabInternal(file)
+            }
+        } else {
+            closeTabInternal(file)
+        }
+    }
+
+    private fun closeTabInternal(file: File) {
+        val st = _ui.value
+        val idx = st.openTabs.indexOfFirst { it.absolutePath == file.absolutePath }
+        if (idx < 0) return
         val newTabs = st.openTabs.filterNot { it.absolutePath == file.absolutePath }
         if (st.currentFile?.absolutePath == file.absolutePath) {
-            // 保存后切到相邻 Tab（优先右边，其次左边），没有就清空编辑器
+            // dirty 已在上层保存；这里只负责切换/清空
             val next = newTabs.getOrNull(idx) ?: newTabs.getOrNull(idx - 1)
             _ui.update { it.copy(openTabs = newTabs) }
             if (next != null) {
@@ -380,12 +523,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun save(saveMessage: Boolean = true) {
         val st = _ui.value
         val file = st.currentFile ?: return
+        val snapshot = st.editorText
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { projects.write(file.absolutePath, st.editorText) }
-            _ui.update {
-                if (saveMessage) it.copy(dirty = false, message = "已保存 ${file.name}",
-                    messageSeq = it.messageSeq + 1)
-                else it.copy(dirty = false)
+            val ok = runCatching {
+                withContext(Dispatchers.IO) { projects.write(file.absolutePath, snapshot) }
+            }.isSuccess
+            _ui.update { cur ->
+                if (!ok) {
+                    cur.copy(message = "保存失败：${file.name}", messageSeq = cur.messageSeq + 1)
+                } else if (cur.currentFile?.absolutePath == file.absolutePath && cur.editorText == snapshot) {
+                    if (saveMessage) cur.copy(dirty = false, message = "已保存 ${file.name}",
+                        messageSeq = cur.messageSeq + 1)
+                    else cur.copy(dirty = false)
+                } else {
+                    // IO 期间又有新输入：旧快照已落盘，但当前内容仍未保存，保持 dirty。
+                    cur
+                }
             }
         }
     }
@@ -402,6 +555,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val st = _ui.value
         // 防止重复点击导致多个进程并发、输出互相穿插
         if (st.running) return
+        if (st.agentBusy) {
+            _ui.update { it.copy(message = "Agent 正在执行，先停止 Agent 再运行", messageSeq = it.messageSeq + 1) }
+            return
+        }
         val file = st.currentFile ?: run {
             _ui.update { it.copy(message = "请先打开一个文件", messageSeq = it.messageSeq + 1) }
             return
@@ -411,33 +568,29 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 withContext(Dispatchers.IO) { projects.write(file.absolutePath, st.editorText) }
                 _ui.update { it.copy(dirty = false) }
-                launchRun(file)
+                launchRun(file, LanguageRegistry.forFile(file), runtimes?.engineFor(LanguageRegistry.forFile(file).id))
             }
         } else {
-            launchRun(file)
+            launchRun(file, LanguageRegistry.forFile(file), runtimes?.engineFor(LanguageRegistry.forFile(file).id))
         }
     }
 
-    private fun launchRun(file: File) {
-        // P1-2：引擎构造失败时不运行，避免 lateinit 未初始化抛异常
-        if (!::engine.isInitialized) {
+    private fun launchRun(file: File, spec: LanguageSpec, engine: RunEngine?) {
+        if (!spec.isRunnable) {
             _ui.update { it.copy(
-                message = "运行时未就绪，无法运行",
+                message = "${spec.displayName} 仅支持编辑、语法高亮与补全",
                 messageSeq = it.messageSeq + 1
             ) }
             return
         }
-        val language = inferLanguage(file)
-        // P4-2：Java 运行能力未开放——原生引擎只实现了 CPython。
-        // 直接把 .java 源码交给 execFile 会被 Python 解释器当 Python 解析，
-        // 报一堆与用户代码无关的语法错误，体验极差。
-        if (language == Language.JAVA) {
+        if (engine == null) {
             _ui.update { it.copy(
-                message = "Java 运行暂未开放（当前仅支持编辑与语法高亮）",
+                message = "${spec.displayName} 运行时未接入",
                 messageSeq = it.messageSeq + 1
             ) }
             return
         }
+        activeEngine = engine
         val projectDir = currentProject ?: file.parentFile ?: file
         _ui.update { it.copy(
             running = true, output = emptyList(), exitCode = null,
@@ -449,28 +602,47 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 提升为前台服务，避免 Android 12+ 在后台把进程杀掉
         runCatching { ExecutionService.start(context, "正在运行 ${file.name}") }
         viewModelScope.launch {
-            engine.run(
-                RunRequest(
-                    scriptPath = file.absolutePath,
-                    workingDir = projectDir.absolutePath,
-                    language = language,
-                    // 支持带引号的参数，如: --name "hello world"
-                    args = parseArgs(_ui.value.runArgs),
-                    mainClass = _ui.value.mainClass.takeIf { it.isNotBlank() }
-                ),
-                // 超时时长来自用户设置
-                timeoutMs = _ui.value.settings.timeoutSeconds * 1000L
-            ).collect { event ->
-                _ui.update { st ->
-                    when (event) {
-                        is RunEvent.Started -> st.copy(output = appendLines(st.output, "[执行] ${event.command}"))
-                        is RunEvent.Stdout -> st.copy(output = appendLines(st.output, event.line))
-                        is RunEvent.Stderr -> st.copy(output = appendLines(st.output, "[err] ${event.line}"))
-                        // 引擎日志（如首次预热提示）：以灰字混入输出，不打断流程
-                        is RunEvent.Log -> st.copy(output = appendLines(st.output, "[引擎] ${event.message}"))
-                        is RunEvent.Finished -> {
+            try {
+                // P1-3：高频 print 不逐行重组 5000 行列表——先攒批，再一次性并入 UI 状态。
+                // 每 256 行或 100ms 落一次，既保证输出可见，又避免主线程被 O(n) 拷贝拖死。
+                val pendingLines = ArrayList<String>(256)
+                var lastFlushNanos = System.nanoTime()
+                fun flushPending() {
+                    if (pendingLines.isEmpty()) return
+                    val lines = pendingLines.toTypedArray()
+                    pendingLines.clear()
+                    _ui.update { st -> st.copy(output = appendLines(st.output, *lines)) }
+                }
+                // 单行输出后程序可能停在 input()，不能等下一次事件才刷新；100ms 定时落批。
+                launch {
+                    while (true) {
+                        delay(100)
+                        flushPending()
+                        lastFlushNanos = System.nanoTime()
+                    }
+                }
+                engine.run(
+                    RunRequest(
+                        scriptPath = file.absolutePath,
+                        workingDir = projectDir.absolutePath,
+                        languageId = spec.id,
+                        // 支持带引号的参数，如: --name "hello world"
+                        args = parseArgs(_ui.value.runArgs)
+                    ),
+                    // 超时时长来自用户设置
+                    timeoutMs = _ui.value.settings.timeoutSeconds * 1000L
+                ).collect { event ->
+                when (event) {
+                    is RunEvent.Started -> pendingLines.add("[执行] ${event.command}")
+                    is RunEvent.Stdout -> pendingLines.add(event.line)
+                    is RunEvent.Stderr -> pendingLines.add("[err] ${event.line}")
+                    // 引擎日志（如首次预热提示）：以灰字混入输出，不打断流程
+                    is RunEvent.Log -> pendingLines.add("[引擎] ${event.message}")
+                    is RunEvent.Finished -> {
+                        flushPending()
+                        _ui.update { st ->
                             // 非零退出时，尝试把报错翻译成人话
-                            val hint = if (event.exitCode != 0) FriendlyError.hint(st.output) else null
+                            val hint = if (event.exitCode != 0) FriendlyError.hint(st.output, spec.id) else null
                             st.copy(
                                 running = false,
                                 exitCode = event.exitCode,
@@ -485,8 +657,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                                 messageSeq = st.messageSeq + 1
                             )
                         }
-                        is RunEvent.Failed -> {
-                            val hint = FriendlyError.hint(listOf(event.message))
+                    }
+                    is RunEvent.Failed -> {
+                        flushPending()
+                        _ui.update { st ->
+                            val hint = FriendlyError.hint(listOf(event.message), spec.id)
                             st.copy(
                                 running = false,
                                 inputVisible = false,
@@ -499,13 +674,21 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                                 messageSeq = st.messageSeq + 1
                             )
                         }
-                        // 未来引擎新增的事件类型不阻断运行（如 NeedsInput 暂以手动展开为准）
-                        else -> st
                     }
+                    // 未来引擎新增的事件类型不阻断运行（如 NeedsInput 暂以手动展开为准）
+                    else -> Unit
                 }
+                if (pendingLines.size >= 256 || System.nanoTime() - lastFlushNanos >= 100_000_000L) {
+                    flushPending()
+                    lastFlushNanos = System.nanoTime()
+                    yield()
+                }
+                }
+            } finally {
+                if (activeEngine === engine) activeEngine = null
+                // 运行结束，撤掉前台服务（避免通知栏常驻）
+                runCatching { ExecutionService.stop(context) }
             }
-            // 运行结束，撤掉前台服务（避免通知栏常驻）
-            runCatching { ExecutionService.stop(context) }
         }
     }
 
@@ -523,9 +706,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * 向运行中的进程发送一行输入（支持 Python 的 input() 交互）。
      * 写管道可能阻塞，因此整体切到 IO 线程，绝不卡主线程。
      */
+    private fun activeEngine(): RunEngine? = activeEngine ?: pythonEngine
+
     fun sendInput(text: String) {
         val st = _ui.value
         if (!st.running) return
+        val engine = activeEngine() ?: return
         viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) { engine.writeStdin(text) }
             _ui.update {
@@ -538,6 +724,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 发送 EOF（等价 Ctrl-D） */
     fun sendEof() {
         if (!_ui.value.running) return
+        val engine = activeEngine() ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { engine.closeStdin() }
             _ui.update { it.copy(message = "已发送 EOF", messageSeq = it.messageSeq + 1) }
@@ -554,6 +741,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun stopRun() {
         val st = _ui.value
         if (!st.running) return
+        val engine = activeEngine() ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { engine.stop() }
             runCatching { ExecutionService.stop(context) }
@@ -574,7 +762,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         exitCode = it.exitCode ?: -1,
                         output = appendLines(
                             it.output,
-                            "[DevTerminal] 引擎未响应停止，界面已强制复位。" +
+                            "[CodePocket] 引擎未响应停止，界面已强制复位。" +
                                 "若再次运行提示\"已有程序在运行中\"，说明旧进程仍在收尾，请稍候重试。"
                         )
                     )
@@ -595,10 +783,6 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onRunArgsChanged(text: String) {
         _ui.update { it.copy(runArgs = text) }
-    }
-
-    fun onMainClassChanged(text: String) {
-        _ui.update { it.copy(mainClass = text) }
     }
 
     /**
@@ -626,15 +810,20 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun newProject(templateId: String) {
         val tpl = Templates.all.firstOrNull { it.id == templateId } ?: Templates.PYTHON_HELLO
         viewModelScope.launch {
+            // 先保住旧项目的脏文件，再建新项目；不要先切走再异步保存。
+            if (!persistCurrentIfDirty()) return@launch
+            if (_ui.value.dirty) {
+                _ui.update { it.copy(message = "保存期间有新输入，已取消新建", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
             val dir = withContext(Dispatchers.IO) { projects.createFromTemplate(tpl) }
-            openProject(dir)
+            switchProject(dir)
             _ui.update {
-                it.copy(openTabs = emptyList(), message = "已创建项目 ${dir.name}",
-                    messageSeq = it.messageSeq + 1)
+                it.copy(message = "已创建项目 ${dir.name}", messageSeq = it.messageSeq + 1)
             }
             // 新项目自动打开主文件
             val main = withContext(Dispatchers.IO) {
-                dir.walkTopDown().filter { it.isFile && it.extension in listOf("py", "java") }.firstOrNull()
+                dir.walkTopDown().firstOrNull { it.isFile && LanguageRegistry.isRunnable(it) }
             }
             if (main != null) doOpenFile(main)
         }
@@ -669,6 +858,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun renameFile(file: File, newName: String) {
         viewModelScope.launch {
+            // 重命名的是当前脏文件时，先把内容落盘；否则后面 doOpenFile 会读到旧内容。
+            if (_ui.value.currentFile?.absolutePath == file.absolutePath && _ui.value.dirty) {
+                if (!persistCurrentIfDirty()) return@launch
+                if (_ui.value.dirty) {
+                    _ui.update { it.copy(message = "保存期间有新输入，请再重命名", messageSeq = it.messageSeq + 1) }
+                    return@launch
+                }
+            }
             val renamed = withContext(Dispatchers.IO) { projects.rename(file, newName) }
             if (renamed == null) {
                 _ui.update { it.copy(message = "重命名失败：名称已存在或非法", messageSeq = it.messageSeq + 1) }
@@ -891,7 +1088,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             val result = withContext(Dispatchers.IO) {
                 git.init(
                     dir,
-                    s.gitUserName.ifBlank { "devterminal" },
+                    s.gitUserName.ifBlank { "CodePocket" },
                     s.gitUserEmail.ifBlank { "dev@terminal.local" }
                 )
             }
@@ -906,7 +1103,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _ui.update { it.copy(gitBusy = true) }
             val result = withContext(Dispatchers.IO) {
-                git.commitAll(dir, message, s.gitUserName.ifBlank { "devterminal" },
+                git.commitAll(dir, message, s.gitUserName.ifBlank { "CodePocket" },
                     s.gitUserEmail.ifBlank { "dev@terminal.local" })
             }
             _ui.update { it.copy(gitBusy = false, gitLastResult = result) }
@@ -986,6 +1183,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (st.aiBusy) return
+        aiCancelRequested = false
         val history = st.aiMessages
         val fileContext = if (st.currentFile != null)
             "【当前文件 ${st.currentFile.name}】\n${st.editorText.take(3500)}\n\n【用户请求】\n$prompt"
@@ -993,12 +1191,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update {
             it.copy(aiBusy = true, aiMessages = history + AiClient.ChatMessage("user", prompt))
         }
-        viewModelScope.launch {
+        aiJob = viewModelScope.launch {
             // P2-2：改流式输出——先放一个空 assistant 气泡，逐段 append，不再阻塞等整段返回。
             _ui.update { it.copy(aiMessages = it.aiMessages + AiClient.ChatMessage("assistant", "")) }
             val aiClient = AiClient(_ui.value.settings)
             val sb = StringBuilder()
             runCatching {
+                withTimeout(180_000L) {
                 aiClient.chatStream(AiClient.SYSTEM_PROMPT, history.takeLast(6), fileContext)
                     .collect { chunk ->
                         sb.append(chunk)
@@ -1008,24 +1207,547 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             ))
                         }
                     }
+                }
             }.onFailure { e ->
-                // 流式失败也保留已收到的部分，再追一条错误提示
-                if (sb.isEmpty()) sb.append("⚠️ ${e.message ?: "请求失败"}")
+                // 用户主动取消不算错误；其余失败保留已收到的部分并追加提示
+                if (e !is CancellationException && sb.isEmpty()) {
+                    sb.append("⚠️ ${e.message ?: "请求失败"}")
+                }
+            }
+            val finalText = when {
+                sb.isNotEmpty() -> sb.toString()
+                aiCancelRequested -> "（已取消）"
+                else -> "（无响应）"
             }
             _ui.update { st ->
                 st.copy(
                     aiBusy = false,
-                    aiMessages = st.aiMessages.withLast(
-                        AiClient.ChatMessage("assistant", sb.toString().ifEmpty { "（无响应）" })
-                    )
+                    aiMessages = st.aiMessages.withLast(AiClient.ChatMessage("assistant", finalText))
                 )
             }
+            aiJob = null
         }
+    }
+
+    /** 用户主动停止流式回复；底层 Socket 由 Flow 的 awaitClose 断开 */
+    fun cancelAi() {
+        aiCancelRequested = true
+        aiJob?.cancel()
     }
 
     /** 替换 aiMessages 列表的最后一条（流式追加用）；空列表原样返回 */
     private fun List<AiClient.ChatMessage>.withLast(m: AiClient.ChatMessage): List<AiClient.ChatMessage> =
         if (isEmpty()) this else dropLast(1) + m
+
+    // ---------- Agent（v0.4） ----------
+
+    fun onAgentInputChanged(text: String) {
+        _ui.update { it.copy(agentInputDraft = text) }
+    }
+
+    /** 命令面板的自定义命令把正文填进 Agent 输入框，不自动执行。 */
+    fun prefillAgent(text: String) {
+        _ui.update { it.copy(agentInputDraft = text.take(1200)) }
+    }
+
+    fun sendAgentInput() {
+        val text = _ui.value.agentInputDraft.trim()
+        if (text.isNotEmpty()) {
+            _ui.update { it.copy(agentInputDraft = "") }
+            startAgentTask(text)
+        }
+    }
+
+    fun approveAgentPatch() {
+        agentApproval?.complete(true)
+        _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
+    }
+
+    fun rejectAgentPatch() {
+        agentApproval?.complete(false)
+        _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
+    }
+
+    fun cancelAgent() {
+        agentApproval?.complete(false)
+        agentApproval = null
+        agentJob?.cancel()
+        agentJob = null
+        _ui.update {
+            it.copy(
+                agentBusy = false,
+                agentPendingCall = null,
+                agentPendingProposal = null,
+            )
+        }
+    }
+
+    fun restoreAgentCheckpoint() {
+        val st = _ui.value
+        val store = activeCheckpointStore
+        val projectDir = currentProject
+        val events = st.agentCheckpoints.ifEmpty { listOfNotNull(st.lastAgentCheckpoint) }
+        if (events.isEmpty() || store == null || projectDir == null) {
+            _ui.update { it.copy(message = "没有可恢复的 Agent 检查点", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val all = store.list().associateBy { it.id }
+                    val restored = LinkedHashSet<String>()
+                    var failure: String? = null
+                    for (event in events.reversed()) {
+                        val checkpoint = all[event.checkpointId]
+                        if (checkpoint == null) {
+                            failure = "检查点不存在：${event.checkpointId}"
+                            break
+                        }
+                        runCatching { store.restore(checkpoint) }
+                            .onSuccess { restored.addAll(checkpoint.files) }
+                            .onFailure { failure = it.message ?: "检查点恢复失败" }
+                        if (failure != null) break
+                    }
+                    if (failure != null) error(failure) else restored.toList()
+                }
+            }
+            result.onSuccess { files ->
+                reloadAfterAgent(files, projectDir)
+                _ui.update {
+                    it.copy(
+                        lastAgentCheckpoint = null,
+                        agentCheckpoints = emptyList(),
+                        message = "已撤销本次 Agent 修改（${files.size} 个文件）",
+                        messageSeq = it.messageSeq + 1,
+                    )
+                }
+            }.onFailure { e ->
+                _ui.update {
+                    it.copy(
+                        message = "恢复失败：${e.message}",
+                        messageSeq = it.messageSeq + 1,
+                    )
+                }
+            }
+        }
+    }
+
+    /** 进程重启后恢复最近一次 Agent 会话的事件时间线；不自动重跑任务。 */
+    private fun restoreLastAgentSession() {
+        viewModelScope.launch {
+            val latest = withContext(Dispatchers.IO) {
+                runCatching { agentSessions.latest() }.getOrNull()
+            } ?: return@launch
+            val (meta, events) = latest
+            if (events.isEmpty()) return@launch
+            if (_ui.value.agentBusy || _ui.value.agentEvents.isNotEmpty()) return@launch
+            agentSessionId = meta.id
+            _ui.update {
+                it.copy(
+                    agentEvents = events.takeLast(200),
+                    agentRecovered = true,
+                )
+            }
+        }
+    }
+
+    fun loadAgentSessions() {
+        _ui.update { it.copy(agentSessionsLoading = true) }
+        viewModelScope.launch {
+            val sessions = withContext(Dispatchers.IO) {
+                runCatching { agentSessions.list(20) }.getOrElse { emptyList() }
+            }
+            _ui.update { it.copy(agentSessions = sessions, agentSessionsLoading = false) }
+        }
+    }
+
+    fun openAgentSession(id: String) {
+        if (_ui.value.agentBusy) return
+        viewModelScope.launch {
+            val events = withContext(Dispatchers.IO) {
+                runCatching { agentSessions.read(id) }.getOrElse { emptyList() }
+            }
+            if (events.isEmpty()) {
+                _ui.update { it.copy(message = "会话记录为空", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
+            agentSessionId = id
+            _ui.update {
+                it.copy(
+                    agentEvents = events.takeLast(200),
+                    agentRecovered = true,
+                    agentPendingCall = null,
+                    agentPendingProposal = null,
+                    lastAgentCheckpoint = null,
+                    agentCheckpoints = emptyList(),
+                )
+            }
+        }
+    }
+
+    fun deleteAgentSession(id: String) {
+        if (_ui.value.agentBusy) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { agentSessions.delete(id) }
+            if (agentSessionId == id) agentSessionId = null
+            loadAgentSessions()
+        }
+    }
+
+    fun refreshLocalModels() {
+        _ui.update { it.copy(localModelsLoading = true) }
+        viewModelScope.launch {
+            val specs = withContext(Dispatchers.IO) {
+                ModelCatalog.models.map { spec ->
+                    LocalModelUiState(spec = spec, installed = modelRepository.isInstalled(spec))
+                }
+            }
+            _ui.update { st ->
+                st.copy(
+                    localModelsLoading = false,
+                    localModels = specs.map { fresh ->
+                        val old = st.localModels.firstOrNull { it.spec.id == fresh.spec.id }
+                        fresh.copy(
+                            downloading = old?.downloading ?: false,
+                            progress = old?.progress ?: -1f,
+                            verifying = old?.verifying ?: false,
+                            error = old?.error,
+                        )
+                    },
+                )
+            }
+        }
+    }
+
+    fun downloadLocalModel(id: String) {
+        val spec = ModelCatalog.byId(id) ?: return
+        if (modelDownloadBusy) {
+            _ui.update { it.copy(message = "已有模型正在下载", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        val memoryGb = deviceMemoryGb()
+        if (memoryGb != null && memoryGb < spec.minRamGb * 0.85) {
+            _ui.update {
+                it.copy(
+                    message = "设备内存约 ${"%.1f".format(memoryGb)}GB，低于 ${spec.displayName} 建议的 ${spec.minRamGb}GB",
+                    messageSeq = it.messageSeq + 1,
+                )
+            }
+            return
+        }
+        _ui.update { st ->
+            st.copy(localModels = st.localModels.map {
+                if (it.spec.id == id) it.copy(downloading = true, progress = 0f, verifying = false, error = null) else it
+            })
+        }
+        modelDownloadBusy = true
+        runCatching { ExecutionService.start(context, "正在下载 ${spec.displayName}", tag = "download") }
+        modelDownloadJob = viewModelScope.launch {
+            try {
+                modelDownloads.download(spec) { p ->
+                    _ui.update { st ->
+                        st.copy(localModels = st.localModels.map {
+                            if (it.spec.id == id) it.copy(
+                                downloading = true,
+                                progress = p.fraction,
+                                verifying = p.verifying,
+                                error = null,
+                            ) else it
+                        })
+                    }
+                }
+                _ui.update { st ->
+                    st.copy(
+                        localModels = st.localModels.map {
+                            if (it.spec.id == id) it.copy(
+                                installed = true, downloading = false, progress = 1f, verifying = false,
+                            ) else it
+                        },
+                        message = "${spec.displayName} 下载并校验完成",
+                        messageSeq = st.messageSeq + 1,
+                    )
+                }
+            } catch (e: CancellationException) {
+                _ui.update { st ->
+                    st.copy(localModels = st.localModels.map {
+                        if (it.spec.id == id) it.copy(downloading = false, progress = -1f, verifying = false) else it
+                    }, message = "已暂停下载，下次继续", messageSeq = st.messageSeq + 1)
+                }
+            } catch (e: Exception) {
+                _ui.update { st ->
+                    st.copy(
+                        localModels = st.localModels.map {
+                            if (it.spec.id == id) it.copy(
+                                downloading = false,
+                                progress = -1f,
+                                verifying = false,
+                                error = e.message ?: "下载失败",
+                            ) else it
+                        },
+                        message = "模型下载失败：${e.message}",
+                        messageSeq = st.messageSeq + 1,
+                    )
+                }
+            } finally {
+                runCatching { ExecutionService.stop(context, tag = "download") }
+                modelDownloadBusy = false
+                modelDownloadJob = null
+            }
+        }
+    }
+
+    fun cancelLocalModelDownload() {
+        modelDownloadJob?.cancel()
+    }
+
+    fun deleteLocalModel(id: String) {
+        val spec = ModelCatalog.byId(id) ?: return
+        if (modelDownloadBusy) {
+            _ui.update { it.copy(message = "先暂停下载再删除", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { modelRepository.delete(spec) }
+            val s = _ui.value.settings
+            if (s.localModelId == id) updateSettings(s.copy(useLocalModel = false))
+            refreshLocalModels()
+            _ui.update { it.copy(message = "已删除 ${spec.displayName}", messageSeq = it.messageSeq + 1) }
+        }
+    }
+
+    fun selectLocalModel(id: String) {
+        val spec = ModelCatalog.byId(id) ?: return
+        val installed = modelRepository.isInstalled(spec)
+        if (!installed) {
+            _ui.update { it.copy(message = "先下载 ${spec.displayName}", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        updateSettings(_ui.value.settings.copy(useLocalModel = true, localModelId = id))
+        _ui.update {
+            it.copy(
+                message = "Agent 已切换为本地 ${spec.displayName}",
+                messageSeq = it.messageSeq + 1,
+            )
+        }
+    }
+
+    fun setUseLocalModel(enabled: Boolean) {
+        val s = _ui.value.settings
+        if (enabled) {
+            val spec = ModelCatalog.byId(s.localModelId)
+            val installed = spec != null && modelRepository.isInstalled(spec)
+            if (!installed) {
+                _ui.update { it.copy(message = "本机模型尚未下载或未通过校验", messageSeq = it.messageSeq + 1) }
+                return
+            }
+        }
+        updateSettings(s.copy(useLocalModel = enabled))
+    }
+
+    private fun deviceMemoryGb(): Double? = runCatching {
+        val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val info = android.app.ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        info.totalMem / 1024.0 / 1024.0 / 1024.0
+    }.getOrNull()
+
+    private suspend fun buildAgentTools(
+        workspace: LocalWorkspace,
+        runner: EngineCommandRunner?,
+        settings: com.devterminal.settings.AppSettings,
+    ): Pair<ToolRegistry, String?> {
+        val tools = mutableListOf<Tool>(
+            ReadFileTool(), ListFilesTool(), SearchTextTool(), ApplyPatchTool(),
+            RunFileTool(runner), RunTestsTool(runner),
+        )
+        val warnings = mutableListOf<String>()
+        if (settings.pluginsEnabled) {
+            val plugins = withContext(Dispatchers.IO) {
+                runCatching { ProjectPlugins.read(workspace) }.getOrElse { emptyList() }
+            }
+            tools += plugins.map { JsPluginTool(it) }
+            if (plugins.isNotEmpty()) warnings += "已加载 ${plugins.size} 个项目插件"
+        }
+        if (settings.mcpEnabled) {
+            val endpoint = settings.mcpEndpoint.trim()
+            if (endpoint.isBlank()) {
+                warnings += "MCP 已开启但端点为空，本次只使用内置工具"
+            } else {
+                runCatching {
+                    val client = McpClient(endpoint)
+                    val defs = client.listTools()
+                    tools += defs.map { McpTool(client, it) }
+                    if (defs.isNotEmpty()) warnings += "已加载 ${defs.size} 个 MCP 工具"
+                }.onFailure { e ->
+                    warnings += "MCP 连接失败，本次只使用内置工具：${e.message ?: "未知错误"}"
+                }
+            }
+        }
+        val unique = tools.distinctBy { it.spec.name }
+        return ToolRegistry(unique) to warnings.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+    }
+
+    private fun startAgentTask(task: String) {
+        val st = _ui.value
+        val choice = providerRegistry.resolve(st.settings)
+        if (choice is AgentProviderChoice.Unavailable) {
+            _ui.update {
+                it.copy(message = choice.reason, messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+        val ready = choice as AgentProviderChoice.Ready
+        val useLocal = ready.usesLocal
+        val projectDir = currentProject
+        if (projectDir == null) {
+            _ui.update {
+                it.copy(message = "先打开一个项目", messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+        if (st.agentBusy) return
+        if (st.running) {
+            _ui.update { it.copy(message = "先停止正在运行的程序", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        if (st.dirty) {
+            _ui.update {
+                it.copy(message = "先保存当前文件，再让 Agent 修改", messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+
+        val workspace = runCatching { LocalWorkspace(projectDir) }.getOrElse { e ->
+            _ui.update {
+                it.copy(message = "无法打开工作区：${e.message}", messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+        val checkpoints = CheckpointStore(File(context.filesDir, "agent-checkpoints"), workspace)
+        val localProvider = ready.localProvider
+        val provider = ready.provider
+        val runner = runtimes?.let { EngineCommandRunner(context, it, projectDir) }
+        activeCheckpointStore = checkpoints
+        _ui.update {
+            it.copy(
+                agentBusy = true,
+                agentEvents = emptyList(),
+                agentPendingCall = null,
+                agentPendingProposal = null,
+                lastAgentCheckpoint = null,
+                agentCheckpoints = emptyList(),
+                agentRecovered = false,
+            )
+        }
+        agentJob = viewModelScope.launch {
+            try {
+                val (tools, toolWarning) = buildAgentTools(workspace, runner, st.settings)
+                if (toolWarning != null) {
+                    _ui.update { it.copy(message = toolWarning, messageSeq = it.messageSeq + 1) }
+                }
+                // 会话只在确定要启动后创建，避免路径/模型错误留下空会话文件。
+                agentSessionId = runCatching { agentSessions.create(projectDir.absolutePath, task) }.getOrNull()
+                val loop = AgentLoop(
+                    workspace = workspace,
+                    tools = tools,
+                    provider = provider,
+                    checkpoints = checkpoints,
+                    contextBuilder = if (useLocal) ContextBuilder(
+                        maxSystemChars = 2400,
+                        maxHistoryChars = 1800,
+                        maxMessageChars = 1000,
+                    ) else ContextBuilder(),
+                    approve = ApprovalHandler { call ->
+                        val deferred = CompletableDeferred<Boolean>()
+                        agentApproval = deferred
+                        _ui.update { it.copy(agentPendingCall = call) }
+                        deferred.await()
+                    },
+                )
+                loop.run(task) { event ->
+                    agentSessionId?.let { sessionId ->
+                        withContext(Dispatchers.IO) {
+                            runCatching { agentSessions.append(sessionId, event) }
+                        }
+                    }
+                    if (event is AgentEvent.PatchProposed) {
+                        _ui.update { it.copy(agentPendingProposal = event) }
+                    }
+                    if (event is AgentEvent.Checkpoint) {
+                        _ui.update {
+                            it.copy(
+                                lastAgentCheckpoint = event,
+                                agentCheckpoints = it.agentCheckpoints + event,
+                            )
+                        }
+                    }
+                    _ui.update {
+                        it.copy(agentEvents = (it.agentEvents + event).takeLast(200))
+                    }
+                    when (event) {
+                        is AgentEvent.Approval -> _ui.update {
+                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                        }
+                        is AgentEvent.PatchApplied -> {
+                            _ui.update {
+                                it.copy(agentPendingCall = null, agentPendingProposal = null)
+                            }
+                            reloadAfterAgent(event.paths, projectDir)
+                        }
+                        is AgentEvent.SessionFinished, is AgentEvent.Failure -> _ui.update {
+                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                        }
+                        else -> Unit
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.update {
+                    it.copy(
+                        message = "Agent 启动失败：${e.message ?: e::class.simpleName}",
+                        messageSeq = it.messageSeq + 1,
+                    )
+                }
+            } finally {
+                localProvider?.close()
+                agentApproval?.complete(false)
+                agentApproval = null
+                _ui.update {
+                    it.copy(
+                        agentBusy = false,
+                        agentPendingCall = null,
+                        agentPendingProposal = null,
+                    )
+                }
+                agentJob = null
+            }
+        }
+    }
+
+    private fun reloadAfterAgent(paths: List<String>, projectDir: File) {
+        val file = _ui.value.currentFile
+        if (file != null) {
+            val relative = runCatching {
+                file.relativeTo(projectDir).path.replace(File.separatorChar, '/')
+            }.getOrNull()
+            if (relative != null && relative in paths) {
+                viewModelScope.launch {
+                    val text = withContext(Dispatchers.IO) {
+                        runCatching { file.readText() }.getOrNull()
+                    }
+                    if (text != null) {
+                        _ui.update { it.copy(editorText = text, dirty = false) }
+                    }
+                    refreshTree()
+                }
+            } else {
+                refreshTree()
+            }
+        } else {
+            refreshTree()
+        }
+    }
 
     // ---------- 全局搜索（v0.3） ----------
 
@@ -1108,6 +1830,33 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(message = "已复制输出", messageSeq = it.messageSeq + 1) }
     }
 
+    /** 读取当前文件的符号大纲；只扫当前文件，避免点一下命令就全项目 IO。 */
+    fun loadSymbols() {
+        val file = _ui.value.currentFile ?: run {
+            _ui.update { it.copy(message = "先打开一个文件", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        val root = currentProject ?: file.parentFile ?: return
+        val relative = runCatching {
+            file.relativeTo(root).path.replace(File.separatorChar, '/')
+        }.getOrElse { file.name }
+        _ui.update { it.copy(symbolsLoading = true, symbolOutline = emptyList()) }
+        viewModelScope.launch {
+            val symbols = withContext(Dispatchers.IO) {
+                runCatching { LanguageService(LocalWorkspace(root)).outline(relative) }
+                    .getOrElse { emptyList() }
+            }
+            _ui.update {
+                it.copy(
+                    symbolsLoading = false,
+                    symbolOutline = symbols,
+                    message = if (symbols.isEmpty()) "没有识别到符号" else null,
+                    messageSeq = if (symbols.isEmpty()) it.messageSeq + 1 else it.messageSeq,
+                )
+            }
+        }
+    }
+
     /** 跳转到指定行（用户输入 1 基行号） */
     fun gotoLine(line: Int) {
         _ui.update {
@@ -1134,7 +1883,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     val resolver = context.contentResolver
                     // 从 URI 推断原始文件名
                     val raw = queryDisplayName(uri) ?: "imported_${System.currentTimeMillis()}.txt"
-                    val target = uniqueTarget(dir, raw)
+                    // SAF provider 的 display name 不可信：可能是 ../../shared_prefs/...
+                    // 先按文件名规则清洗，再校验 canonical 路径必须落在当前项目内。
+                    val safeName = sanitizeFileName(raw)
+                    val target = uniqueTarget(dir, safeName)
+                    require(target.canonicalFile.parentFile == dir.canonicalFile) {
+                        "导入目标越界"
+                    }
                     resolver.openInputStream(uri)?.use { input ->
                         target.outputStream().use { output -> input.copyTo(output) }
                     } ?: throw IllegalStateException("无法读取所选文件")
@@ -1210,37 +1965,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- 语言识别 ----------
 
-    private fun inferLanguage(file: File): Language =
-        if (file.extension.equals("java", ignoreCase = true)) Language.JAVA else Language.PYTHON
-
-    /** 状态栏 / 编辑器用的语言显示名 */
-    fun languageLabelOf(file: File?): String = when (file?.extension?.lowercase()) {
-        "py" -> "Python"
-        "java" -> "Java"
-        "kt" -> "Kotlin"
-        "js" -> "JavaScript"
-        "ts" -> "TypeScript"
-        "json" -> "JSON"
-        "md" -> "Markdown"
-        "html", "htm" -> "HTML"
-        "css" -> "CSS"
-        "sh" -> "Shell"
-        "xml" -> "XML"
-        "yml", "yaml" -> "YAML"
-        "sql" -> "SQL"
-        "lua" -> "Lua"
-        "c", "h" -> "C"
-        "cpp", "hpp" -> "C++"
-        "go" -> "Go"
-        "rs" -> "Rust"
-        "txt" -> "纯文本"
-        else -> file?.extension?.uppercase()?.takeIf { it.isNotBlank() } ?: "纯文本"
+    /** 当前文件是否可运行（由 LanguageRegistry + RuntimeRegistry 决定） */
+    fun canRun(file: File?): Boolean {
+        val spec = LanguageRegistry.forFile(file)
+        return spec.isRunnable && runtimes?.isAvailable(spec.id) == true
     }
 
+
     private companion object {
-        val SEARCHABLE_EXT = setOf(
-            "py", "java", "kt", "js", "ts", "txt", "md", "json", "xml", "yml", "yaml",
-            "html", "css", "sh", "sql", "lua", "c", "cpp", "go", "rs"
-        )
+        val SEARCHABLE_EXT = LanguageRegistry.searchableExtensions
     }
 }

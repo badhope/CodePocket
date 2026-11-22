@@ -1,12 +1,12 @@
 # CodePocket「口袋码」—— 项目介绍
 
-> 一句话：**真正离线的安卓 Python IDE，手机上的现代开发环境，装完就能跑。**
+> 一句话：**真正离线的安卓多语言 IDE，Python / JavaScript / Lua 装完就能跑，另有 17 种语言可编辑。**
 
 ---
 
 ## 它是什么
 
-CodePocket 是一款完全离线的安卓 Python IDE。我们把 CPython 3.13 用 NDK 交叉编译成 ARM64 原生库，连同标准库一起打包进 APK——用户安装后打开就能写代码、跑代码，全程不需要联网、不需要下载任何运行时、不需要付费订阅、没有任何广告。
+CodePocket 是一款完全离线的安卓多语言 IDE。Python 由 NDK 交叉编译的 CPython 3.13 原生库执行，JavaScript/Lua 由纯 Java 的 Rhino/LuaJ 执行，三者都随 APK 打包——安装后打开就能写代码、跑代码，全程不需要联网、不需要下载运行时、没有广告。
 
 **核心承诺：装完即离线。** 地铁上、课堂上、没有信号的山里，只要手机在手，代码就能跑。
 
@@ -46,8 +46,8 @@ CodePocket 是一款完全离线的安卓 Python IDE。我们把 CPython 3.13 �
 
 ## 技术底色
 
-- **引擎**：CPython 3.13.9（官方 PEP 738 Android 支持）交叉编译为 arm64 原生库；
-- **桥接**：自写 JNI 桥（`pybridge.c`，约 350 行 C），stdin/stdout/stderr 三路桥接，无死锁、中文不乱码；
+- **引擎**：Python 为 CPython 3.13.9（PEP 738，arm64 原生库）；JavaScript 为 Rhino 1.7.15、Lua 为 LuaJ 3.0.1（纯 Java，无 native 依赖）；
+- **桥接**：Python 走自写 JNI 桥（`pybridge.c`），三路 stdio；JS/Lua 复用同一套 `RunEngine` 事件流；
 - **界面**：Kotlin 2.0 + Jetpack Compose + Sora Editor；
 - **构建**：零外部申请依赖——NDK（Google 官方）+ CPython 源码（GitHub）+ BeeWare 预编译依赖，全部免费公开。
 
@@ -56,7 +56,8 @@ CodePocket 是一款完全离线的安卓 Python IDE。我们把 CPython 3.13 �
 ## 诚实的能力边界
 
 - Python 运行：✅ 完整（原生 CPython 3.13，arm64）；
-- Java 运行：❌ 尚未集成 JVM 运行时（保留编辑高亮）；
+- JavaScript / Lua 运行：✅ 纯 Java，任意 ABI；
+- Java / Kotlin / TypeScript 等 14 种语言：仅编辑、高亮与补全，不提供运行；
 - numpy / pandas / matplotlib：⚠️ **未预装**，离线导入第三方 wheel 的能力后续开放；
 - pip 联网装包：❌ 离线定位，不提供在线包安装。
 

@@ -37,6 +37,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -209,14 +211,16 @@ fun QuietTextField(
     enabled: Boolean = true,
     imeAction: ImeAction = ImeAction.Done,
     onImeAction: (() -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null
+    trailing: (@Composable () -> Unit)? = null,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier,
         enabled = enabled,
-        keyboardOptions = KeyboardOptions(imeAction = imeAction),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(
             onAny = { if (onImeAction != null) onImeAction() }
         ),
@@ -227,6 +231,7 @@ fun QuietTextField(
         placeholder = placeholder?.let { { Text(it, fontSize = 12.5.sp) } },
         label = label?.let { { Text(it, fontSize = 11.sp) } },
         singleLine = singleLine,
+        visualTransformation = visualTransformation,
         trailingIcon = trailing,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(

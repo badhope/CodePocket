@@ -21,7 +21,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
-import com.devterminal.engine.Language as DevLanguage
+import com.devterminal.engine.LanguageRegistry
+import com.devterminal.engine.LanguageSpec
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.SelectionChangeEvent
 import io.github.rosemoe.sora.lang.Language
@@ -78,7 +79,7 @@ fun CodeEditorView(
     modifier: Modifier = Modifier,
     readOnly: Boolean = false,
     fontSize: Int = 14,
-    language: DevLanguage = DevLanguage.PYTHON,
+    language: LanguageSpec = LanguageRegistry.PYTHON,
     darkTheme: Boolean = true,
     /** 编辑器主题："auto" 跟随明暗，其余为 [EDITOR_THEMES] 里的固定主题 */
     editorTheme: String = "auto",
@@ -307,14 +308,14 @@ fun CodeEditorView(
 private fun applyLanguage(
     editor: CodeEditor,
     file: File,
-    language: DevLanguage,
+    language: LanguageSpec,
     docRef: AtomicReference<String>
 ): Language? {
     return runCatching {
-        val textMate = TextMateLanguage.create(file.extension, false)
+        val textMate = TextMateLanguage.create(language.grammarName ?: file.extension, false)
         val wrapped = StaticCompletionLanguage(
             delegate = textMate,
-            devLanguage = language,
+            devLanguage = language.completionProfile,
             documentSupplier = { docRef.get() }
         )
         editor.setEditorLanguage(wrapped)

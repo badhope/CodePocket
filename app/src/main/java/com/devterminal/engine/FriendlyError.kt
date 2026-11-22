@@ -9,8 +9,37 @@ package com.devterminal.engine
 object FriendlyError {
 
     /** 分析输出行，返回针对性的提示（无匹配则返回 null） */
-    fun hint(lines: List<String>): String? {
+    fun hint(lines: List<String>, languageId: String? = null): String? {
         val all = lines.joinToString("\n")
+        // JavaScript / Lua 的错误文案和 Python 差异很大，先按语言分流
+        if (languageId == LanguageRegistry.JAVASCRIPT.id) {
+            return when {
+                all.contains("SyntaxError") ->
+                    "JavaScript 语法错误。检查括号、引号是否成对，以及是否漏了逗号/分号。"
+                all.contains("ReferenceError") ->
+                    "引用了未定义的变量或函数。先声明（let/const/function）再使用。"
+                all.contains("TypeError") ->
+                    "类型不匹配：常见于对 null/undefined 取属性、调用不存在的函数，或数组方法用错。"
+                all.contains("RangeError") ->
+                    "数值/递归超出范围。检查递归终止条件，或数组长度是否异常。"
+                all.contains("EOFError") ->
+                    "程序在等输入但读到了 EOF。在底部输入行输入内容后回车即可。"
+                else -> null
+            }
+        }
+        if (languageId == LanguageRegistry.LUA.id) {
+            return when {
+                all.contains("attempt to index") ->
+                    "对一个 nil 值取字段/下标。先判断表是否存在，或初始化成 {}。"
+                all.contains("attempt to call") ->
+                    "调用了 nil 或非函数值。检查函数名拼写，以及是否 require/定义成功。"
+                all.contains("unexpected symbol") || all.contains("syntax error") ->
+                    "Lua 语法错误。检查 end/then/do 是否配对，字符串引号是否闭合。"
+                all.contains("EOF") ->
+                    "程序在等输入但读到了 EOF。在底部输入行输入内容后回车即可。"
+                else -> null
+            }
+        }
         return when {
             // ---------- Python ----------
             all.contains("ModuleNotFoundError") || all.contains("ImportError") -> {
@@ -79,7 +108,7 @@ object FriendlyError {
 
             all.contains("Killed") || all.contains("signal 9") ->
                 "进程被系统杀掉了（Android 后台限制）。\n" +
-                    "去 设置 → 应用 → DevTerminal → 电池 改成「无限制」，并避免同时开太多 App。"
+                    "去 设置 → 应用 → CodePocket → 电池 改成「无限制」，并避免同时开太多 App。"
 
             else -> null
         }

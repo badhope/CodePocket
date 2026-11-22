@@ -2,6 +2,46 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.21] — 2026-11-23
+
+### 新增
+
+- **MCP 工具**：Streamable HTTP / SSE data 响应；initialize → tools/list → tools/call，
+  只读工具自动执行，带副作用工具仍走审批。
+- **命令面板自定义命令**：`.codepocket/commands` 下的 Markdown 直接填入 Agent。
+- **项目 JS 插件**：`.codepocket/plugins` 下的 `run(input)` 在 Rhino 沙箱执行，
+  禁止 Java/文件/网络访问，默认关闭。
+- **下载前台服务**：复用现有 ExecutionService，按 tag 引用计数，退后台不被杀。
+
+### 构建
+
+- `versionCode 21` / `versionName 0.0.21`。
+
+## [0.0.20] — 2026-11-23
+
+### 新增
+
+- **Agent 历史会话**：Agent 面板新增「历史会话」入口，列出最近 20 个会话的任务、
+  时间、事件数与完成状态；可回放完整工具轨迹，也可单独删除。会话文件保留最近 30 个。
+- **完整 .part 恢复**：进程在“下载完成、改名之前”被杀后，下次启动直接校验完整 `.part`，
+  不再用 Range 请求撞 HTTP 416。
+- **下载取消真生效**：每个读写循环检查协程取消，暂停不再等到整段下载结束；
+  下载中禁止删除，避免 `.part` 与删除竞态。
+- **本地模型校验态**：下载完成后单独显示「校验中…」，不再显示 100% 卡住。
+- **NOTICE**：补充 llama.cpp（MIT）与 MiniCPM5 模型权重（Apache-2.0）声明。
+
+### 修复
+
+- 下载空间检查在 `usableSpace=0` 时不再绕过。
+- 历史会话打开时清空上一会话的检查点，避免撤销按钮指向错误快照。
+- Agent 事件 JSONL 落盘移到 IO 线程，避免主线程写文件。
+- 会话 ID 改用 UUID 后缀，避免同一毫秒内碰撞。
+- 会话只在工作区/Provider 校验通过后创建，避免留下空会话。
+
+### 构建
+
+- `versionCode 20` / `versionName 0.0.20`。
+
 ## [1.0.1] — 2026-09-27
 
 ### 修复
