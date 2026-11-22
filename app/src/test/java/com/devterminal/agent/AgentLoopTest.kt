@@ -24,6 +24,7 @@ class AgentLoopTest {
         override val id = "fake"
         override val label = "fake"
         var calls = 0
+        var lastSystemPrompt = ""
 
         override suspend fun complete(
             systemPrompt: String,
@@ -32,6 +33,7 @@ class AgentLoopTest {
             maxTokens: Int,
         ): String {
             calls++
+            lastSystemPrompt = systemPrompt
             check(replies.isNotEmpty()) { "FakeProvider has no reply left" }
             return replies.removeAt(0)
         }
@@ -67,6 +69,9 @@ class AgentLoopTest {
         assertTrue(events.any { it is AgentEvent.ToolResult && it.ok })
         assertTrue(events.any { it is AgentEvent.SessionFinished })
         assertEquals(2, provider.calls)
+        assertTrue(provider.lastSystemPrompt.contains("项目地图"))
+        assertTrue(provider.lastSystemPrompt.contains("src/main.py"))
+        assertTrue(events.any { it is AgentEvent.ContextBuilt })
     }
 
     @Test

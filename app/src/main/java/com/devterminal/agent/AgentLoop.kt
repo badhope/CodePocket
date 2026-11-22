@@ -4,6 +4,8 @@ import com.devterminal.model.ModelMessage
 import com.devterminal.model.ModelProvider
 import com.devterminal.workspace.Workspace
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 写操作审批策略。读操作默认自动，写操作必须由 UI 或调用方显式批准。
@@ -41,6 +43,7 @@ class AgentLoop(
     private val approvalPolicy: ApprovalPolicy = ApprovalPolicy(),
     private val approve: ApprovalHandler = ApprovalHandler { false },
     private val maxSteps: Int = 8,
+    private val contextBuilder: ContextBuilder = ContextBuilder(),
 ) {
     suspend fun run(
         task: String,
@@ -50,14 +53,27 @@ class AgentLoop(
         emit(AgentEvent.SessionStarted(workspace.root.absolutePath))
         emit(AgentEvent.UserMessage(task))
 
+        val repoMap = withContext(Dispatchers.IO) {
+            runCatching {
+                RepoMapBuilder(workspace).build(task, contextBuilder.repoMapMaxChars)
+            }.getOrNull()
+        }
+        val rules = withContext(Dispatchers.IO) {
+            runCatching { ProjectRules.read(workspace) }.getOrNull()
+        }
+        val systemPrompt = contextBuilder.systemPrompt(SYSTEM_PROMPT, repoMap?.text, rules)
+        repoMap?.let {
+            emit(AgentEvent.ContextBuilt(it.files.size, it.totalFiles, it.text.length))
+        }
+
         val history = mutableListOf(ModelMessage("user", task))
         var lastFailure = ""
 
         for (step in 1..maxSteps) {
             val raw = try {
                 provider.complete(
-                    systemPrompt = SYSTEM_PROMPT,
-                    messages = compact(history),
+                    systemPrompt = systemPrompt,
+                    messages = contextBuilder.compactHistory(history),
                     tools = tools.specs(),
                     maxTokens = 2000,
                 )
@@ -131,7 +147,9 @@ class AgentLoop(
                             return AgentRunResult(false, message, step)
                         }
                         val checkpoint = try {
-                            checkpoints.snapshot("${call.name}: $path", listOf(path))
+                            withContext(Dispatchers.IO) {
+                                checkpoints.snapshot("${call.name}: $path", listOf(path))
+                            }
                         } catch (e: Exception) {
                             val message = "创建检查点失败：${e.message}"
                             emit(AgentEvent.Failure(message))
@@ -140,7 +158,9 @@ class AgentLoop(
                         emit(AgentEvent.Checkpoint(checkpoint.id, checkpoint.label))
                     }
 
-                    val result = tools.execute(call, workspace)
+                    val result = withContext(Dispatchers.IO) {
+                        tools.execute(call, workspace)
+                    }
                     emit(AgentEvent.ToolResult(call.id, result.ok, result.output, result.truncated))
                     if (call.name == "apply_patch" && result.ok) {
                         emit(AgentEvent.PatchApplied(call.id, listOfNotNull(call.arguments["path"])))
@@ -196,11 +216,6 @@ class AgentLoop(
             paths = listOfNotNull(path.takeIf { it.isNotBlank() }),
             diff = diff,
         )
-    }
-
-    private fun compact(history: List<ModelMessage>): List<ModelMessage> {
-        if (history.size <= 12) return history
-        return history.take(1) + history.takeLast(11)
     }
 
     companion object {

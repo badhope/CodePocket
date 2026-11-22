@@ -24,6 +24,14 @@ sealed interface AgentEvent {
         override val at: Long = now(),
     ) : AgentEvent
 
+    data class ContextBuilt(
+        val mappedFiles: Int,
+        val totalFiles: Int,
+        val chars: Int,
+        override val id: String = newEventId(),
+        override val at: Long = now(),
+    ) : AgentEvent
+
     data class Plan(
         val steps: List<String>,
         override val id: String = newEventId(),

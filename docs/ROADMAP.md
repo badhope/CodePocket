@@ -4,7 +4,7 @@
 
 ---
 
-## 已实现（v0.0.16 Agent 验证）
+## 已实现（v0.0.17 上下文版）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
@@ -14,7 +14,11 @@
 - ✅ Agent 面板：工具轨迹、观察结果、diff、批准/拒绝、停止
 - ✅ 云端 `ModelProvider`（OpenAI 兼容端点，复用 `AiClient`）
 - ✅ `run_file` / `run_tests`：受限执行项目内文件，Python unittest discover，输出尾部回读
-- ✅ Agent 面板「撤销本次 Agent 修改」：确认后从最近检查点恢复
+- ✅ Agent 面板「撤销本次 Agent 修改」：确认后按逆序恢复整轮全部检查点
+- ✅ `RepoMapBuilder`：任务关键词排序、符号提取、2200 字符预算、大文件与二进制跳过
+- ✅ `ContextBuilder`：系统提示词预算、RepoMap 裁剪、历史消息按字符预算压缩
+- ✅ 项目规则：自动读取 `AGENTS.md` / `.codepocket/rules.md`，注入 Agent 提示词
+- ✅ Agent 文件 IO 全部切到 `Dispatchers.IO`，扫描项目不再阻塞主线程
 
 ## v0.0.14 基线
 
