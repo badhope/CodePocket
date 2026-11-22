@@ -1,6 +1,7 @@
 package com.devterminal.project
 
 import com.devterminal.engine.EnvironmentInstaller
+import com.devterminal.engine.LanguageRegistry
 import java.io.File
 
 /** 文件树节点 */
@@ -10,6 +11,19 @@ data class FileNode(
     val isDirectory: Boolean,
     val children: List<FileNode> = emptyList()
 )
+
+/**
+ * 文件名清洗：只去掉路径分隔符和 Windows 非法字符，**保留点号**。
+ *
+ * 旧实现把 `.` 也替换成 `_`，新建 `main.py` 实际得到 `main_py`，
+ * 重命名同样；这是 P0 级 bug。抽成顶层函数后可直接单测。
+ */
+internal fun sanitizeFileName(name: String): String {
+    val cleaned = name.trim()
+        .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
+        .trim()
+    return if (cleaned.isBlank() || cleaned == "." || cleaned == "..") "untitled" else cleaned
+}
 
 /**
  * 项目文件管理。
@@ -44,8 +58,8 @@ class ProjectManager(installer: EnvironmentInstaller) {
             f.parentFile?.mkdirs()
             f.writeText(content)
         }
-        // 记录语言，便于 UI 选择运行配置
-        File(dir, ".devterminal").writeText(template.language.name)
+        // 记录语言 id，便于 UI 选择运行配置
+        File(dir, ".devterminal").writeText(template.languageId)
         return dir
     }
 
@@ -104,18 +118,17 @@ class ProjectManager(installer: EnvironmentInstaller) {
         return if (target.renameTo(dest)) dest else null
     }
 
-    /** 项目所用语言（读 .devterminal 标记，缺省按扩展名推断） */
-    fun languageOf(projectDir: File): com.devterminal.engine.Language {
+    /** 项目所用语言 id（读 .devterminal 标记，缺省按扩展名推断） */
+    fun languageIdOf(projectDir: File): String {
         val mark = File(projectDir, ".devterminal")
         if (mark.exists()) {
-            runCatching { return com.devterminal.engine.Language.valueOf(mark.readText().trim()) }
+            return LanguageRegistry.migrateLegacyId(mark.readText())
         }
-        return if (projectDir.walkTopDown().any { it.extension == "java" })
-            com.devterminal.engine.Language.JAVA else com.devterminal.engine.Language.PYTHON
+        val first = projectDir.walkTopDown().firstOrNull { it.isFile }
+        return LanguageRegistry.forFile(first).id
     }
 
-    private fun sanitize(name: String): String =
-        name.trim().replace(Regex("[^A-Za-z0-9_\\-\\u4e00-\\u9fa5]"), "_").ifBlank { "untitled" }
+    private fun sanitize(name: String): String = sanitizeFileName(name)
 
     private companion object {
         /** 文件树递归深度上限 */

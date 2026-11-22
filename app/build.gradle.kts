@@ -15,7 +15,7 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 14
-        versionName = "1.0.0"
+        versionName = "0.0.14"
         vectorDrawables { useSupportLibrary = true }
         // 原生 CPython 引擎：只打 arm64（当前覆盖绝大多数 Android 设备）
         ndk { abiFilters += "arm64-v8a" }
@@ -103,6 +103,10 @@ dependencies {
 
     // ===== Markdown 解析：实时预览用（纯 Kotlin，GFM 方言） =====
     implementation(libs.intellij.markdown)
+
+    // ===== 纯 Java 运行时：Rhino (JS) / LuaJ (Lua)，无 native/16KB =====
+    implementation(libs.rhino)
+    implementation(libs.luaj)
 
     // 单元测试：纯 JVM 逻辑（如报错行解析）不依赖 Android 框架，可直接跑
     testImplementation(libs.junit)

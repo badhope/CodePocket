@@ -286,15 +286,15 @@ fun AboutDialog(onDismiss: () -> Unit) {
             Icon(Icons.Outlined.Terminal, null, tint = cs.primary, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(Dimens.sm))
             Column {
-                Text("DevTerminal", style = MaterialTheme.typography.titleSmall,
+                Text("CodePocket", style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold)
                 MonoText("版本 ${BuildConfig.VERSION_NAME}", color = cs.muted, fontSize = 10)
             }
         }
         Spacer(Modifier.height(Dimens.md))
         Text(
-            "完全离线的安卓编程终端。内置原生 CPython 3.13.9（PEP 738, arm64-v8a），" +
-                "装好即用，无需联网即可编写、运行 Python 代码。",
+            "完全离线的安卓多语言 IDE。Python 由原生 CPython 执行，" +
+                "JavaScript 由 Rhino、Lua 由 LuaJ 执行；另有 17 种语言支持编辑、语法高亮与补全。",
             style = MaterialTheme.typography.bodySmall,
             color = cs.muted
         )
@@ -304,7 +304,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
         listOf(
             "SoraEditor — LGPL-2.1（代码编辑器）",
             "Python 3.13 — PSF License",
-            "NativeEngine — MIT",
+            "Rhino — MPL-2.0（JavaScript 运行时）",
+            "LuaJ — MIT（Lua 运行时）",
             "Jetpack Compose — Apache-2.0",
             "AndroidX — Apache-2.0"
         ).forEach {
@@ -313,7 +314,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(Dimens.md))
         Text(
-            "离线 Python 能力由原生 CPython 3.13.9 提供，遵循 PSF 许可；" +
+            "Python 能力由原生 CPython 3.13.9 提供，遵循 PSF 许可；" +
                 "SoraEditor 以 LGPL 授权，用户可自行替换该库。",
             style = MaterialTheme.typography.labelSmall,
             color = cs.faint
@@ -321,13 +322,11 @@ fun AboutDialog(onDismiss: () -> Unit) {
     }
 }
 
-/** 运行配置：命令行参数 + Java 主类 */
+/** 运行配置：只保留命令行参数；语言差异由 LanguageRegistry 处理 */
 @Composable
 fun RunConfigDialog(
     args: String,
-    mainClass: String,
     onArgsChange: (String) -> Unit,
-    onMainClassChange: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val cs = MaterialTheme.colorScheme
@@ -339,22 +338,6 @@ fun RunConfigDialog(
             onValueChange = onArgsChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = "如: --name \"hello world\" -v"
-        )
-        Spacer(Modifier.height(Dimens.lg))
-        SectionLabel("Java 主类（暂未支持）")
-        Spacer(Modifier.height(Dimens.sm))
-        QuietTextField(
-            value = mainClass,
-            onValueChange = onMainClassChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = "如: com.example.Main",
-            enabled = false
-        )
-        Spacer(Modifier.height(Dimens.sm))
-        Text(
-            "当前引擎仅执行 Python；Java 运行能力后续开放，此项暂不生效。",
-            style = MaterialTheme.typography.labelSmall,
-            color = cs.faint
         )
         Spacer(Modifier.height(Dimens.md))
         Text(
@@ -502,13 +485,19 @@ fun FileActionDialog(
     }
 }
 
-/** 新建文件：输入文件名 */
+/** 新建文件 / 文件夹共用的命名输入；两个入口只差标题、占位符和提示。 */
 @Composable
-fun NewFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
+fun NameInputDialog(
+    title: String,
+    placeholder: String,
+    hint: String? = null,
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
     var name by remember { mutableStateOf("") }
     QuietDialog(
         onDismiss = onDismiss,
-        title = "新建文件",
+        title = title,
         confirmLabel = if (name.isNotBlank()) "创建" else null,
         onConfirm = if (name.isNotBlank()) { { onCreate(name.trim()) } } else null
     ) {
@@ -516,34 +505,40 @@ fun NewFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
             value = name,
             onValueChange = { name = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = "如: main.py"
+            placeholder = placeholder
         )
-        Spacer(Modifier.height(Dimens.sm))
-        Text(
-            "文件创建在当前项目根目录，创建后自动打开。",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.muted
-        )
+        if (hint != null) {
+            Spacer(Modifier.height(Dimens.sm))
+            Text(
+                hint,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.muted
+            )
+        }
     }
+}
+
+/** 新建文件：输入文件名 */
+@Composable
+fun NewFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
+    NameInputDialog(
+        title = "新建文件",
+        placeholder = "如: main.py / app.js / main.lua",
+        hint = "文件创建在当前项目根目录，创建后自动打开。",
+        onDismiss = onDismiss,
+        onCreate = onCreate
+    )
 }
 
 /** 新建文件夹：输入文件夹名 */
 @Composable
 fun NewFolderDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    QuietDialog(
-        onDismiss = onDismiss,
+    NameInputDialog(
         title = "新建文件夹",
-        confirmLabel = if (name.isNotBlank()) "创建" else null,
-        onConfirm = if (name.isNotBlank()) { { onCreate(name.trim()) } } else null
-    ) {
-        QuietTextField(
-            value = name,
-            onValueChange = { name = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = "如: utils"
-        )
-    }
+        placeholder = "如: utils",
+        onDismiss = onDismiss,
+        onCreate = onCreate
+    )
 }
 
 /** 切换项目：列出所有已有项目，点一个就切过去；底部可新建项目 */

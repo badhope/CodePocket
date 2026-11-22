@@ -35,17 +35,20 @@
 
 | 文件 | 职责 |
 |---|---|
-| `RunModels.kt` | `RunRequest` / `RunEvent` / `Language` 等运行契约 |
+| `RunModels.kt` | `RunRequest` / `RunEvent` 等运行契约（语言用 `languageId`） |
 | `RunEngine.kt` | 引擎接口：`run` / `stop` / `writeStdin` / `closeStdin` / `release` |
-| `EngineProvider.kt` | 工厂：运行时自检 → 创建 `NativeEngine`；失败给出可读错误 |
-| `NativeEngine.kt` | 原生引擎实现：初始化、执行、中断、状态机 |
+| `LanguageRegistry.kt` | 单一事实源：20 种语言的 id/扩展名/语法/补全/运行级；3 运行 + 17 编辑 |
+| `RuntimeRegistry.kt` | languageId → RunEngine 路由：Python / JavaScript / Lua |
+| `EngineProvider.kt` | 工厂：Python 运行时自检 → 创建 `NativeEngine` |
+| `NativeEngine.kt` | Python 原生引擎：初始化、执行、中断、状态机 |
+| `JavaScriptEngine.kt` | Rhino 运行时：ES6、console/input、超时中断 |
+| `LuaEngine.kt` | LuaJ 运行时：Lua 5.2、print/input、DebugLib 超时 |
 | `NativeBridge.kt` | JNI 声明：`initialize` / `execFile` / `pushInputLine` / `pushEof` / `requestInterrupt` / `shutdown` |
 | `EnvironmentInstaller.kt` | 环境自检与安装（引擎相关部分） |
 | `ExecutionService.kt` | 前台服务：运行期间保活（Android 12+） |
 | `GitManager.kt` | JGit 封装：init / commit / push / pull |
-| `FriendlyError.kt` | 20+ 高频错误的"人话"翻译 |
-| `SyntaxCheck.kt` | 轻量语法预检 |
-| `CompletionProvider.kt` | 静态补全：关键字 / 内置函数 / 文件符号 |
+| `FriendlyError.kt` | Python / JavaScript / Lua 高频错误的"人话"翻译 |
+| `CompletionProvider.kt` | 静态补全：按 `CompletionProfile` 的关键字 / 内置函数 / 文件符号 |
 
 ---
 

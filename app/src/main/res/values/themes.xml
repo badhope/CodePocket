@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- 启动屏主题：深色背景 + app 图标 -->
-    <style name="Theme.DevTerminal.Splash" parent="Theme.SplashScreen">
+    <style name="Theme.CodePocket.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#0F172A</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.DevTerminal</item>
+        <item name="postSplashScreenTheme">@style/Theme.CodePocket</item>
     </style>
 
     <!-- Compose 自行渲染 UI，这里只需一个无 ActionBar 的主题底座 -->
-    <style name="Theme.DevTerminal" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.CodePocket" parent="android:Theme.Material.NoActionBar">
         <!-- 冷启动窗口背景：Quiet 深色 + 居中终端标识，规避白屏闪烁 -->
         <item name="android:windowBackground">@drawable/bg_splash</item>
     </style>

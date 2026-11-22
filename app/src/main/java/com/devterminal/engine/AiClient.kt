@@ -186,8 +186,8 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
     companion object {
         /** 内置系统提示词：明确告知运行环境与回答风格 */
         const val SYSTEM_PROMPT =
-            "你是 DevTerminal 的编程助手。用户在安卓手机上的 IDE 里写 Python / Java。" +
-            "回答要求：中文、简洁、直接给结论和代码，" +
+            "你是 CodePocket 的编程助手。用户在安卓手机上的离线 IDE 里写 Python / JavaScript / Lua。" +
+            "另有 Java/Kotlin/TypeScript 等编辑级语言。回答要求：中文、简洁、直接给结论和代码，" +
             "代码用 Markdown 代码块标注语言，避免冗长解释。"
 
         /** 从报错输出中提取要发给 AI 的错误上下文（截断防 token 爆炸） */

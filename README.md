@@ -2,9 +2,9 @@
 
 # 📱 CodePocket 口袋码
 
-**A truly offline Python IDE for Android — a modern coding environment on your phone, install and run.**
+**A truly offline multi-language IDE for Android — Python, JavaScript and Lua run out of the box, 17 more languages stay editable on your phone.**
 
-A natively cross-compiled CPython 3.13 (with C-extension stdlib modules) is bundled inside the APK. Zero downloads, zero network, zero ads, zero subscriptions.
+Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.13, Rhino for JavaScript and LuaJ for Lua. Zero downloads, zero network, zero ads, zero subscriptions.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Android-8.0%2B-green?style=flat-square)](https://developer.android.com)
@@ -28,7 +28,7 @@ A natively cross-compiled CPython 3.13 (with C-extension stdlib modules) is bund
 | Modern IDE UI | ❌ terminal only | ⚠️ dated | ✅ | ✅ | ✅ |
 | Multi-file tabs / find & replace | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Offline Git | ✅ | ❌ | ✅ | ✅ | ✅ **JGit** |
-| Native performance | ✅ | ✅ | — | — | ✅ **native ARM64** |
+| Native performance | ✅ | ✅ | — | — | ✅ **native ARM64 + pure-Java runtimes** |
 | AI assistant (BYOK) | ❌ | ❌ | ✅ cloud | ✅ cloud | ✅ **custom endpoint** |
 | Open source & ad-free | ✅ GPL | ❌ paid | ⚠️ ads | ⚠️ IAP | ✅ **Apache-2.0** |
 
@@ -63,8 +63,9 @@ A natively cross-compiled CPython 3.13 (with C-extension stdlib modules) is bund
 └──────────────────┬──────────────────────────┘
                    │ JNI (jobject callbacks)
 ┌──────────────────▼──────────────────────────┐
-│  NativeEngine (Kotlin) + pybridge.c (JNI)    │
-│  CPython 3.13 cross-compiled to arm64        │
+│  RuntimeRegistry                            │
+│  Python: NativeEngine + pybridge.c (JNI)     │
+│  JavaScript: Rhino · Lua: LuaJ              │
 │  streaming stdout/stderr · timeout · stdin   │
 └──────────────────┬──────────────────────────┘
                    │ dlopen + sys.path
@@ -75,7 +76,7 @@ A natively cross-compiled CPython 3.13 (with C-extension stdlib modules) is bund
 └─────────────────────────────────────────────┘
 ```
 
-**Core trade-off**: no custom terminal emulator, no external native toolchain dependency. CPython 3.13 is cross-compiled with the NDK into a native arm64 library and shipped inside the APK — offline after install. Only the Python runtime is integrated for now; Java (JVM) is not yet integrated (editing/highlighting only).
+**Core trade-off**: no custom terminal emulator, no external native toolchain dependency. CPython 3.13 is cross-compiled with the NDK into a native arm64 library; JavaScript and Lua use pure-Java Rhino/LuaJ, so they also work on non-arm64 devices. Java/Kotlin/TypeScript and 14 other languages are editing-only.
 
 ---
 
@@ -83,19 +84,20 @@ A natively cross-compiled CPython 3.13 (with C-extension stdlib modules) is bund
 
 ### Write code
 - **Multi-file tabs** · **file tree** (new / rename / delete, long-press actions)
-- **Sora Editor** code editor + 18-language TextMate syntax highlighting
-- **Static completion**: Python keywords / builtins + symbols from the current file (zero process overhead)
+- **Sora Editor** code editor + 20-language TextMate syntax highlighting (3 runnable, 17 editable)
+- **Static completion**: per-language keyword/builtin profiles + symbols from the current file (zero process overhead)
 - **Find & replace** (count & jump) · **global search** (cross-file)
 - **26-key symbol bar** · **pinch-to-zoom font size** · auto bracket closing · soft wrap · line number toggle
 - **6 editor themes** (Darcula / Monokai / Tomorrow Night Blue / Solarized…)
 
 ### Run code
-- **Native CPython 3.13 (arm64)**, full stdlib (pure-Python part + C extensions)
-- **math / json / random / datetime / socket / ssl / sqlite3 / ctypes** and more C extensions bundled
+- **Python**: native CPython 3.13 (arm64), full stdlib (pure-Python part + C extensions)
+- **JavaScript**: Rhino 1.7.15, pure Java, `console.log` / `input`
+- **Lua**: LuaJ 3.0.1, pure Java, `print` / `input`
 - **Streaming output** · **`input()` interaction** · arrow-key / Tab soft keyboard
 - **Infinite-loop protection** (timeout interrupt) · foreground service keep-alive
-- **Friendly error translations** (20+ common errors)
-- Run configuration (command-line args) · standard script attributes like `__file__`
+- **Friendly error translations** (Python / JavaScript / Lua)
+- Run configuration (command-line args) · standard Python script attributes like `__file__`
 
 ### Manage projects
 - **Multi-project switching** (long-press to delete) · **4 Python templates**

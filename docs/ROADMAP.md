@@ -4,12 +4,12 @@
 
 ---
 
-## 已实现（v1.0.0 基线）
+## 已实现（v0.0.14 基线）
 
-- ✅ 原生 CPython 3.13 运行引擎（ARM64，零外部依赖）
+- ✅ 三种可运行语言：Python（原生 CPython 3.13，ARM64）、JavaScript（Rhino，纯 Java）、Lua（LuaJ，纯 Java）
 - ✅ JNI 桥：stdin/stdout/stderr 三路桥接、死循环中断、`input()` 交互
 - ✅ 标准库全量随包（纯 Python + C 扩展：math/json/socket/ssl/sqlite3/ctypes…）
-- ✅ Sora Editor 编辑器（18 种语言高亮、补全、查找替换、全局搜索）
+- ✅ Sora Editor 编辑器（20 种语言高亮、补全、查找替换、全局搜索；3 种可运行 + 17 种编辑级）
 - ✅ 文件树 / 多 Tab / 项目模板 / 多项目切换 / SAF 导入导出
 - ✅ 离线 Git（JGit：init/commit/push/pull）
 - ✅ Markdown / HTML 分屏预览、PNG 查看

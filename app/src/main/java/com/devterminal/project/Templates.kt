@@ -1,13 +1,13 @@
 package com.devterminal.project
 
-import com.devterminal.engine.Language
+import com.devterminal.engine.LanguageRegistry
 
 /** 项目模板 */
 data class ProjectTemplate(
     val id: String,
     val title: String,
     val description: String,
-    val language: Language,
+    val languageId: String,
     /** 相对路径 -> 初始内容 */
     val files: Map<String, String>
 )
@@ -18,13 +18,13 @@ object Templates {
         id = "python-hello",
         title = "Python 空白项目",
         description = "一个 main.py，点击运行即可看到输出",
-        language = Language.PYTHON,
+        languageId = LanguageRegistry.PYTHON.id,
         files = mapOf(
             "main.py" to """
                 # -*- coding: utf-8 -*-
-                # DevTerminal 离线 Python 模板
+                # CodePocket 离线 Python 模板
                 def main():
-                    print("Hello from DevTerminal!")
+                    print("Hello from CodePocket!")
                     total = sum(i * i for i in range(1, 11))
                     print(f"1^2 + 2^2 + ... + 10^2 = {total}")
 
@@ -38,7 +38,7 @@ object Templates {
         id = "python-data",
         title = "Python 数据处理",
         description = "纯标准库 statistics 模块统计示例",
-        language = Language.PYTHON,
+        languageId = LanguageRegistry.PYTHON.id,
         files = mapOf(
             "analyze.py" to """
                 # -*- coding: utf-8 -*-
@@ -59,30 +59,11 @@ object Templates {
         )
     )
 
-    val JAVA_HELLO = ProjectTemplate(
-        id = "java-hello",
-        title = "Java 控制台项目",
-        description = "标准 Java SE 程序（离线编译 + 运行）",
-        language = Language.JAVA,
-        files = mapOf(
-            "Main.java" to """
-                public class Main {
-                    public static void main(String[] args) {
-                        System.out.println("Hello from DevTerminal (Java)!");
-                        long sum = 0;
-                        for (int i = 1; i <= 100; i++) sum += i;
-                        System.out.println("1 + 2 + ... + 100 = " + sum);
-                    }
-                }
-            """.trimIndent()
-        )
-    )
-
     val PYTHON_INTERACTIVE = ProjectTemplate(
         id = "python-interactive",
         title = "Python 交互输入",
         description = "演示 input() 交互：猜数字游戏（练习标准输入）",
-        language = Language.PYTHON,
+        languageId = LanguageRegistry.PYTHON.id,
         files = mapOf(
             "main.py" to """
                 # -*- coding: utf-8 -*-
@@ -118,7 +99,7 @@ object Templates {
         id = "python-multi",
         title = "Python 多模块",
         description = "演示多文件协作：main.py 导入同目录的 utils.py",
-        language = Language.PYTHON,
+        languageId = LanguageRegistry.PYTHON.id,
         files = mapOf(
             "utils.py" to """
                 # -*- coding: utf-8 -*-
@@ -152,42 +133,115 @@ object Templates {
         )
     )
 
-    val JAVA_MULTI = ProjectTemplate(
-        id = "java-multi",
-        title = "Java 多文件项目",
-        description = "演示多文件编译：Main 调用 Calculator，含 package 声明",
-        language = Language.JAVA,
+    val JAVASCRIPT_HELLO = ProjectTemplate(
+        id = "javascript-hello",
+        title = "JavaScript 空白项目",
+        description = "一个 main.js，Rhino 运行时，支持 console.log 与 input",
+        languageId = LanguageRegistry.JAVASCRIPT.id,
         files = mapOf(
-            "Main.java" to """
-                public class Main {
-                    public static void main(String[] args) {
-                        System.out.println("Java 多文件项目演示");
-                        Calculator calc = new Calculator();
-                        System.out.println("3 + 4 = " + calc.add(3, 4));
-                        System.out.println("10! = " + calc.factorial(10));
-                    }
+            "main.js" to """
+                // CodePocket 离线 JavaScript 模板
+                function main() {
+                    console.log("Hello from CodePocket!");
+                    const nums = [1, 2, 3, 4, 5];
+                    const total = nums.reduce((a, b) => a + b, 0);
+                    console.log("1 + 2 + ... + 5 = " + total);
                 }
-            """.trimIndent(),
-            "Calculator.java" to """
-                public class Calculator {
-                    public int add(int a, int b) {
-                        return a + b;
-                    }
 
-                    public long factorial(int n) {
-                        long r = 1;
-                        for (int i = 2; i <= n; i++) r *= i;
-                        return r;
-                    }
-                }
+                main();
             """.trimIndent()
         )
     )
 
-    // Java 模板（JAVA_HELLO / JAVA_MULTI）保留定义备查，但不进 all——
-    // 当前唯一运行时是 NativeEngine（原生 CPython，只 execFile .py），未实现 Java
-    // 编译/运行链路，放出来用户选了跑不了。待未来接入原生 JDK/Java 运行时再恢复。
+    val JAVASCRIPT_ALGO = ProjectTemplate(
+        id = "javascript-algo",
+        title = "JavaScript 算法练习",
+        description = "数组、函数、循环，适合刷基础题",
+        languageId = LanguageRegistry.JAVASCRIPT.id,
+        files = mapOf(
+            "main.js" to """
+                // 斐波那契 + 素数筛选
+                function fib(n) {
+                    const seq = [0, 1];
+                    while (seq.length < n) {
+                        seq.push(seq[seq.length - 1] + seq[seq.length - 2]);
+                    }
+                    return seq.slice(0, n);
+                }
+
+                function isPrime(n) {
+                    if (n < 2) return false;
+                    for (let i = 2; i * i <= n; i++) {
+                        if (n % i === 0) return false;
+                    }
+                    return true;
+                }
+
+                console.log("fib(10):", fib(10));
+                console.log("primes < 50:", Array.from({length: 50}, (_, i) => i).filter(isPrime));
+            """.trimIndent()
+        )
+    )
+
+    val LUA_HELLO = ProjectTemplate(
+        id = "lua-hello",
+        title = "Lua 空白项目",
+        description = "一个 main.lua，LuaJ 运行时，支持 print 与 input",
+        languageId = LanguageRegistry.LUA.id,
+        files = mapOf(
+            "main.lua" to """
+                -- CodePocket 离线 Lua 模板
+                local function main()
+                    print("Hello from CodePocket!")
+                    local total = 0
+                    for i = 1, 10 do
+                        total = total + i * i
+                    end
+                    print("1^2 + 2^2 + ... + 10^2 = " .. total)
+                end
+
+                main()
+            """.trimIndent()
+        )
+    )
+
+    val LUA_TABLE = ProjectTemplate(
+        id = "lua-table",
+        title = "Lua 表与函数",
+        description = "table、函数、循环，适合写小游戏逻辑",
+        languageId = LanguageRegistry.LUA.id,
+        files = mapOf(
+            "main.lua" to """
+                -- Lua table + function 示例
+                local function fib(n)
+                    local seq = {0, 1}
+                    while #seq < n do
+                        seq[#seq + 1] = seq[#seq] + seq[#seq - 1]
+                    end
+                    return seq
+                end
+
+                local function is_prime(n)
+                    if n < 2 then return false end
+                    for i = 2, math.floor(math.sqrt(n)) do
+                        if n % i == 0 then return false end
+                    end
+                    return true
+                end
+
+                print("fib(10):", fib(10))
+                local primes = {}
+                for i = 2, 49 do
+                    if is_prime(i) then primes[#primes + 1] = i end
+                end
+                print("primes < 50:", primes)
+            """.trimIndent()
+        )
+    )
+
+    /** 只放能运行的模板；编辑级语言不提供“新建项目”入口。 */
     val all: List<ProjectTemplate> = listOf(
-        PYTHON_HELLO, PYTHON_INTERACTIVE, PYTHON_MULTI, PYTHON_DATA
+        PYTHON_HELLO, PYTHON_INTERACTIVE, PYTHON_MULTI, PYTHON_DATA,
+        JAVASCRIPT_HELLO, JAVASCRIPT_ALGO, LUA_HELLO, LUA_TABLE
     )
 }

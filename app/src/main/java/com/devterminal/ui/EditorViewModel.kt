@@ -10,7 +10,9 @@ import com.devterminal.engine.EnvironmentInstaller
 import com.devterminal.engine.ExecutionService
 import com.devterminal.engine.FriendlyError
 import com.devterminal.engine.GitManager
-import com.devterminal.engine.Language
+import com.devterminal.engine.LanguageRegistry
+import com.devterminal.engine.LanguageSpec
+import com.devterminal.engine.RuntimeRegistry
 import com.devterminal.engine.RunEvent
 import com.devterminal.engine.RunRequest
 import com.devterminal.engine.RunEngine
@@ -64,8 +66,6 @@ data class UiState(
     val installProgress: Float = -1f,
     /** 运行配置：命令行参数（空格分隔） */
     val runArgs: String = "",
-    /** 运行配置：Java 主类全限定名（留空=自动探测） */
-    val mainClass: String = "",
     /** 用户设置 */
     val settings: com.devterminal.settings.AppSettings = com.devterminal.settings.AppSettings(),
     /** 顶部打开的文件 Tab 列表 */
@@ -136,7 +136,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * EngineProvider.create 会抛 IllegalStateException；放字段初始化器会在 ViewModel
      * 构造期直接闪退，走不到 MissingToolchainScreen。这里改 lateinit + runCatching 兜底。
      */
-    private lateinit var engine: RunEngine
+    private var pythonEngine: RunEngine? = null
+    private var runtimes: RuntimeRegistry? = null
+    /** 当前这次运行使用的引擎，stop/sendInput 必须打到同一个实例 */
+    private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
     private val settingsStore = com.devterminal.settings.SettingsStore(context)
 
@@ -174,33 +177,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             // P1-2：在协程内构造引擎，构造失败（缺 .so/错 ABI/缺 stdlib.zip）不闪退，
             // 而是置 ERROR 态，由 MissingToolchainScreen + 重试按钮接管。
             val engineOk = withContext(Dispatchers.IO) {
-                runCatching { engine = EngineProvider.create(context) }.isSuccess
+                runCatching { pythonEngine = EngineProvider.create(context) }.isSuccess
             }
-            if (!engineOk) {
-                _ui.update { it.copy(
-                    envState = EnvState.ERROR,
-                    envMessage = "Python 运行时加载失败",
-                    message = "原生 CPython 运行时初始化失败，请确认 APK 完整安装后重试。",
-                    messageSeq = it.messageSeq + 1
-                ) }
-                return@launch
-            }
+            // 即使 Python 原生库不可用（非 arm64 / 资产缺失），也把纯 Java 的 JS/Lua 撑起来。
+            runtimes = RuntimeRegistry(pythonEngine)
+            pythonEngine?.warmup()
+            runtimes?.warmup()
 
-            // 预热原生解释器：用户点「运行」时无需干等启动开销
-            engine.warmup()
-
-            // 环境自检：报告当前能力（Python 可用、Java 暂不可用）
             val hasGit = withContext(Dispatchers.IO) { git.isGitInstalled() }
             _ui.update { it.copy(
                 envState = EnvState.READY,
-                envMessage = "离线环境就绪（Python · CPython 3.13.9 arm64）",
+                envMessage = if (engineOk) "离线环境就绪（Python · JavaScript · Lua）"
+                             else "JavaScript / Lua 就绪（Python 当前不可用）",
                 installProgress = -1f,
                 gitInstalled = hasGit,
-                output = listOf(
-                    "[DevTerminal] 离线运行环境已就绪，全程无需联网。",
-                    "[DevTerminal] Python 由原生 CPython 3.13.9（arm64）执行，随 APK 打包。",
-                    "[DevTerminal] 说明：Java（JVM）暂仅支持编辑与语法高亮，运行能力后续开放。"
-                )
+                output = buildList {
+                    add("[CodePocket] 离线环境已就绪，全程无需联网。")
+                    if (engineOk) add("[CodePocket] Python 由原生 CPython 执行；JavaScript 由 Rhino、Lua 由 LuaJ 执行。")
+                    else add("[CodePocket] Python 原生库不可用（常见于非 arm64 设备），JavaScript/Lua 仍可运行。")
+                    add("[CodePocket] 其余 17 种语言提供编辑、语法高亮与静态补全。")
+                }
             ) }
             restoreSession()
             // 后台跑一次自检，不阻塞用户开始写代码
@@ -335,7 +331,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     currentFile = file,
                     editorText = content,
                     dirty = false,
-                    languageLabel = languageLabelOf(file),
+                    languageLabel = LanguageRegistry.labelOf(file),
                     // 切到不可预览的文件时自动收起预览分屏，避免留下空面板
                     previewVisible = st.previewVisible && isPreviewable(file),
                     // 打开新文件自动挂到 Tab 条上（已打开的不重复加）
@@ -411,33 +407,29 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 withContext(Dispatchers.IO) { projects.write(file.absolutePath, st.editorText) }
                 _ui.update { it.copy(dirty = false) }
-                launchRun(file)
+                launchRun(file, LanguageRegistry.forFile(file), runtimes?.engineFor(LanguageRegistry.forFile(file).id))
             }
         } else {
-            launchRun(file)
+            launchRun(file, LanguageRegistry.forFile(file), runtimes?.engineFor(LanguageRegistry.forFile(file).id))
         }
     }
 
-    private fun launchRun(file: File) {
-        // P1-2：引擎构造失败时不运行，避免 lateinit 未初始化抛异常
-        if (!::engine.isInitialized) {
+    private fun launchRun(file: File, spec: LanguageSpec, engine: RunEngine?) {
+        if (!spec.isRunnable) {
             _ui.update { it.copy(
-                message = "运行时未就绪，无法运行",
+                message = "${spec.displayName} 仅支持编辑、语法高亮与补全",
                 messageSeq = it.messageSeq + 1
             ) }
             return
         }
-        val language = inferLanguage(file)
-        // P4-2：Java 运行能力未开放——原生引擎只实现了 CPython。
-        // 直接把 .java 源码交给 execFile 会被 Python 解释器当 Python 解析，
-        // 报一堆与用户代码无关的语法错误，体验极差。
-        if (language == Language.JAVA) {
+        if (engine == null) {
             _ui.update { it.copy(
-                message = "Java 运行暂未开放（当前仅支持编辑与语法高亮）",
+                message = "${spec.displayName} 运行时未接入",
                 messageSeq = it.messageSeq + 1
             ) }
             return
         }
+        activeEngine = engine
         val projectDir = currentProject ?: file.parentFile ?: file
         _ui.update { it.copy(
             running = true, output = emptyList(), exitCode = null,
@@ -449,18 +441,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 提升为前台服务，避免 Android 12+ 在后台把进程杀掉
         runCatching { ExecutionService.start(context, "正在运行 ${file.name}") }
         viewModelScope.launch {
-            engine.run(
-                RunRequest(
-                    scriptPath = file.absolutePath,
-                    workingDir = projectDir.absolutePath,
-                    language = language,
-                    // 支持带引号的参数，如: --name "hello world"
-                    args = parseArgs(_ui.value.runArgs),
-                    mainClass = _ui.value.mainClass.takeIf { it.isNotBlank() }
-                ),
-                // 超时时长来自用户设置
-                timeoutMs = _ui.value.settings.timeoutSeconds * 1000L
-            ).collect { event ->
+            try {
+                engine.run(
+                    RunRequest(
+                        scriptPath = file.absolutePath,
+                        workingDir = projectDir.absolutePath,
+                        languageId = spec.id,
+                        // 支持带引号的参数，如: --name "hello world"
+                        args = parseArgs(_ui.value.runArgs)
+                    ),
+                    // 超时时长来自用户设置
+                    timeoutMs = _ui.value.settings.timeoutSeconds * 1000L
+                ).collect { event ->
                 _ui.update { st ->
                     when (event) {
                         is RunEvent.Started -> st.copy(output = appendLines(st.output, "[执行] ${event.command}"))
@@ -470,7 +462,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         is RunEvent.Log -> st.copy(output = appendLines(st.output, "[引擎] ${event.message}"))
                         is RunEvent.Finished -> {
                             // 非零退出时，尝试把报错翻译成人话
-                            val hint = if (event.exitCode != 0) FriendlyError.hint(st.output) else null
+                            val hint = if (event.exitCode != 0) FriendlyError.hint(st.output, spec.id) else null
                             st.copy(
                                 running = false,
                                 exitCode = event.exitCode,
@@ -486,7 +478,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             )
                         }
                         is RunEvent.Failed -> {
-                            val hint = FriendlyError.hint(listOf(event.message))
+                            val hint = FriendlyError.hint(listOf(event.message), spec.id)
                             st.copy(
                                 running = false,
                                 inputVisible = false,
@@ -503,9 +495,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         else -> st
                     }
                 }
+                }
+            } finally {
+                if (activeEngine === engine) activeEngine = null
+                // 运行结束，撤掉前台服务（避免通知栏常驻）
+                runCatching { ExecutionService.stop(context) }
             }
-            // 运行结束，撤掉前台服务（避免通知栏常驻）
-            runCatching { ExecutionService.stop(context) }
         }
     }
 
@@ -523,9 +518,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * 向运行中的进程发送一行输入（支持 Python 的 input() 交互）。
      * 写管道可能阻塞，因此整体切到 IO 线程，绝不卡主线程。
      */
+    private fun activeEngine(): RunEngine? = activeEngine ?: pythonEngine
+
     fun sendInput(text: String) {
         val st = _ui.value
         if (!st.running) return
+        val engine = activeEngine() ?: return
         viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) { engine.writeStdin(text) }
             _ui.update {
@@ -538,6 +536,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 发送 EOF（等价 Ctrl-D） */
     fun sendEof() {
         if (!_ui.value.running) return
+        val engine = activeEngine() ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { engine.closeStdin() }
             _ui.update { it.copy(message = "已发送 EOF", messageSeq = it.messageSeq + 1) }
@@ -554,6 +553,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun stopRun() {
         val st = _ui.value
         if (!st.running) return
+        val engine = activeEngine() ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { engine.stop() }
             runCatching { ExecutionService.stop(context) }
@@ -574,7 +574,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         exitCode = it.exitCode ?: -1,
                         output = appendLines(
                             it.output,
-                            "[DevTerminal] 引擎未响应停止，界面已强制复位。" +
+                            "[CodePocket] 引擎未响应停止，界面已强制复位。" +
                                 "若再次运行提示\"已有程序在运行中\"，说明旧进程仍在收尾，请稍候重试。"
                         )
                     )
@@ -595,10 +595,6 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onRunArgsChanged(text: String) {
         _ui.update { it.copy(runArgs = text) }
-    }
-
-    fun onMainClassChanged(text: String) {
-        _ui.update { it.copy(mainClass = text) }
     }
 
     /**
@@ -634,7 +630,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             }
             // 新项目自动打开主文件
             val main = withContext(Dispatchers.IO) {
-                dir.walkTopDown().filter { it.isFile && it.extension in listOf("py", "java") }.firstOrNull()
+                dir.walkTopDown().firstOrNull { it.isFile && LanguageRegistry.isRunnable(it) }
             }
             if (main != null) doOpenFile(main)
         }
@@ -891,7 +887,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             val result = withContext(Dispatchers.IO) {
                 git.init(
                     dir,
-                    s.gitUserName.ifBlank { "devterminal" },
+                    s.gitUserName.ifBlank { "CodePocket" },
                     s.gitUserEmail.ifBlank { "dev@terminal.local" }
                 )
             }
@@ -906,7 +902,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _ui.update { it.copy(gitBusy = true) }
             val result = withContext(Dispatchers.IO) {
-                git.commitAll(dir, message, s.gitUserName.ifBlank { "devterminal" },
+                git.commitAll(dir, message, s.gitUserName.ifBlank { "CodePocket" },
                     s.gitUserEmail.ifBlank { "dev@terminal.local" })
             }
             _ui.update { it.copy(gitBusy = false, gitLastResult = result) }
@@ -1210,37 +1206,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- 语言识别 ----------
 
-    private fun inferLanguage(file: File): Language =
-        if (file.extension.equals("java", ignoreCase = true)) Language.JAVA else Language.PYTHON
-
-    /** 状态栏 / 编辑器用的语言显示名 */
-    fun languageLabelOf(file: File?): String = when (file?.extension?.lowercase()) {
-        "py" -> "Python"
-        "java" -> "Java"
-        "kt" -> "Kotlin"
-        "js" -> "JavaScript"
-        "ts" -> "TypeScript"
-        "json" -> "JSON"
-        "md" -> "Markdown"
-        "html", "htm" -> "HTML"
-        "css" -> "CSS"
-        "sh" -> "Shell"
-        "xml" -> "XML"
-        "yml", "yaml" -> "YAML"
-        "sql" -> "SQL"
-        "lua" -> "Lua"
-        "c", "h" -> "C"
-        "cpp", "hpp" -> "C++"
-        "go" -> "Go"
-        "rs" -> "Rust"
-        "txt" -> "纯文本"
-        else -> file?.extension?.uppercase()?.takeIf { it.isNotBlank() } ?: "纯文本"
+    /** 当前文件是否可运行（由 LanguageRegistry + RuntimeRegistry 决定） */
+    fun canRun(file: File?): Boolean {
+        val spec = LanguageRegistry.forFile(file)
+        return spec.isRunnable && runtimes?.isAvailable(spec.id) == true
     }
 
+
     private companion object {
-        val SEARCHABLE_EXT = setOf(
-            "py", "java", "kt", "js", "ts", "txt", "md", "json", "xml", "yml", "yaml",
-            "html", "css", "sh", "sql", "lua", "c", "cpp", "go", "rs"
-        )
+        val SEARCHABLE_EXT = LanguageRegistry.searchableExtensions
     }
 }

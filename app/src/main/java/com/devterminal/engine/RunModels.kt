@@ -1,24 +1,11 @@
 package com.devterminal.engine
 
-/** 支持的运行语言 */
-enum class Language(
-    val displayName: String,
-    val fileExtension: String,
-    /** 用于在 assets 工具链里定位解释器/编译器 */
-    val runtimeBinary: String
-) {
-    PYTHON("Python", "py", "python"),
-    JAVA("Java", "java", "javac")
-}
-
-/** 一次运行的请求参数 */
+/** 一次运行的请求参数（语言只传 id，不把枚举耦合进运行时） */
 data class RunRequest(
     val scriptPath: String,
     val workingDir: String,
     val args: List<String> = emptyList(),
-    val language: Language = Language.PYTHON,
-    /** Java 专用：主类全限定名；为空时引擎自动探测含 main 方法的类 */
-    val mainClass: String? = null
+    val languageId: String = LanguageRegistry.PYTHON.id
 )
 
 /** 运行过程中流出的事件（用于实时刷新 UI） */

@@ -87,10 +87,13 @@ object EnvDiagnostics {
 
         // 5) 能力说明
         tools += ToolStatus("Python 执行", arm64 && zipSize > 0, "原生 CPython 3.13.9 · 完全离线")
+        tools += ToolStatus("JavaScript 执行", true, "Rhino 1.7.15（纯 Java）· 无 native")
+        tools += ToolStatus("Lua 执行", true, "LuaJ 3.0.1（纯 Java，Lua 5.2）· 无 native")
         tools += ToolStatus("Git 操作", true, "JGit（纯 Java）· 完全离线")
         tools += ToolStatus(
-            "Java 执行", false,
-            "不可用：本版聚焦 Python（仅保留编辑与高亮）"
+            "Java / Kotlin / TypeScript 等",
+            true,
+            "仅编辑、语法高亮与静态补全；共 17 种编辑级语言"
         )
 
         val ready = arm64 && zipSize > 0 &&

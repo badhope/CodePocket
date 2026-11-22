@@ -27,6 +27,10 @@ jgit = "6.10.1.202505221210-r"
 slf4jNop = "2.0.13"
 # IntelliJ 平台同款 Markdown 解析器（纯 Kotlin，GFM 表格/删除线），实时预览用
 intellijMarkdown = "0.7.3"
+# Rhino：纯 Java JavaScript 引擎（ES6 子集），无 native、无 16KB 问题
+rhino = "1.7.15"
+# LuaJ：纯 Java Lua 5.2 运行时，无 native、无 16KB 问题
+luaj = "3.0.1"
 
 [libraries]
 # --- Compose（版本由 BOM 统一约束）---
@@ -56,6 +60,10 @@ slf4j-nop = { group = "org.slf4j", name = "slf4j-nop", version.ref = "slf4jNop" 
 
 # --- Markdown 解析（实时预览，Apache-2.0） ---
 intellij-markdown = { group = "org.jetbrains", name = "markdown", version.ref = "intellijMarkdown" }
+
+# --- 纯 Java 运行时：Rhino (JS) / LuaJ (Lua) ---
+rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
+luaj = { group = "org.luaj", name = "luaj-jse", version.ref = "luaj" }
 
 # --- 代码编辑器：SoraEditor (LGPL-2.1) ---
 # 若产品闭源，需保证用户可替换该库（动态链接 + 提供目标文件）。
