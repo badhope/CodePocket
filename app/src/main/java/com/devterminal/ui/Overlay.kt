@@ -29,6 +29,9 @@ sealed interface Overlay {
     /** AI 助手 */
     data object Ai : Overlay
 
+    /** Agent 模式：可读写项目的工具循环 */
+    data object Agent : Overlay
+
     /** 全局搜索 */
     data object GlobalSearch : Overlay
 

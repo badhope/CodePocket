@@ -41,23 +41,42 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
      * @throws java.io.IOException 网络/端点错误时抛出，message 为可读说明
      */
     fun chat(system: String, history: List<ChatMessage>, userMessage: String): String {
+        return chatMessages(
+            system = system,
+            messages = history + ChatMessage("user", userMessage),
+            maxTokens = 1200,
+        )
+    }
+
+    /**
+     * 非流式、显式消息列表调用。Agent 循环需要把工具观察结果作为后续消息
+     * 追加进上下文，而不是每次只带一个 userMessage。
+     */
+    fun chatMessages(
+        system: String,
+        messages: List<ChatMessage>,
+        maxTokens: Int = 2000,
+    ): String {
         val base = settings.aiBaseUrl.trimEnd('/')
         val url = URL("$base/chat/completions")
 
-        val messages = JSONArray()
-        messages.put(JSONObject().put("role", "system").put("content", system))
-        history.forEach { m ->
-            messages.put(JSONObject().put("role", m.role).put("content", m.content))
+        val payloadMessages = JSONArray()
+        payloadMessages.put(JSONObject().put("role", "system").put("content", system))
+        messages.forEach { m ->
+            payloadMessages.put(JSONObject().put("role", m.role).put("content", m.content))
         }
-        messages.put(JSONObject().put("role", "user").put("content", userMessage))
 
         val body = JSONObject()
             .put("model", settings.aiModel.ifBlank { "qwen2.5-coder:3b" })
-            .put("messages", messages)
-            .put("temperature", 0.3)
-            .put("max_tokens", 1200)
+            .put("messages", payloadMessages)
+            .put("temperature", 0.2)
+            .put("max_tokens", maxTokens.coerceIn(256, 4096))
             .toString()
 
+        return request(url, body)
+    }
+
+    private fun request(url: URL, body: String): String {
         val conn = url.openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "POST"

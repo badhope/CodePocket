@@ -138,6 +138,7 @@ private val overlaySaver = run {
         Named("newProject", Overlay.NewProject),
         Named("git", Overlay.Git),
         Named("ai", Overlay.Ai),
+        Named("agent", Overlay.Agent),
         Named("globalSearch", Overlay.GlobalSearch),
         Named("diagnostics", Overlay.Diagnostics),
         Named("runConfig", Overlay.RunConfig),
@@ -757,6 +758,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "newproj" -> overlay = Overlay.NewProject
                     "git" -> { overlay = Overlay.Git; vm.refreshGitStatus() }
                     "ai" -> overlay = Overlay.Ai
+                    "agent" -> overlay = Overlay.Agent
                     "gsearch" -> overlay = Overlay.GlobalSearch
                     "runconfig" -> overlay = Overlay.RunConfig
                     "preview" -> vm.togglePreview()
@@ -806,7 +808,24 @@ fun EditorScreen(vm: EditorViewModel) {
                 vm.insertSymbol("\n$code\n")
                 closeOverlay()
             },
+            onOpenAgent = { overlay = Overlay.Agent },
             onDismiss = { vm.cancelAi(); closeOverlay() }
+        )
+    }
+
+    if (overlay == Overlay.Agent) {
+        AgentPanelDialog(
+            events = ui.agentEvents,
+            busy = ui.agentBusy,
+            configured = ui.settings.aiConfigured,
+            inputDraft = ui.agentInputDraft,
+            pendingProposal = ui.agentPendingProposal,
+            onInputChange = vm::onAgentInputChanged,
+            onSend = vm::sendAgentInput,
+            onApprove = vm::approveAgentPatch,
+            onReject = vm::rejectAgentPatch,
+            onCancel = vm::cancelAgent,
+            onDismiss = { vm.cancelAgent(); closeOverlay() }
         )
     }
 
@@ -1156,6 +1175,8 @@ private fun buildCommands(
         Icons.Filled.AccountTree) { onCommand("git") })
     add(Command("ai", "AI 助手", "解释代码 / 修复报错 / 生成测试",
         Icons.Filled.AutoAwesome) { onCommand("ai") })
+    add(Command("agent", "Agent 模式", "读项目 / 搜索 / 按行改文件 / 批准",
+        Icons.Filled.AutoAwesome) { onCommand("agent") })
     add(Command("runconfig", "运行配置", "命令行参数",
         Icons.Outlined.Terminal) { onCommand("runconfig") })
     add(Command("preview", "实时预览", "Markdown / HTML 分屏渲染",

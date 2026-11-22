@@ -10,6 +10,7 @@ data class ToolSpec(
     val name: String,
     val description: String,
     val parameters: Map<String, String> = emptyMap(),
+    val mutatesWorkspace: Boolean = false,
 )
 
 data class ToolCall(

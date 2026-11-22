@@ -4,7 +4,18 @@
 
 ---
 
-## 已实现（v0.0.14 基线）
+## 已实现（v0.0.15 Agent 预览）
+
+- ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
+- ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
+- ✅ ACI 工具：`read_file` / `list_files` / `search_text` / `apply_patch`，全部限制输出大小
+- ✅ `AgentLoop`：JSON 决策协议、最多 8 步、写前审批、失败回读
+- ✅ `CheckpointStore`：SHA-256 内容寻址快照，不污染用户 Git 仓库
+- ✅ Agent 面板：工具轨迹、观察结果、diff、批准/拒绝、停止
+- ✅ 云端 `ModelProvider`（OpenAI 兼容端点，复用 `AiClient`）
+
+## v0.0.14 基线
+
 
 - ✅ 三种可运行语言：Python（原生 CPython 3.13，ARM64）、JavaScript（Rhino，纯 Java）、Lua（LuaJ，纯 Java）
 - ✅ JNI 桥：stdin/stdout/stderr 三路桥接、死循环中断、`input()` 交互

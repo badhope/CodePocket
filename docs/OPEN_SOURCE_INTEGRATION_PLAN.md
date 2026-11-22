@@ -238,21 +238,21 @@ filesDir/checkpoints/
 
 ### Phase 0：脊柱骨架（先不碰 UI）
 
-- [ ] `AgentEvent`、`Tool`、`Workspace`、`CheckpointStore` 四个基础类型
-- [ ] `LocalWorkspace` 路径监狱、读文件窗口、列目录、搜索
-- [ ] `ModelProvider` 接口（先只定义，不接实现）
-- [ ] 单元测试：路径越界、行窗口、搜索上限、快照恢复
-- [ ] 把 `rootProject.name` 改为 `CodePocket`
+- [x] `AgentEvent`、`Tool`、`Workspace`、`CheckpointStore` 四个基础类型
+- [x] `LocalWorkspace` 路径监狱、读文件窗口、列目录、搜索
+- [x] `ModelProvider` 接口（云端 provider 已接）
+- [x] 单元测试：路径越界、行窗口、搜索上限、快照恢复
+- [x] 把 `rootProject.name` 改为 `CodePocket`
 
 验收：`:app:testDebugUnitTest` 通过；不改变现有 UI 行为。
 
 ### Phase 1：ACI 工具 + 补丁 + 批准
 
-- [ ] 6 个工具，先实现 `read/list/search/apply_patch`
-- [ ] `ApprovalPolicy`：读自动、写/跑必须批准
-- [ ] `CheckpointStore` 接入 patch 前快照
-- [ ] `AgentLoop` 用云端口跑通（先不接本地模型）
-- [ ] UI：Agent 抽屉、时间线、diff、批准卡片
+- [x] 6 个工具，先实现 `read/list/search/apply_patch`
+- [x] `ApprovalPolicy`：读自动、写/跑必须批准
+- [x] `CheckpointStore` 接入 patch 前快照
+- [x] `AgentLoop` 用云端口跑通（先不接本地模型）
+- [x] UI：Agent 抽屉、时间线、diff、批准卡片
 
 验收：10 文件 Python 项目，改 2 文件，跑 unittest，失败后读 traceback 再修，undo 能回滚。
 
@@ -315,9 +315,9 @@ filesDir/checkpoints/
 
 ---
 
-## 9. 第一批落地（本文件同批）
+## 9. 第一批落地（已实现）
 
-Phase 0 先落以下代码，避免后续返工：
+Phase 0 骨架：
 
 - `agent/AgentEvent.kt`：事件类型
 - `agent/Tool.kt`：工具调用/结果
@@ -325,4 +325,22 @@ Phase 0 先落以下代码，避免后续返工：
 - `agent/CheckpointStore.kt`
 - 对应 JVM 单测
 
-不接 UI、不改现有运行逻辑。通过后再进入 Phase 1。
+Phase 1 首批：
+
+- `agent/AgentDecision.kt`：文本 JSON 决策协议
+- `agent/AgentLoop.kt`：工具循环、审批、检查点、失败回读
+- `agent/tools/*`：四个 ACI 工具
+- `model/ModelProvider.kt`、`model/OpenAiCompatibleProvider.kt`
+- `ui/AgentPanel.kt` + AI 面板入口
+
+
+---
+
+## 10. 落地记录（2026-11-22）
+
+- Phase 0 / Phase 1 已完成首批：`6dd9363` + 本次提交。
+- ACI：`read_file` / `list_files` / `search_text` / `apply_patch`，全部有输出上限。
+- `AgentLoop` 支持 JSON 决策协议、最多 8 步、写前审批、内容寻址检查点、失败回读。
+- UI：AI 助手内新增「Agent 模式」入口，Agent 面板显示工具轨迹、观察结果、diff 与批准按钮。
+- 单测：`testDebugUnitTest` 70 个用例通过；`assembleDebug` / `assembleRelease`（跳过 lintVital）通过。
+- 未做：`run_file` / `run_tests`、本地 llama.cpp、RepoMap、真机验证。

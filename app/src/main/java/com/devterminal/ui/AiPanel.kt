@@ -57,6 +57,7 @@ fun AiPanelDialog(
     onQuick: (String) -> Unit,
     onCancel: () -> Unit,
     onInsertCode: (String) -> Unit,
+    onOpenAgent: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -130,6 +131,18 @@ fun AiPanelDialog(
                             else MaterialTheme.colorScheme.muted
                         )
                     }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onOpenAgent, enabled = !busy) {
+                    Text(
+                        "Agent 模式：让 AI 读项目、改文件",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

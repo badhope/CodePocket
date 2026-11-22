@@ -14,8 +14,8 @@ android {
         applicationId = "com.devterminal"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 14
-        versionName = "0.0.14"
+        versionCode = 15
+        versionName = "0.0.15"
         vectorDrawables { useSupportLibrary = true }
         // 原生 CPython 引擎：只打 arm64（当前覆盖绝大多数 Android 设备）
         ndk { abiFilters += "arm64-v8a" }
@@ -115,4 +115,6 @@ dependencies {
 
     // 单元测试：纯 JVM 逻辑（如报错行解析）不依赖 Android 框架，可直接跑
     testImplementation(libs.junit)
+    // Android 的 org.json 在 JVM 单测里是 stub；补一份真实实现给 AgentDecisionParser 测试
+    testImplementation("org.json:json:20240303")
 }

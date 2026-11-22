@@ -5,6 +5,18 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.devterminal.engine.EnvDiagnostics
 import com.devterminal.engine.EnvReport
+import com.devterminal.agent.AgentEvent
+import com.devterminal.agent.AgentLoop
+import com.devterminal.agent.ApprovalHandler
+import com.devterminal.agent.CheckpointStore
+import com.devterminal.agent.ToolCall
+import com.devterminal.agent.ToolRegistry
+import com.devterminal.agent.tools.ApplyPatchTool
+import com.devterminal.agent.tools.ListFilesTool
+import com.devterminal.agent.tools.ReadFileTool
+import com.devterminal.agent.tools.SearchTextTool
+import com.devterminal.model.OpenAiCompatibleProvider
+import com.devterminal.workspace.LocalWorkspace
 import com.devterminal.engine.AiClient
 import com.devterminal.engine.EnvironmentInstaller
 import com.devterminal.engine.ExecutionService
@@ -23,6 +35,7 @@ import com.devterminal.project.sanitizeFileName
 import com.devterminal.project.Templates
 import com.devterminal.settings.resolvesDark
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -108,6 +121,12 @@ data class UiState(
     val aiMessages: List<AiClient.ChatMessage> = emptyList(),
     val aiBusy: Boolean = false,
     val aiInputDraft: String = "",
+    // ---------- Agent（v0.4） ----------
+    val agentEvents: List<AgentEvent> = emptyList(),
+    val agentBusy: Boolean = false,
+    val agentInputDraft: String = "",
+    val agentPendingCall: ToolCall? = null,
+    val agentPendingProposal: AgentEvent.PatchProposed? = null,
     // ---------- 全局搜索（v0.3） ----------
     val globalSearching: Boolean = false,
     val globalResults: List<SearchHit> = emptyList(),
@@ -146,6 +165,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var runtimes: RuntimeRegistry? = null
     private var aiJob: Job? = null
     private var aiCancelRequested = false
+    private var agentJob: Job? = null
+    private var agentApproval: CompletableDeferred<Boolean>? = null
     /** 当前这次运行使用的引擎，stop/sendInput 必须打到同一个实例 */
     private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
@@ -1157,6 +1178,163 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 替换 aiMessages 列表的最后一条（流式追加用）；空列表原样返回 */
     private fun List<AiClient.ChatMessage>.withLast(m: AiClient.ChatMessage): List<AiClient.ChatMessage> =
         if (isEmpty()) this else dropLast(1) + m
+
+    // ---------- Agent（v0.4） ----------
+
+    fun onAgentInputChanged(text: String) {
+        _ui.update { it.copy(agentInputDraft = text) }
+    }
+
+    fun sendAgentInput() {
+        val text = _ui.value.agentInputDraft.trim()
+        if (text.isNotEmpty()) {
+            _ui.update { it.copy(agentInputDraft = "") }
+            startAgentTask(text)
+        }
+    }
+
+    fun approveAgentPatch() {
+        agentApproval?.complete(true)
+        _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
+    }
+
+    fun rejectAgentPatch() {
+        agentApproval?.complete(false)
+        _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
+    }
+
+    fun cancelAgent() {
+        agentApproval?.complete(false)
+        agentApproval = null
+        agentJob?.cancel()
+        agentJob = null
+        _ui.update {
+            it.copy(
+                agentBusy = false,
+                agentPendingCall = null,
+                agentPendingProposal = null,
+            )
+        }
+    }
+
+    private fun startAgentTask(task: String) {
+        val st = _ui.value
+        if (!st.settings.aiConfigured) {
+            _ui.update {
+                it.copy(message = "请先在设置里配置 AI 端点", messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+        val projectDir = currentProject
+        if (projectDir == null) {
+            _ui.update {
+                it.copy(message = "先打开一个项目", messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+        if (st.agentBusy) return
+        if (st.dirty) {
+            _ui.update {
+                it.copy(message = "先保存当前文件，再让 Agent 修改", messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+
+        val workspace = runCatching { LocalWorkspace(projectDir) }.getOrElse { e ->
+            _ui.update {
+                it.copy(message = "无法打开工作区：${e.message}", messageSeq = it.messageSeq + 1)
+            }
+            return
+        }
+        val checkpoints = CheckpointStore(File(context.filesDir, "agent-checkpoints"), workspace)
+        val provider = OpenAiCompatibleProvider(st.settings)
+        val tools = ToolRegistry(
+            listOf(ReadFileTool(), ListFilesTool(), SearchTextTool(), ApplyPatchTool())
+        )
+        val loop = AgentLoop(
+            workspace = workspace,
+            tools = tools,
+            provider = provider,
+            checkpoints = checkpoints,
+            approve = ApprovalHandler { call ->
+                val deferred = CompletableDeferred<Boolean>()
+                agentApproval = deferred
+                _ui.update { it.copy(agentPendingCall = call) }
+                deferred.await()
+            },
+        )
+
+        _ui.update {
+            it.copy(
+                agentBusy = true,
+                agentEvents = emptyList(),
+                agentPendingCall = null,
+                agentPendingProposal = null,
+            )
+        }
+        agentJob = viewModelScope.launch {
+            try {
+                loop.run(task) { event ->
+                    if (event is AgentEvent.PatchProposed) {
+                        _ui.update { it.copy(agentPendingProposal = event) }
+                    }
+                    _ui.update {
+                        it.copy(agentEvents = (it.agentEvents + event).takeLast(200))
+                    }
+                    when (event) {
+                        is AgentEvent.Approval -> _ui.update {
+                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                        }
+                        is AgentEvent.PatchApplied -> {
+                            _ui.update {
+                                it.copy(agentPendingCall = null, agentPendingProposal = null)
+                            }
+                            reloadAfterAgent(event.paths, projectDir)
+                        }
+                        is AgentEvent.SessionFinished, is AgentEvent.Failure -> _ui.update {
+                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                        }
+                        else -> Unit
+                    }
+                }
+            } finally {
+                agentApproval?.complete(false)
+                agentApproval = null
+                _ui.update {
+                    it.copy(
+                        agentBusy = false,
+                        agentPendingCall = null,
+                        agentPendingProposal = null,
+                    )
+                }
+                agentJob = null
+            }
+        }
+    }
+
+    private fun reloadAfterAgent(paths: List<String>, projectDir: File) {
+        val file = _ui.value.currentFile
+        if (file != null) {
+            val relative = runCatching {
+                file.relativeTo(projectDir).path.replace(File.separatorChar, '/')
+            }.getOrNull()
+            if (relative != null && relative in paths) {
+                viewModelScope.launch {
+                    val text = withContext(Dispatchers.IO) {
+                        runCatching { file.readText() }.getOrNull()
+                    }
+                    if (text != null) {
+                        _ui.update { it.copy(editorText = text, dirty = false) }
+                    }
+                    refreshTree()
+                }
+            } else {
+                refreshTree()
+            }
+        } else {
+            refreshTree()
+        }
+    }
 
     // ---------- 全局搜索（v0.3） ----------
 
