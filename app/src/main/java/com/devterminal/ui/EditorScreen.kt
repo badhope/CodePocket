@@ -800,12 +800,13 @@ fun EditorScreen(vm: EditorViewModel) {
             onInputChange = vm::onAiInputChanged,
             onSend = vm::sendAiInput,
             onQuick = vm::aiQuick,
+            onCancel = vm::cancelAi,
             onInsertCode = { code ->
                 // P2-3：把 AI 生成的代码块插入当前编辑器光标处
                 vm.insertSymbol("\n$code\n")
                 closeOverlay()
             },
-            onDismiss = ::closeOverlay
+            onDismiss = { vm.cancelAi(); closeOverlay() }
         )
     }
 

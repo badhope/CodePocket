@@ -55,6 +55,7 @@ fun AiPanelDialog(
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onQuick: (String) -> Unit,
+    onCancel: () -> Unit,
     onInsertCode: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -93,12 +94,18 @@ fun AiPanelDialog(
                     }
                     if (busy) {
                         item {
-                            MonoText(
-                                "AI 思考中…",
-                                fontSize = 11,
-                                color = MaterialTheme.colorScheme.muted,
-                                modifier = Modifier.padding(vertical = Dimens.xs)
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                MonoText(
+                                    "AI 思考中…",
+                                    fontSize = 11,
+                                    color = MaterialTheme.colorScheme.muted,
+                                    modifier = Modifier.weight(1f).padding(vertical = Dimens.xs)
+                                )
+                                TextButton(onClick = onCancel) { Text("取消") }
+                            }
                         }
                     }
                 }

@@ -22,7 +22,10 @@ import com.devterminal.project.ProjectManager
 import com.devterminal.project.sanitizeFileName
 import com.devterminal.project.Templates
 import com.devterminal.settings.resolvesDark
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +33,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import java.io.File
 
 enum class EnvState { PREPARING, READY, ERROR }
@@ -140,6 +144,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      */
     private var pythonEngine: RunEngine? = null
     private var runtimes: RuntimeRegistry? = null
+    private var aiJob: Job? = null
+    private var aiCancelRequested = false
     /** 当前这次运行使用的引擎，stop/sendInput 必须打到同一个实例 */
     private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
@@ -516,6 +522,24 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         runCatching { ExecutionService.start(context, "正在运行 ${file.name}") }
         viewModelScope.launch {
             try {
+                // P1-3：高频 print 不逐行重组 5000 行列表——先攒批，再一次性并入 UI 状态。
+                // 每 256 行或 100ms 落一次，既保证输出可见，又避免主线程被 O(n) 拷贝拖死。
+                val pendingLines = ArrayList<String>(256)
+                var lastFlushNanos = System.nanoTime()
+                fun flushPending() {
+                    if (pendingLines.isEmpty()) return
+                    val lines = pendingLines.toTypedArray()
+                    pendingLines.clear()
+                    _ui.update { st -> st.copy(output = appendLines(st.output, *lines)) }
+                }
+                // 单行输出后程序可能停在 input()，不能等下一次事件才刷新；100ms 定时落批。
+                launch {
+                    while (true) {
+                        delay(100)
+                        flushPending()
+                        lastFlushNanos = System.nanoTime()
+                    }
+                }
                 engine.run(
                     RunRequest(
                         scriptPath = file.absolutePath,
@@ -527,14 +551,15 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     // 超时时长来自用户设置
                     timeoutMs = _ui.value.settings.timeoutSeconds * 1000L
                 ).collect { event ->
-                _ui.update { st ->
-                    when (event) {
-                        is RunEvent.Started -> st.copy(output = appendLines(st.output, "[执行] ${event.command}"))
-                        is RunEvent.Stdout -> st.copy(output = appendLines(st.output, event.line))
-                        is RunEvent.Stderr -> st.copy(output = appendLines(st.output, "[err] ${event.line}"))
-                        // 引擎日志（如首次预热提示）：以灰字混入输出，不打断流程
-                        is RunEvent.Log -> st.copy(output = appendLines(st.output, "[引擎] ${event.message}"))
-                        is RunEvent.Finished -> {
+                when (event) {
+                    is RunEvent.Started -> pendingLines.add("[执行] ${event.command}")
+                    is RunEvent.Stdout -> pendingLines.add(event.line)
+                    is RunEvent.Stderr -> pendingLines.add("[err] ${event.line}")
+                    // 引擎日志（如首次预热提示）：以灰字混入输出，不打断流程
+                    is RunEvent.Log -> pendingLines.add("[引擎] ${event.message}")
+                    is RunEvent.Finished -> {
+                        flushPending()
+                        _ui.update { st ->
                             // 非零退出时，尝试把报错翻译成人话
                             val hint = if (event.exitCode != 0) FriendlyError.hint(st.output, spec.id) else null
                             st.copy(
@@ -551,7 +576,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                                 messageSeq = st.messageSeq + 1
                             )
                         }
-                        is RunEvent.Failed -> {
+                    }
+                    is RunEvent.Failed -> {
+                        flushPending()
+                        _ui.update { st ->
                             val hint = FriendlyError.hint(listOf(event.message), spec.id)
                             st.copy(
                                 running = false,
@@ -565,9 +593,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                                 messageSeq = st.messageSeq + 1
                             )
                         }
-                        // 未来引擎新增的事件类型不阻断运行（如 NeedsInput 暂以手动展开为准）
-                        else -> st
                     }
+                    // 未来引擎新增的事件类型不阻断运行（如 NeedsInput 暂以手动展开为准）
+                    else -> Unit
+                }
+                if (pendingLines.size >= 256 || System.nanoTime() - lastFlushNanos >= 100_000_000L) {
+                    flushPending()
+                    lastFlushNanos = System.nanoTime()
+                    yield()
                 }
                 }
             } finally {
@@ -1069,6 +1102,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (st.aiBusy) return
+        aiCancelRequested = false
         val history = st.aiMessages
         val fileContext = if (st.currentFile != null)
             "【当前文件 ${st.currentFile.name}】\n${st.editorText.take(3500)}\n\n【用户请求】\n$prompt"
@@ -1076,7 +1110,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update {
             it.copy(aiBusy = true, aiMessages = history + AiClient.ChatMessage("user", prompt))
         }
-        viewModelScope.launch {
+        aiJob = viewModelScope.launch {
             // P2-2：改流式输出——先放一个空 assistant 气泡，逐段 append，不再阻塞等整段返回。
             _ui.update { it.copy(aiMessages = it.aiMessages + AiClient.ChatMessage("assistant", "")) }
             val aiClient = AiClient(_ui.value.settings)
@@ -1094,18 +1128,30 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
             }.onFailure { e ->
-                // 流式失败也保留已收到的部分，再追一条错误提示
-                if (sb.isEmpty()) sb.append("⚠️ ${e.message ?: "请求失败"}")
+                // 用户主动取消不算错误；其余失败保留已收到的部分并追加提示
+                if (e !is CancellationException && sb.isEmpty()) {
+                    sb.append("⚠️ ${e.message ?: "请求失败"}")
+                }
+            }
+            val finalText = when {
+                sb.isNotEmpty() -> sb.toString()
+                aiCancelRequested -> "（已取消）"
+                else -> "（无响应）"
             }
             _ui.update { st ->
                 st.copy(
                     aiBusy = false,
-                    aiMessages = st.aiMessages.withLast(
-                        AiClient.ChatMessage("assistant", sb.toString().ifEmpty { "（无响应）" })
-                    )
+                    aiMessages = st.aiMessages.withLast(AiClient.ChatMessage("assistant", finalText))
                 )
             }
+            aiJob = null
         }
+    }
+
+    /** 用户主动停止流式回复；底层 Socket 由 Flow 的 awaitClose 断开 */
+    fun cancelAi() {
+        aiCancelRequested = true
+        aiJob?.cancel()
     }
 
     /** 替换 aiMessages 列表的最后一条（流式追加用）；空列表原样返回 */
