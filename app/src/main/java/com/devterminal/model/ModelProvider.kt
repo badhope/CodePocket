@@ -14,6 +14,9 @@ interface ModelProvider {
     val id: String
     val label: String
 
+    /** 单轮最大输出 token；端侧小模型上下文紧张，默认比云端更小。 */
+    val maxOutputTokens: Int get() = 2000
+
     suspend fun complete(
         systemPrompt: String,
         messages: List<ModelMessage>,

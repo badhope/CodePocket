@@ -258,24 +258,24 @@ filesDir/checkpoints/
 
 ### Phase 2：上下文与语言智能
 
-- [ ] `RepoMap`：Python AST + JS/Lua parser + 文件关系
-- [ ] `AGENTS.md` / `.codepocket/rules.md`
-- [ ] 会话 JSONL 持久化、恢复、压缩
-- [ ] `LanguageService`：Python 诊断/符号；Java/Kotlin 只做文件级索引
-- [ ] `run_tests` 接 unittest
+- [x] `RepoMap`：关键词排序 + 符号提取（Python/Kotlin/Java/JS/TS/Lua）
+- [x] `AGENTS.md` / `.codepocket/rules.md`
+- [x] 会话 JSONL 持久化、恢复、压缩
+- [x] `LanguageService`：符号大纲（6 种语言），诊断留待 AST 阶段
+- [x] `run_tests` 接 unittest
 
 验收：20 文件项目，Agent 只读相关 3–5 个文件就能提出正确 patch；杀进程重开恢复会话。
 
 ### Phase 3：本地模型
 
-- [ ] llama.cpp NDK 构建 + JNI + 16KB 检查
-- [ ] `ModelCatalog`：
+- [x] llama.cpp NDK 构建 + JNI + 16KB 检查
+- [x] `ModelCatalog`：
   - MiniCPM5-1B GGUF Q4（默认）
   - MiniCPM5-2B GGUF Q4（8GB+ 可选）
   - Qwen3.5-2B GGUF Q4（备选）
-- [ ] 下载管理、校验、删除、存储占用
-- [ ] `LocalLlamaProvider` + XML tool-call parser
-- [ ] 设置页「本地模型」入口与内存门槛提示
+- [x] 下载管理、校验、删除、存储占用
+- [x] `LocalLlamaProvider`（文本 JSON 协议；XML parser 待接原生 tool call）
+- [x] 设置页/命令面板「本地模型」入口与内存门槛提示
 
 验收：8GB 手机飞行模式，完成一次「读文件 → patch → 跑测试」；1B 模型首 token < 2s、>5 tok/s（目标值，实测再调）。
 

@@ -26,3 +26,6 @@
 
 # 保留行号，崩溃栈仍可定位
 -keepattributes SourceFile,LineNumberTable
+
+# llama.cpp JNI：LocalLlama 的 native 方法按名字查找，必须保留类名与方法名
+-keep class com.devterminal.model.LocalLlama { *; }

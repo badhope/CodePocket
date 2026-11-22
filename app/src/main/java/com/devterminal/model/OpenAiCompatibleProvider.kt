@@ -22,35 +22,12 @@ class OpenAiCompatibleProvider(
         tools: List<ToolSpec>,
         maxTokens: Int,
     ): String = withContext(Dispatchers.IO) {
-        val catalog = if (tools.isEmpty()) {
-            "（当前没有可用工具）"
-        } else {
-            tools.joinToString("\n") { spec ->
-                val params = spec.parameters.entries.joinToString(", ") { "${it.key}: ${it.value}" }
-                "- ${spec.name}($params)：${spec.description}"
-            }
-        }
-        val protocol = """
-            你是一个在手机 IDE 里工作的代码 Agent。你每一轮只能输出**一个 JSON 对象**，不要输出 Markdown 代码块以外的解释。
-            可用工具：
-            $catalog
-
-            输出格式二选一：
-            1) 调用工具：
-            {"action":"tool","tool":"工具名","arguments":{"参数名":"字符串值"}}
-            2) 完成任务：
-            {"action":"final","answer":"给用户的简短结论"}
-
-            规则：
-            - 一次只调用一个工具；拿到工具结果后再决定下一步。
-            - 修改文件只能用 apply_patch，start/end 是 1-based 闭区间。
-            - 不确定文件内容时先 read_file 或 search_text，不要猜。
-            - 最多 8 步；连续失败就输出 final 说明卡在哪里。
-        """.trimIndent()
-
         val history = messages.map { AiClient.ChatMessage(it.role, it.content) }
         AiClient(settings).chatMessages(
-            system = "$systemPrompt\n\n$protocol",
+            system = AgentProtocol.systemPrompt(
+                "你是一个在手机 IDE 里工作的代码 Agent。$systemPrompt",
+                tools,
+            ),
             messages = history,
             maxTokens = maxTokens,
         )

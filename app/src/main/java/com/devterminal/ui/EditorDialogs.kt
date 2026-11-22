@@ -91,7 +91,8 @@ fun SettingsDialog(
     onAutoCloseChange: (Boolean) -> Unit,
     onShowLineNumbersChange: (Boolean) -> Unit,
     onAiConfigChange: (url: String, key: String, model: String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenLocalModels: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     var aiUrl by remember { mutableStateOf(settings.aiBaseUrl) }
@@ -291,6 +292,16 @@ fun SettingsDialog(
             Text("保存 AI 配置", style = MaterialTheme.typography.labelLarge,
                 color = if (aiUrl.isNotBlank()) cs.primary else cs.faint)
         }
+        Spacer(Modifier.height(Dimens.xl))
+        SectionLabel("本地模型")
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "下载 MiniCPM5-1B / 2B 后，Agent 可完全离线运行，不再发网络请求。模型权重不打包进 APK。",
+            style = MaterialTheme.typography.labelSmall,
+            color = cs.muted
+        )
+        Spacer(Modifier.height(Dimens.sm))
+        TextButton(onClick = onOpenLocalModels) { Text("打开本地模型管理") }
     }
 }
 

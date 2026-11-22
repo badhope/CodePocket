@@ -4,7 +4,7 @@
 
 ---
 
-## 已实现（v0.0.18 符号大纲版）
+## 已实现（v0.0.19 本地模型版）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
@@ -21,6 +21,11 @@
 - ✅ Agent 文件 IO 全部切到 `Dispatchers.IO`，扫描项目不再阻塞主线程
 - ✅ `LanguageService`：Python / Kotlin / Java / JS / TS / Lua 文件符号大纲，行号可跳转
 - ✅ 命令面板新增「符号大纲」，当前文件函数/类一屏看完，点击直达
+- ✅ Agent 会话 JSONL：每次任务落盘，重启自动恢复最近一次时间线
+- ✅ llama.cpp JNI：arm64 `libllama_jni.so`，静态链接 llama/ggml，16KB 对齐
+- ✅ 本地模型管理：MiniCPM5-1B / 2B 下载、断点续传、SHA-256 校验、删除
+- ✅ `LocalLlamaProvider`：Agent 可完全离线跑本地 GGUF，6GB/8GB 内存门槛
+- ✅ 设置页与命令面板新增「本地模型」入口
 
 ## v0.0.14 基线
 

@@ -75,7 +75,7 @@ class AgentLoop(
                     systemPrompt = systemPrompt,
                     messages = contextBuilder.compactHistory(history),
                     tools = tools.specs(),
-                    maxTokens = 2000,
+                    maxTokens = provider.maxOutputTokens,
                 )
             } catch (e: CancellationException) {
                 throw e

@@ -141,6 +141,7 @@ private val overlaySaver = run {
         Named("agent", Overlay.Agent),
         Named("globalSearch", Overlay.GlobalSearch),
         Named("symbols", Overlay.Symbols),
+        Named("localModels", Overlay.LocalModels),
         Named("diagnostics", Overlay.Diagnostics),
         Named("runConfig", Overlay.RunConfig),
         Named("settings", Overlay.Settings),
@@ -762,6 +763,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "agent" -> overlay = Overlay.Agent
                     "gsearch" -> overlay = Overlay.GlobalSearch
                     "symbols" -> { vm.loadSymbols(); overlay = Overlay.Symbols }
+                    "models" -> { vm.refreshLocalModels(); overlay = Overlay.LocalModels }
                     "runconfig" -> overlay = Overlay.RunConfig
                     "preview" -> vm.togglePreview()
                     "export" -> exportLauncher.launch(vm.suggestedExportName())
@@ -799,7 +801,10 @@ fun EditorScreen(vm: EditorViewModel) {
         AiPanelDialog(
             messages = ui.aiMessages,
             busy = ui.aiBusy,
-            configured = ui.settings.aiConfigured,
+            configured = ui.settings.aiConfigured ||
+                (ui.settings.useLocalModel && ui.localModels.any {
+                    it.spec.id == ui.settings.localModelId && it.installed
+                }),
             inputDraft = ui.aiInputDraft,
             onInputChange = vm::onAiInputChanged,
             onSend = vm::sendAiInput,
@@ -819,11 +824,15 @@ fun EditorScreen(vm: EditorViewModel) {
         AgentPanelDialog(
             events = ui.agentEvents,
             busy = ui.agentBusy,
-            configured = ui.settings.aiConfigured,
+            configured = ui.settings.aiConfigured ||
+                (ui.settings.useLocalModel && ui.localModels.any {
+                    it.spec.id == ui.settings.localModelId && it.installed
+                }),
             inputDraft = ui.agentInputDraft,
             pendingProposal = ui.agentPendingProposal,
             lastCheckpoint = ui.lastAgentCheckpoint,
             checkpointCount = ui.agentCheckpoints.size,
+            recovered = ui.agentRecovered,
             onInputChange = vm::onAgentInputChanged,
             onSend = vm::sendAgentInput,
             onApprove = vm::approveAgentPatch,
@@ -831,6 +840,21 @@ fun EditorScreen(vm: EditorViewModel) {
             onRestoreCheckpoint = vm::restoreAgentCheckpoint,
             onCancel = vm::cancelAgent,
             onDismiss = { vm.cancelAgent(); closeOverlay() }
+        )
+    }
+
+    if (overlay == Overlay.LocalModels) {
+        LocalModelsDialog(
+            models = ui.localModels,
+            activeId = ui.settings.localModelId,
+            useLocal = ui.settings.useLocalModel,
+            loading = ui.localModelsLoading,
+            onDownload = vm::downloadLocalModel,
+            onCancelDownload = vm::cancelLocalModelDownload,
+            onDelete = vm::deleteLocalModel,
+            onSelect = vm::selectLocalModel,
+            onToggleUse = vm::setUseLocalModel,
+            onDismiss = ::closeOverlay,
         )
     }
 
@@ -906,7 +930,12 @@ fun EditorScreen(vm: EditorViewModel) {
                     )
                 )
             },
-            onDismiss = ::closeOverlay
+            onDismiss = ::closeOverlay,
+            onOpenLocalModels = {
+                closeOverlay()
+                vm.refreshLocalModels()
+                overlay = Overlay.LocalModels
+            },
         )
     }
 
@@ -1204,6 +1233,8 @@ private fun buildCommands(
         Icons.Outlined.NavigateBefore) { onCommand("goto") })
     add(Command("symbols", "符号大纲", "当前文件的类 / 函数列表",
         Icons.Filled.AccountTree) { onCommand("symbols") })
+    add(Command("models", "本地模型", "下载 MiniCPM5 / 离线 Agent",
+        Icons.Filled.AutoAwesome) { onCommand("models") })
     add(Command("copyout", "复制全部输出", "写入剪贴板",
         Icons.Filled.ContentCopy) { vm.copyOutput() })
     add(Command("newfile", "新建文件", "在项目根创建",

@@ -49,6 +49,7 @@ fun AgentPanelDialog(
     pendingProposal: AgentEvent.PatchProposed?,
     lastCheckpoint: AgentEvent.Checkpoint?,
     checkpointCount: Int,
+    recovered: Boolean,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onApprove: () -> Unit,
@@ -77,6 +78,11 @@ fun AgentPanelDialog(
                     "每次写入前都会停下来让你批准。",
             )
             return@QuietDialog
+        }
+
+        if (recovered) {
+            QuietHint("这是上次退出前的 Agent 会话记录；发送新任务会开始新会话。")
+            Spacer(Modifier.height(Dimens.sm))
         }
 
         Box(Modifier.fillMaxWidth().height(310.dp)) {

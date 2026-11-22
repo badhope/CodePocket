@@ -9,6 +9,7 @@ import com.devterminal.agent.AgentEvent
 import com.devterminal.agent.AgentLoop
 import com.devterminal.agent.ApprovalHandler
 import com.devterminal.agent.CheckpointStore
+import com.devterminal.agent.AgentSessionStore
 import com.devterminal.agent.ToolCall
 import com.devterminal.agent.ToolRegistry
 import com.devterminal.agent.tools.ApplyPatchTool
@@ -18,6 +19,12 @@ import com.devterminal.agent.tools.SearchTextTool
 import com.devterminal.agent.tools.RunFileTool
 import com.devterminal.agent.tools.RunTestsTool
 import com.devterminal.model.OpenAiCompatibleProvider
+import com.devterminal.model.LocalLlamaProvider
+import com.devterminal.model.LocalModelUiState
+import com.devterminal.model.LocalModelSpec
+import com.devterminal.model.ModelCatalog
+import com.devterminal.model.ModelDownloadManager
+import com.devterminal.model.ModelRepository
 import com.devterminal.workspace.LocalWorkspace
 import com.devterminal.language.CodeSymbol
 import com.devterminal.language.LanguageService
@@ -137,6 +144,11 @@ data class UiState(
     // ---------- 符号大纲（v0.0.18） ----------
     val symbolOutline: List<CodeSymbol> = emptyList(),
     val symbolsLoading: Boolean = false,
+    // ---------- Agent 会话恢复（v0.0.19） ----------
+    val agentRecovered: Boolean = false,
+    // ---------- 本地模型（v0.0.19） ----------
+    val localModels: List<LocalModelUiState> = emptyList(),
+    val localModelsLoading: Boolean = false,
     // ---------- 全局搜索（v0.3） ----------
     val globalSearching: Boolean = false,
     val globalResults: List<SearchHit> = emptyList(),
@@ -182,6 +194,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
     private val settingsStore = com.devterminal.settings.SettingsStore(context)
+    private val agentSessions = AgentSessionStore(File(context.filesDir, "agent-sessions"))
+    private var agentSessionId: String? = null
+    private val modelRepository = ModelRepository(
+        context.getExternalFilesDir("models") ?: File(context.filesDir, "models")
+    )
+    private val modelDownloads = ModelDownloadManager(modelRepository)
+    private var modelDownloadJob: Job? = null
 
     private val _ui = MutableStateFlow(UiState(settings = settingsStore.load()))
     val ui: StateFlow<UiState> = _ui.asStateFlow()
@@ -196,6 +215,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         prepareEnvironment()
+        restoreLastAgentSession()
+        refreshLocalModels()
     }
 
     private fun prepareEnvironment() {
@@ -1282,11 +1303,193 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 进程重启后恢复最近一次 Agent 会话的事件时间线；不自动重跑任务。 */
+    private fun restoreLastAgentSession() {
+        viewModelScope.launch {
+            val latest = withContext(Dispatchers.IO) {
+                runCatching { agentSessions.latest() }.getOrNull()
+            } ?: return@launch
+            val (meta, events) = latest
+            if (events.isEmpty()) return@launch
+            if (_ui.value.agentBusy || _ui.value.agentEvents.isNotEmpty()) return@launch
+            agentSessionId = meta.id
+            _ui.update {
+                it.copy(
+                    agentEvents = events.takeLast(200),
+                    agentRecovered = true,
+                )
+            }
+        }
+    }
+
+    fun refreshLocalModels() {
+        _ui.update { it.copy(localModelsLoading = true) }
+        viewModelScope.launch {
+            val specs = withContext(Dispatchers.IO) {
+                ModelCatalog.models.map { spec ->
+                    LocalModelUiState(spec = spec, installed = modelRepository.isInstalled(spec))
+                }
+            }
+            _ui.update { st ->
+                st.copy(
+                    localModelsLoading = false,
+                    localModels = specs.map { fresh ->
+                        val old = st.localModels.firstOrNull { it.spec.id == fresh.spec.id }
+                        fresh.copy(
+                            downloading = old?.downloading ?: false,
+                            progress = old?.progress ?: -1f,
+                            error = old?.error,
+                        )
+                    },
+                )
+            }
+        }
+    }
+
+    fun downloadLocalModel(id: String) {
+        val spec = ModelCatalog.byId(id) ?: return
+        if (modelDownloadJob?.isActive == true) {
+            _ui.update { it.copy(message = "已有模型正在下载", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        val memoryGb = deviceMemoryGb()
+        if (memoryGb != null && memoryGb < spec.minRamGb * 0.85) {
+            _ui.update {
+                it.copy(
+                    message = "设备内存约 ${"%.1f".format(memoryGb)}GB，低于 ${spec.displayName} 建议的 ${spec.minRamGb}GB",
+                    messageSeq = it.messageSeq + 1,
+                )
+            }
+            return
+        }
+        _ui.update { st ->
+            st.copy(localModels = st.localModels.map {
+                if (it.spec.id == id) it.copy(downloading = true, progress = 0f, error = null) else it
+            })
+        }
+        modelDownloadJob = viewModelScope.launch {
+            try {
+                modelDownloads.download(spec) { p ->
+                    _ui.update { st ->
+                        st.copy(localModels = st.localModels.map {
+                            if (it.spec.id == id) it.copy(
+                                downloading = true,
+                                progress = p.fraction,
+                                error = null,
+                            ) else it
+                        })
+                    }
+                }
+                _ui.update { st ->
+                    st.copy(
+                        localModels = st.localModels.map {
+                            if (it.spec.id == id) it.copy(installed = true, downloading = false, progress = 1f) else it
+                        },
+                        message = "${spec.displayName} 下载并校验完成",
+                        messageSeq = st.messageSeq + 1,
+                    )
+                }
+            } catch (e: CancellationException) {
+                _ui.update { st ->
+                    st.copy(localModels = st.localModels.map {
+                        if (it.spec.id == id) it.copy(downloading = false, progress = -1f) else it
+                    }, message = "已暂停下载，下次继续", messageSeq = st.messageSeq + 1)
+                }
+            } catch (e: Exception) {
+                _ui.update { st ->
+                    st.copy(
+                        localModels = st.localModels.map {
+                            if (it.spec.id == id) it.copy(
+                                downloading = false,
+                                progress = -1f,
+                                error = e.message ?: "下载失败",
+                            ) else it
+                        },
+                        message = "模型下载失败：${e.message}",
+                        messageSeq = st.messageSeq + 1,
+                    )
+                }
+            } finally {
+                modelDownloadJob = null
+            }
+        }
+    }
+
+    fun cancelLocalModelDownload() {
+        modelDownloadJob?.cancel()
+        modelDownloadJob = null
+    }
+
+    fun deleteLocalModel(id: String) {
+        val spec = ModelCatalog.byId(id) ?: return
+        if (modelDownloadJob?.isActive == true) {
+            _ui.update { it.copy(message = "先暂停下载再删除", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { modelRepository.delete(spec) }
+            val s = _ui.value.settings
+            if (s.localModelId == id) updateSettings(s.copy(useLocalModel = false))
+            refreshLocalModels()
+            _ui.update { it.copy(message = "已删除 ${spec.displayName}", messageSeq = it.messageSeq + 1) }
+        }
+    }
+
+    fun selectLocalModel(id: String) {
+        val spec = ModelCatalog.byId(id) ?: return
+        val installed = _ui.value.localModels.firstOrNull { it.spec.id == id }?.installed == true
+        if (!installed) {
+            _ui.update { it.copy(message = "先下载 ${spec.displayName}", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        updateSettings(_ui.value.settings.copy(useLocalModel = true, localModelId = id))
+        _ui.update {
+            it.copy(
+                message = "Agent 已切换为本地 ${spec.displayName}",
+                messageSeq = it.messageSeq + 1,
+            )
+        }
+    }
+
+    fun setUseLocalModel(enabled: Boolean) {
+        val s = _ui.value.settings
+        if (enabled) {
+            val installed = _ui.value.localModels.firstOrNull { it.spec.id == s.localModelId }?.installed == true
+            if (!installed) {
+                _ui.update { it.copy(message = "本机模型尚未下载或未通过校验", messageSeq = it.messageSeq + 1) }
+                return
+            }
+        }
+        updateSettings(s.copy(useLocalModel = enabled))
+    }
+
+    private fun deviceMemoryGb(): Double? = runCatching {
+        val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val info = android.app.ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        info.totalMem / 1024.0 / 1024.0 / 1024.0
+    }.getOrNull()
+
     private fun startAgentTask(task: String) {
         val st = _ui.value
-        if (!st.settings.aiConfigured) {
+        val localSpec = ModelCatalog.byId(st.settings.localModelId)
+        val useLocal = st.settings.useLocalModel && localSpec != null && modelRepository.isInstalled(localSpec)
+        if (st.settings.useLocalModel && !useLocal) {
             _ui.update {
-                it.copy(message = "请先在设置里配置 AI 端点", messageSeq = it.messageSeq + 1)
+                it.copy(
+                    message = "本地模型未下载或校验失败，先到「本地模型」下载",
+                    messageSeq = it.messageSeq + 1,
+                )
+            }
+            return
+        }
+        if (!useLocal && !st.settings.aiConfigured) {
+            _ui.update {
+                it.copy(
+                    message = if (st.settings.useLocalModel) "本地模型未下载或校验失败，先到「本地模型」下载"
+                    else "请先在设置里配置 AI 端点，或下载本地模型",
+                    messageSeq = it.messageSeq + 1,
+                )
             }
             return
         }
@@ -1309,6 +1512,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
+        val sessionId = runCatching { agentSessions.create(projectDir.absolutePath, task) }.getOrNull()
+        agentSessionId = sessionId
+
         val workspace = runCatching { LocalWorkspace(projectDir) }.getOrElse { e ->
             _ui.update {
                 it.copy(message = "无法打开工作区：${e.message}", messageSeq = it.messageSeq + 1)
@@ -1316,7 +1522,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val checkpoints = CheckpointStore(File(context.filesDir, "agent-checkpoints"), workspace)
-        val provider = OpenAiCompatibleProvider(st.settings)
+        var localProvider: LocalLlamaProvider? = null
+        val provider = if (useLocal && localSpec != null) {
+            LocalLlamaProvider(modelRepository.modelFile(localSpec), localSpec).also { localProvider = it }
+        } else {
+            OpenAiCompatibleProvider(st.settings)
+        }
         val runner = runtimes?.let { EngineCommandRunner(context, it, projectDir) }
         val tools = ToolRegistry(
             listOf(
@@ -1346,11 +1557,15 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 agentPendingProposal = null,
                 lastAgentCheckpoint = null,
                 agentCheckpoints = emptyList(),
+                agentRecovered = false,
             )
         }
         agentJob = viewModelScope.launch {
             try {
                 loop.run(task) { event ->
+                    agentSessionId?.let { sessionId ->
+                        runCatching { agentSessions.append(sessionId, event) }
+                    }
                     if (event is AgentEvent.PatchProposed) {
                         _ui.update { it.copy(agentPendingProposal = event) }
                     }
@@ -1382,6 +1597,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
             } finally {
+                localProvider?.close()
                 agentApproval?.complete(false)
                 agentApproval = null
                 _ui.update {

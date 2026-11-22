@@ -38,6 +38,9 @@ sealed interface Overlay {
     /** 当前文件符号大纲 */
     data object Symbols : Overlay
 
+    /** 本地模型下载与管理 */
+    data object LocalModels : Overlay
+
     /** 环境自检 */
     data object Diagnostics : Overlay
 
