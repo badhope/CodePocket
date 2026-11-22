@@ -4,7 +4,7 @@
 
 ---
 
-## 已实现（v0.0.17 上下文版）
+## 已实现（v0.0.18 符号大纲版）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
@@ -19,6 +19,8 @@
 - ✅ `ContextBuilder`：系统提示词预算、RepoMap 裁剪、历史消息按字符预算压缩
 - ✅ 项目规则：自动读取 `AGENTS.md` / `.codepocket/rules.md`，注入 Agent 提示词
 - ✅ Agent 文件 IO 全部切到 `Dispatchers.IO`，扫描项目不再阻塞主线程
+- ✅ `LanguageService`：Python / Kotlin / Java / JS / TS / Lua 文件符号大纲，行号可跳转
+- ✅ 命令面板新增「符号大纲」，当前文件函数/类一屏看完，点击直达
 
 ## v0.0.14 基线
 

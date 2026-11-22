@@ -19,6 +19,8 @@ import com.devterminal.agent.tools.RunFileTool
 import com.devterminal.agent.tools.RunTestsTool
 import com.devterminal.model.OpenAiCompatibleProvider
 import com.devterminal.workspace.LocalWorkspace
+import com.devterminal.language.CodeSymbol
+import com.devterminal.language.LanguageService
 import com.devterminal.engine.AiClient
 import com.devterminal.engine.EngineCommandRunner
 import com.devterminal.engine.EnvironmentInstaller
@@ -132,6 +134,9 @@ data class UiState(
     val agentPendingProposal: AgentEvent.PatchProposed? = null,
     val lastAgentCheckpoint: AgentEvent.Checkpoint? = null,
     val agentCheckpoints: List<AgentEvent.Checkpoint> = emptyList(),
+    // ---------- 符号大纲（v0.0.18） ----------
+    val symbolOutline: List<CodeSymbol> = emptyList(),
+    val symbolsLoading: Boolean = false,
     // ---------- 全局搜索（v0.3） ----------
     val globalSearching: Boolean = false,
     val globalResults: List<SearchHit> = emptyList(),
@@ -1494,6 +1499,33 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 as android.content.ClipboardManager
         cm.setPrimaryClip(android.content.ClipData.newPlainText("output", text))
         _ui.update { it.copy(message = "已复制输出", messageSeq = it.messageSeq + 1) }
+    }
+
+    /** 读取当前文件的符号大纲；只扫当前文件，避免点一下命令就全项目 IO。 */
+    fun loadSymbols() {
+        val file = _ui.value.currentFile ?: run {
+            _ui.update { it.copy(message = "先打开一个文件", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        val root = currentProject ?: file.parentFile ?: return
+        val relative = runCatching {
+            file.relativeTo(root).path.replace(File.separatorChar, '/')
+        }.getOrElse { file.name }
+        _ui.update { it.copy(symbolsLoading = true, symbolOutline = emptyList()) }
+        viewModelScope.launch {
+            val symbols = withContext(Dispatchers.IO) {
+                runCatching { LanguageService(LocalWorkspace(root)).outline(relative) }
+                    .getOrElse { emptyList() }
+            }
+            _ui.update {
+                it.copy(
+                    symbolsLoading = false,
+                    symbolOutline = symbols,
+                    message = if (symbols.isEmpty()) "没有识别到符号" else null,
+                    messageSeq = if (symbols.isEmpty()) it.messageSeq + 1 else it.messageSeq,
+                )
+            }
+        }
     }
 
     /** 跳转到指定行（用户输入 1 基行号） */

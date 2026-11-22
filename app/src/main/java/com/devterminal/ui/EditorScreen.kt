@@ -140,6 +140,7 @@ private val overlaySaver = run {
         Named("ai", Overlay.Ai),
         Named("agent", Overlay.Agent),
         Named("globalSearch", Overlay.GlobalSearch),
+        Named("symbols", Overlay.Symbols),
         Named("diagnostics", Overlay.Diagnostics),
         Named("runConfig", Overlay.RunConfig),
         Named("settings", Overlay.Settings),
@@ -760,6 +761,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "ai" -> overlay = Overlay.Ai
                     "agent" -> overlay = Overlay.Agent
                     "gsearch" -> overlay = Overlay.GlobalSearch
+                    "symbols" -> { vm.loadSymbols(); overlay = Overlay.Symbols }
                     "runconfig" -> overlay = Overlay.RunConfig
                     "preview" -> vm.togglePreview()
                     "export" -> exportLauncher.launch(vm.suggestedExportName())
@@ -829,6 +831,16 @@ fun EditorScreen(vm: EditorViewModel) {
             onRestoreCheckpoint = vm::restoreAgentCheckpoint,
             onCancel = vm::cancelAgent,
             onDismiss = { vm.cancelAgent(); closeOverlay() }
+        )
+    }
+
+    if (overlay == Overlay.Symbols) {
+        SymbolOutlineDialog(
+            fileName = ui.currentFile?.name ?: "当前文件",
+            symbols = ui.symbolOutline,
+            loading = ui.symbolsLoading,
+            onPick = { line -> vm.gotoLine(line); closeOverlay() },
+            onDismiss = ::closeOverlay,
         )
     }
 
@@ -1190,6 +1202,8 @@ private fun buildCommands(
         Icons.Filled.FileUpload) { onCommand("export") })
     add(Command("goto", "跳转到行", "输入行号直达",
         Icons.Outlined.NavigateBefore) { onCommand("goto") })
+    add(Command("symbols", "符号大纲", "当前文件的类 / 函数列表",
+        Icons.Filled.AccountTree) { onCommand("symbols") })
     add(Command("copyout", "复制全部输出", "写入剪贴板",
         Icons.Filled.ContentCopy) { vm.copyOutput() })
     add(Command("newfile", "新建文件", "在项目根创建",

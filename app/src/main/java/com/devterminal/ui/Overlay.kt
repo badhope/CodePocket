@@ -35,6 +35,9 @@ sealed interface Overlay {
     /** 全局搜索 */
     data object GlobalSearch : Overlay
 
+    /** 当前文件符号大纲 */
+    data object Symbols : Overlay
+
     /** 环境自检 */
     data object Diagnostics : Overlay
 
