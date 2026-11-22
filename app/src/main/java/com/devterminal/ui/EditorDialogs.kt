@@ -299,7 +299,7 @@ fun SettingsDialog(
 fun AboutDialog(onDismiss: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
-    var crashLog by remember { mutableStateOf(CrashLogger.read(context)) }
+    var crashLog by remember { mutableStateOf(CrashLogger.readAll(context)) }
     QuietDialog(onDismiss = onDismiss, title = "关于") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Terminal, null, tint = cs.primary, modifier = Modifier.size(22.dp))

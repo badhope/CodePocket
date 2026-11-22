@@ -63,7 +63,18 @@ object CrashLogger {
         return if (f.exists()) runCatching { f.readText() }.getOrDefault("") else ""
     }
 
+    /** 原生信号崩溃日志（pybridge 的 signal handler 写入，与 Java 崩溃分开） */
+    fun readNative(context: Context): String {
+        val f = File(context.filesDir, "crash-native.log")
+        return if (f.exists()) runCatching { f.readText() }.getOrDefault("") else ""
+    }
+
+    /** 关于页统一出口：Java 崩溃 + 原生崩溃都展示，清空时一起清 */
+    fun readAll(context: Context): String =
+        listOf(read(context), readNative(context)).filter { it.isNotBlank() }.joinToString("\n")
+
     fun clear(context: Context) {
         runCatching { File(context.filesDir, FILE_NAME).delete() }
+        runCatching { File(context.filesDir, "crash-native.log").delete() }
     }
 }

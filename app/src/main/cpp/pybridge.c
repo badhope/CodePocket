@@ -70,6 +70,25 @@ static jstring cp_new_string(JNIEnv *env, const char *utf8) {
     return out;
 }
 
+
+/* P2：把 Python 异常格式化成完整 traceback（含文件名/行号/调用栈）。
+ * 只返回 PyObject（新引用），由调用方转 jstring 并 DECREF。 */
+static PyObject *cp_format_exception(PyObject *ptype, PyObject *pvalue, PyObject *ptb) {
+    PyObject *mod = PyImport_ImportModule("traceback");
+    if (!mod) { PyErr_Clear(); return NULL; }
+    PyObject *fn = PyObject_GetAttrString(mod, "format_exception");
+    Py_DECREF(mod);
+    if (!fn) { PyErr_Clear(); return NULL; }
+    PyObject *list = PyObject_CallFunctionObjArgs(fn, ptype, pvalue, ptb ? ptb : Py_None, NULL);
+    Py_DECREF(fn);
+    if (!list) { PyErr_Clear(); return NULL; }
+    PyObject *sep = PyUnicode_FromString("");
+    PyObject *joined = sep ? PyUnicode_Join(sep, list) : NULL;
+    Py_XDECREF(sep);
+    Py_DECREF(list);
+    if (!joined) { PyErr_Clear(); return NULL; }
+    return joined;
+}
 /* P1-5：每次运行后清掉用户脚本新增的模块与 sys.path 改动。
  * 基线在 initialize 末尾抓取，存于 __main__；脚本自身不共享该 dict，
  * 但 PyRun_SimpleString 的清理代码运行在 __main__，可直接读到。 */
@@ -507,7 +526,8 @@ Java_com_devterminal_engine_NativeBridge_execFile(
                 PyObject *ptype, *pvalue, *ptb;
                 PyErr_Fetch(&ptype, &pvalue, &ptb);
                 PyErr_NormalizeException(&ptype, &pvalue, &ptb);
-                PyObject *str = PyObject_Str(pvalue);
+                PyObject *str = cp_format_exception(ptype, pvalue, ptb);
+                if (!str) str = PyObject_Str(pvalue); /* 兜底：至少给出异常消息 */
                 const char *msg = str ? PyUnicode_AsUTF8(str) : "Unknown error";
                 result = cp_new_string(env, msg ? msg : "Unknown error");
                 Py_XDECREF(str);
