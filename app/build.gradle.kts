@@ -28,7 +28,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 压缩 DEX：debug 包 95MB 里 classes.dex 约 44MB，release 必须收缩
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             // 演示阶段复用 debug 签名，正式发布请替换为自己的 keystore
             signingConfig = signingConfigs.getByName("debug")
         }

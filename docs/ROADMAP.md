@@ -23,6 +23,7 @@
 - ✅ 解释器隔离：每次运行后清理用户新增 `sys.modules` 与 `sys.path` 改动
 - ✅ 输出完整性：三引擎 1024 缓冲 + 100ms/256 行分批上屏 + 丢行统计
 - ✅ 错误与诊断：完整 Python traceback、Java/原生崩溃日志 About 页出口
+- ✅ Release 构建：R8 压缩后 APK 从 95MB 降到约 32MB，JNI/运行时 keep 规则已补齐
 - ✅ AI 流式回复支持 180s 总超时、120s 空闲超时与手动取消
 
 ---
