@@ -8,7 +8,7 @@
 
 - ✅ 三种可运行语言：Python（原生 CPython 3.13，ARM64）、JavaScript（Rhino，纯 Java）、Lua（LuaJ，纯 Java）
 - ✅ JNI 桥：stdin/stdout/stderr 三路桥接、死循环中断、`input()` 交互
-- ✅ 标准库全量随包（纯 Python + C 扩展：math/json/socket/ssl/sqlite3/ctypes…）
+- ✅ 标准库随包（2314 条纯 Python 模块，剔除 5247 个 `__pycache__`；C 扩展走 jniLibs：math/json/socket/ssl/sqlite3/ctypes…）
 - ✅ Sora Editor 编辑器（20 种语言高亮、补全、查找替换、全局搜索；3 种可运行 + 17 种编辑级）
 - ✅ 文件树 / 多 Tab / 项目模板 / 多项目切换 / SAF 导入导出
 - ✅ 离线 Git（JGit：init/commit/push/pull）
@@ -17,6 +17,13 @@
 - ✅ AI 助手（BYOK，OpenAI 兼容端点）
 - ✅ 会话恢复、前台服务保活、崩溃日志
 - ✅ 修复：`__file__` 等模块属性注入、并发运行状态机、停止兜底
+- ✅ 数据完整性：切项目/关脏 Tab/打开文件前强制落盘，保存失败即中止操作
+- ✅ 安全加固：预览断网、SAF 文件名清洗、Zip Slip 路径校验、Git token 不落盘
+- ✅ 16KB 页对齐：`libpybridge.so` 与 jniLibs 全部 58 个 `.so` 均为 `0x4000`
+- ✅ 解释器隔离：每次运行后清理用户新增 `sys.modules` 与 `sys.path` 改动
+- ✅ 输出完整性：三引擎 1024 缓冲 + 100ms/256 行分批上屏 + 丢行统计
+- ✅ 错误与诊断：完整 Python traceback、Java/原生崩溃日志 About 页出口
+- ✅ AI 流式回复支持 180s 总超时、120s 空闲超时与手动取消
 
 ---
 
@@ -26,7 +33,7 @@
   - 途径：本地交叉编译 wheel 或预构建 wheel 打包，离线导入；
   - 依赖：构建工具链扩展（`scripts/` 新增 wheel 打包流程）。
 - 🔄 离线包管理增强：图形化导入 `.whl`、模块可用性清单
-- 🔄 官网站点更新：品牌页 + 下载 + 文档（`site/` 目录）
+- ✅ 官网站点更新：CodePocket 品牌页、下载、文档与社交卡片（`site/` 目录；演示视频仍为早期录屏）
 
 ---
 
