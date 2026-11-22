@@ -96,7 +96,7 @@ class ExecutionService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("DevTerminal")
+            .setContentTitle("CodePocket")
             .setContentText(title)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pending)
