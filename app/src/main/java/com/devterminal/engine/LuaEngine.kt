@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import org.luaj.vm2.LuaError
@@ -177,7 +178,7 @@ class LuaEngine : RunEngine {
                 runCatching { stdinWriter?.close() }
             }
         }
-    }.flowOn(Dispatchers.Default)
+    }.buffer(1024).flowOn(Dispatchers.Default)
 
     override fun stop() {
         stopRequested.set(true)

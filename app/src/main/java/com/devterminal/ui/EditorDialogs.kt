@@ -41,6 +41,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.devterminal.BuildConfig
 import com.devterminal.project.Templates
@@ -264,7 +266,9 @@ fun SettingsDialog(
             value = aiKey,
             onValueChange = { aiKey = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = "API Key（本地端点可留空）"
+            placeholder = "API Key（本地端点可留空）",
+            keyboardType = KeyboardType.Password,
+            visualTransformation = PasswordVisualTransformation()
         )
         Spacer(Modifier.height(Dimens.sm))
         TextButton(
@@ -679,10 +683,20 @@ private fun importPurePythonPackage(context: android.content.Context, uri: Uri):
         // 解压到引擎实际挂载的 site-packages 目录
         val dest = File(context.filesDir, "python-stdlib/lib/python3.13/site-packages").apply { mkdirs() }
         val eit = zf.entries()
+        var totalBytes = 0L
+        var entryCount = 0
         while (eit.hasMoreElements()) {
             val e = eit.nextElement()
             if (e.isDirectory) continue
-            val f = File(dest, e.name)
+            entryCount++
+            if (entryCount > 5000) return false
+            totalBytes += e.size.coerceAtLeast(0)
+            if (totalBytes > 100L * 1024 * 1024) return false
+            val relative = e.name.replace('\\', '/')
+            if (relative.startsWith("/") || relative.contains("..")) return false
+            val f = File(dest, relative)
+            val root = dest.canonicalFile
+            if (!f.canonicalFile.toPath().startsWith(root.toPath())) return false
             f.parentFile?.mkdirs()
             zf.getInputStream(e).use { inp -> f.outputStream().use { out -> inp.copyTo(out) } }
         }

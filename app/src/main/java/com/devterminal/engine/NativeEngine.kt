@@ -10,7 +10,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.flow.buffer
 
 /**
  * 原生 Python 引擎（CPython 3.13.9 官方 Android 支持，PEP 738）。
@@ -56,6 +58,9 @@ class NativeEngine(private val context: Context) : RunEngine {
 
     /** execFile 是否仍在执行（stop 兜底线程据此判断脚本是否已收尾） */
     private val execActive = AtomicBoolean(false)
+
+    /** 高频输出时 channel 满导致丢弃的行数；运行结束前会明确告诉用户 */
+    private val droppedLines = AtomicLong(0)
 
     // ==================== 初始化 ====================
 
@@ -202,7 +207,13 @@ class NativeEngine(private val context: Context) : RunEngine {
 
         // 事件出口（C 回调线程 → Flow）。注意这里只做转发；
         // busy/running 的复位统一交给 exec 线程的 finally 收尾（见下）。
-        sink.set { ev -> trySend(ev) }
+        droppedLines.set(0)
+        sink.set { ev ->
+            val result = trySend(ev)
+            if (result.isFailure && (ev is RunEvent.Stdout || ev is RunEvent.Stderr)) {
+                droppedLines.incrementAndGet()
+            }
+        }
 
         /**
          * Finished 只发一次：看门狗超时补发、stop 兜底与 execFile 正常返回都可能触发，
@@ -222,6 +233,10 @@ class NativeEngine(private val context: Context) : RunEngine {
                 val err = bridge.execFile(script.absolutePath, workingDir, scriptDir, request.args.toTypedArray())
                 // P2-1：无尾换行的最后一行残留在此 flush
                 bridge.flushBuffers()
+                val dropped = droppedLines.get()
+                if (dropped > 0) {
+                    trySend(RunEvent.Log("输出过快，已丢弃 $dropped 行；请减少 print 频率或分批输出"))
+                }
                 if (err != null) {
                     sink.get()?.invoke(RunEvent.Stderr(err))
                     sendFinished(1, started)
@@ -268,7 +283,7 @@ class NativeEngine(private val context: Context) : RunEngine {
             // 保证"上一个脚本真正结束"之前不允许下一个运行开始。
             watchdog.cancel()
         }
-    }.flowOn(Dispatchers.Default)
+    }.buffer(1024).flowOn(Dispatchers.Default)
 
     override fun stop() {
         // P4-2：不再把 running 置 false 就完事——running 的复位统一交给

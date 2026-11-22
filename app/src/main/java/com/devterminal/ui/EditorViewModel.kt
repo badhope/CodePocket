@@ -19,6 +19,7 @@ import com.devterminal.engine.RunEngine
 import com.devterminal.engine.EngineProvider
 import com.devterminal.project.FileNode
 import com.devterminal.project.ProjectManager
+import com.devterminal.project.sanitizeFileName
 import com.devterminal.project.Templates
 import com.devterminal.settings.resolvesDark
 import kotlinx.coroutines.Dispatchers
@@ -283,14 +284,50 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- 项目 / 文件 ----------
 
     fun openProject(dir: File) {
+        viewModelScope.launch {
+            // 切项目前先把当前脏文件落盘；失败就不切，绝不静默丢代码。
+            if (!persistCurrentIfDirty()) return@launch
+            if (_ui.value.dirty) {
+                _ui.update { it.copy(message = "保存期间有新输入，已取消切换", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
+            switchProject(dir)
+        }
+    }
+
+    /** 实际的工程切换：只做状态清理，不负责保存。 */
+    private fun switchProject(dir: File) {
         currentProject = dir
-        // P2-4：切换项目清空已开 Tab / 当前文件，与 newProject() 行为一致，
-        // 避免上一个项目的 Tab 仍指向旧路径。
         _ui.update {
             it.copy(openTabs = emptyList(), currentFile = null, editorText = "", dirty = false)
         }
         refreshTree()
         saveSession()
+    }
+
+    /**
+     * 保存当前文件（如果有脏改动）。
+     * 返回 false 表示写入失败；调用方应中止切项目/关 Tab。
+     * 写入后再次比对文本，防止保存期间的输入被 dirty=false 误抹掉。
+     */
+    private suspend fun persistCurrentIfDirty(): Boolean {
+        val st = _ui.value
+        val file = st.currentFile ?: return true
+        if (!st.dirty) return true
+        val snapshot = st.editorText
+        val ok = runCatching {
+            withContext(Dispatchers.IO) { projects.write(file.absolutePath, snapshot) }
+        }.isSuccess
+        if (!ok) {
+            _ui.update { it.copy(message = "保存失败，操作已取消：${file.name}", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        _ui.update { cur ->
+            if (cur.currentFile?.absolutePath == file.absolutePath && cur.editorText == snapshot) {
+                cur.copy(dirty = false)
+            } else cur
+        }
+        return true
     }
 
     /** P2-7：按最近修改时间取最近 8 个项目，供命令面板「最近打开」 */
@@ -315,7 +352,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 自动保存：切走前先落盘，避免改动丢失
         if (st.settings.autoSave && st.dirty && previous != null) {
             viewModelScope.launch {
-                withContext(Dispatchers.IO) { projects.write(previous.absolutePath, st.editorText) }
+                val ok = runCatching {
+                    withContext(Dispatchers.IO) { projects.write(previous.absolutePath, st.editorText) }
+                }.isSuccess
+                if (!ok) {
+                    _ui.update { it.copy(message = "保存失败，已取消切换：${previous.name}",
+                        messageSeq = it.messageSeq + 1) }
+                    return@launch
+                }
                 doOpenFile(file)
             }
         } else {
@@ -349,9 +393,28 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val st = _ui.value
         val idx = st.openTabs.indexOfFirst { it.absolutePath == file.absolutePath }
         if (idx < 0) return
+        val closingCurrent = st.currentFile?.absolutePath == file.absolutePath
+        if (closingCurrent && st.dirty) {
+            viewModelScope.launch {
+                if (!persistCurrentIfDirty()) return@launch
+                if (_ui.value.dirty) {
+                    _ui.update { it.copy(message = "保存期间有新输入，请再关一次", messageSeq = it.messageSeq + 1) }
+                    return@launch
+                }
+                closeTabInternal(file)
+            }
+        } else {
+            closeTabInternal(file)
+        }
+    }
+
+    private fun closeTabInternal(file: File) {
+        val st = _ui.value
+        val idx = st.openTabs.indexOfFirst { it.absolutePath == file.absolutePath }
+        if (idx < 0) return
         val newTabs = st.openTabs.filterNot { it.absolutePath == file.absolutePath }
         if (st.currentFile?.absolutePath == file.absolutePath) {
-            // 保存后切到相邻 Tab（优先右边，其次左边），没有就清空编辑器
+            // dirty 已在上层保存；这里只负责切换/清空
             val next = newTabs.getOrNull(idx) ?: newTabs.getOrNull(idx - 1)
             _ui.update { it.copy(openTabs = newTabs) }
             if (next != null) {
@@ -376,12 +439,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun save(saveMessage: Boolean = true) {
         val st = _ui.value
         val file = st.currentFile ?: return
+        val snapshot = st.editorText
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { projects.write(file.absolutePath, st.editorText) }
-            _ui.update {
-                if (saveMessage) it.copy(dirty = false, message = "已保存 ${file.name}",
-                    messageSeq = it.messageSeq + 1)
-                else it.copy(dirty = false)
+            val ok = runCatching {
+                withContext(Dispatchers.IO) { projects.write(file.absolutePath, snapshot) }
+            }.isSuccess
+            _ui.update { cur ->
+                if (!ok) {
+                    cur.copy(message = "保存失败：${file.name}", messageSeq = cur.messageSeq + 1)
+                } else if (cur.currentFile?.absolutePath == file.absolutePath && cur.editorText == snapshot) {
+                    if (saveMessage) cur.copy(dirty = false, message = "已保存 ${file.name}",
+                        messageSeq = cur.messageSeq + 1)
+                    else cur.copy(dirty = false)
+                } else {
+                    // IO 期间又有新输入：旧快照已落盘，但当前内容仍未保存，保持 dirty。
+                    cur
+                }
             }
         }
     }
@@ -622,11 +695,16 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun newProject(templateId: String) {
         val tpl = Templates.all.firstOrNull { it.id == templateId } ?: Templates.PYTHON_HELLO
         viewModelScope.launch {
+            // 先保住旧项目的脏文件，再建新项目；不要先切走再异步保存。
+            if (!persistCurrentIfDirty()) return@launch
+            if (_ui.value.dirty) {
+                _ui.update { it.copy(message = "保存期间有新输入，已取消新建", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
             val dir = withContext(Dispatchers.IO) { projects.createFromTemplate(tpl) }
-            openProject(dir)
+            switchProject(dir)
             _ui.update {
-                it.copy(openTabs = emptyList(), message = "已创建项目 ${dir.name}",
-                    messageSeq = it.messageSeq + 1)
+                it.copy(message = "已创建项目 ${dir.name}", messageSeq = it.messageSeq + 1)
             }
             // 新项目自动打开主文件
             val main = withContext(Dispatchers.IO) {
@@ -665,6 +743,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun renameFile(file: File, newName: String) {
         viewModelScope.launch {
+            // 重命名的是当前脏文件时，先把内容落盘；否则后面 doOpenFile 会读到旧内容。
+            if (_ui.value.currentFile?.absolutePath == file.absolutePath && _ui.value.dirty) {
+                if (!persistCurrentIfDirty()) return@launch
+                if (_ui.value.dirty) {
+                    _ui.update { it.copy(message = "保存期间有新输入，请再重命名", messageSeq = it.messageSeq + 1) }
+                    return@launch
+                }
+            }
             val renamed = withContext(Dispatchers.IO) { projects.rename(file, newName) }
             if (renamed == null) {
                 _ui.update { it.copy(message = "重命名失败：名称已存在或非法", messageSeq = it.messageSeq + 1) }
@@ -1130,7 +1216,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     val resolver = context.contentResolver
                     // 从 URI 推断原始文件名
                     val raw = queryDisplayName(uri) ?: "imported_${System.currentTimeMillis()}.txt"
-                    val target = uniqueTarget(dir, raw)
+                    // SAF provider 的 display name 不可信：可能是 ../../shared_prefs/...
+                    // 先按文件名规则清洗，再校验 canonical 路径必须落在当前项目内。
+                    val safeName = sanitizeFileName(raw)
+                    val target = uniqueTarget(dir, safeName)
+                    require(target.canonicalFile.parentFile == dir.canonicalFile) {
+                        "导入目标越界"
+                    }
                     resolver.openInputStream(uri)?.use { input ->
                         target.outputStream().use { output -> input.copyTo(output) }
                     } ?: throw IllegalStateException("无法读取所选文件")
