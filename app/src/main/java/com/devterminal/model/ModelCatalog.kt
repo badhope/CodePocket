@@ -55,6 +55,20 @@ object ModelCatalog {
             licenseUrl = "https://www.modelscope.cn/models/OpenBMB/MiniCPM5-2B-GGUF",
             note = "2B 级高性能档；总参超过 2B，仅 8GB+ 设备建议使用。",
         ),
+        LocalModelSpec(
+            id = "qwen3.5-2b",
+            displayName = "Qwen3.5-2B",
+            fileName = "Qwen3.5-2B-Q4_K_M.gguf",
+            sizeBytes = 1_280_835_840L,
+            sha256 = "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",
+            url = "https://modelscope.cn/models/unsloth/Qwen3.5-2B-GGUF/resolve/master/Qwen3.5-2B-Q4_K_M.gguf",
+            minRamGb = 8,
+            params = "1.89B（2B 级）",
+            quantization = "Q4_K_M",
+            licenseName = "Apache-2.0",
+            licenseUrl = "https://www.modelscope.cn/models/Qwen/Qwen3.5-2B",
+            note = "备选档：中文稳定、生态成熟；Qwen3.5 官方架构 + unsloth 量化，国内 ModelScope 源。",
+        ),
     )
 
     fun byId(id: String?): LocalModelSpec? = models.firstOrNull { it.id == id }

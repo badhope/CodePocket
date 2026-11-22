@@ -24,7 +24,7 @@
 - ✅ Agent 会话 JSONL：每次任务落盘，重启自动恢复最近一次时间线
 - ✅ Agent 历史会话：最近 20 个会话可回放、删除，保留 30 个文件
 - ✅ llama.cpp JNI：arm64 `libllama_jni.so`，静态链接 llama/ggml，16KB 对齐
-- ✅ 本地模型管理：MiniCPM5-1B / 2B 下载、断点续传、SHA-256 校验、删除
+- ✅ 本地模型管理：MiniCPM5-1B / 2B、Qwen3.5-2B 下载、断点续传、SHA-256 校验、删除
 - ✅ `LocalLlamaProvider`：Agent 可完全离线跑本地 GGUF，6GB/8GB 内存门槛
 - ✅ 设置页与命令面板新增「本地模型」入口
 - ✅ `ProviderRegistry`：云端/本地可用性判断收敛到一处

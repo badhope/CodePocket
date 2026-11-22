@@ -66,3 +66,9 @@
 ---
 
 本项目自身代码以 Apache License 2.0 发布，详见 [LICENSE](LICENSE)。
+
+
+## Qwen3.5-2B 模型权重
+
+- 来源：Qwen/Qwen3.5-2B（Apache-2.0），GGUF 量化为 unsloth/Qwen3.5-2B-GGUF。
+- 分发方式：不随 APK 打包，由用户在应用内单独下载；下载地址使用 ModelScope 国内源。

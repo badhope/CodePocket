@@ -16,5 +16,9 @@ class ModelCatalogTest {
             assertTrue(spec.minRamGb >= 6)
         }
         assertEquals(ModelCatalog.DEFAULT_ID, ModelCatalog.models.first().id)
+        val qwen = ModelCatalog.byId("qwen3.5-2b")
+        assertTrue(qwen != null)
+        assertTrue(qwen!!.url.startsWith("https://modelscope.cn/"))
+        assertEquals(1_280_835_840L, qwen.sizeBytes)
     }
 }
