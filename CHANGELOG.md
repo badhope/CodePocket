@@ -12,6 +12,7 @@
 - **项目 JS 插件**：`.codepocket/plugins` 下的 `run(input)` 在 Rhino 沙箱执行，
   禁止 Java/文件/网络访问，默认关闭。
 - **下载前台服务**：复用现有 ExecutionService，按 tag 引用计数，退后台不被杀。
+- **Qwen3.5-2B 本地模型**：ModelCatalog 增加 Qwen3.5-2B Q4_K_M（约 1.28GB，ModelScope 国内源），作为 MiniCPM5 之外的 2B 级备选。
 
 ### 构建
 
