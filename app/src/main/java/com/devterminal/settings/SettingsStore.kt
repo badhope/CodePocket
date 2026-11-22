@@ -69,7 +69,9 @@ data class AppSettings(
     val gitUserName: String = "",
     val gitUserEmail: String = "",
     /** 敏感：远程地址可能内嵌 token（https://user:token@host/repo.git），存加密 SharedPreferences */
-    val gitRemoteUrl: String = ""
+    val gitRemoteUrl: String = "",
+    /** Keystore 不可用时敏感字段退回明文 prefs；设置页需明确提示，不能假装已加密 */
+    val encryptionFallback: Boolean = false
 ) {
     companion object {
         const val DEFAULT_AI_BASE_URL = "http://127.0.0.1:11434/v1"
@@ -156,7 +158,8 @@ class SettingsStore(context: Context) {
         aiConfigured = prefs.getBoolean(KEY_AI_CONFIGURED, false),
         gitUserName = prefs.getString(KEY_GIT_NAME, "") ?: "",
         gitUserEmail = prefs.getString(KEY_GIT_EMAIL, "") ?: "",
-        gitRemoteUrl = encrypted.getString(KEY_GIT_REMOTE, "") ?: ""
+        gitRemoteUrl = encrypted.getString(KEY_GIT_REMOTE, "") ?: "",
+        encryptionFallback = encryptedIsFallback
     )
 
     fun save(s: AppSettings) {

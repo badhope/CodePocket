@@ -1,6 +1,8 @@
 package com.devterminal.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -39,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,6 +51,7 @@ import com.devterminal.BuildConfig
 import com.devterminal.project.Templates
 import com.devterminal.settings.AppSettings
 import com.devterminal.settings.ThemeModes
+import com.devterminal.engine.CrashLogger
 import com.devterminal.engine.EnvReport
 import com.devterminal.engine.EnvDiagnostics
 import com.devterminal.ui.components.Hairline
@@ -270,6 +274,15 @@ fun SettingsDialog(
             keyboardType = KeyboardType.Password,
             visualTransformation = PasswordVisualTransformation()
         )
+        if (settings.encryptionFallback) {
+            Spacer(Modifier.height(Dimens.sm))
+            Text(
+                "⚠️ 当前设备 Keystore 不可用，API Key 与 Git Token 只能以明文保存在应用私有目录。" +
+                    "请勿在共用设备上保存密钥；修复系统安全组件后重新保存即可恢复加密。",
+                style = MaterialTheme.typography.labelSmall,
+                color = cs.error
+            )
+        }
         Spacer(Modifier.height(Dimens.sm))
         TextButton(
             onClick = { onAiConfigChange(aiUrl.trim(), aiKey.trim(), aiModel.trim()) },
@@ -285,6 +298,8 @@ fun SettingsDialog(
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
     val cs = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    var crashLog by remember { mutableStateOf(CrashLogger.read(context)) }
     QuietDialog(onDismiss = onDismiss, title = "关于") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Terminal, null, tint = cs.primary, modifier = Modifier.size(22.dp))
@@ -323,6 +338,22 @@ fun AboutDialog(onDismiss: () -> Unit) {
             style = MaterialTheme.typography.labelSmall,
             color = cs.faint
         )
+        if (crashLog.isNotBlank()) {
+            Spacer(Modifier.height(Dimens.xl))
+            SectionLabel("最近崩溃日志")
+            Spacer(Modifier.height(Dimens.sm))
+            MonoText(crashLog.takeLast(900), color = cs.muted, fontSize = 9)
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+                TextButton(onClick = {
+                    context.getSystemService(ClipboardManager::class.java)
+                        ?.setPrimaryClip(ClipData.newPlainText("CodePocket crash", crashLog))
+                }) { Text("复制日志", style = MaterialTheme.typography.labelMedium) }
+                TextButton(onClick = {
+                    CrashLogger.clear(context)
+                    crashLog = ""
+                }) { Text("清空", style = MaterialTheme.typography.labelMedium, color = cs.error) }
+            }
+        }
     }
 }
 

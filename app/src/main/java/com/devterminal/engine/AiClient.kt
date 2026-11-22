@@ -90,7 +90,7 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
      * 流式对话（SSE）。返回一个冷 Flow，逐段吐出模型生成的增量文本。
      *
      * 约定：
-     * - connect 超时 8s；read 不设整体超时，靠收集方取消（取消时 awaitClose 断开连接）。
+     * - connect 超时 8s；read 空闲超时 120s；外层再套 180s 总超时，避免模型卡死时永久等待。
      * - 每收到一个 `data: {...}` 帧，提取 `choices[0].delta.content` 并 emit。
      * - 收到 `data: [DONE]` 正常结束；HTTP 错误或解析失败以异常形式终结 Flow。
      *
@@ -126,7 +126,7 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
                 conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     connectTimeout = TimeUnit.SECONDS.toMillis(8).toInt()
-                    readTimeout = 0 // 流式：不设整体读超时，靠收集方取消
+                    readTimeout = TimeUnit.SECONDS.toMillis(120).toInt() // 流空闲超时：模型卡死时不再无限等
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
                     setRequestProperty("Accept", "text/event-stream")

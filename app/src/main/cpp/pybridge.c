@@ -49,6 +49,48 @@ static char g_crash_log_path[PATH_MAX] = {0};
 /* P2-6：inittab 只允许注册一次（Py_Initialize 后再 AppendInittab 会报错）。 */
 static int g_dtbridge_registered = 0;
 
+
+/* P1-4：Python 字符串是 UTF-8，JNI NewStringUTF 只接受 modified UTF-8，
+ * emoji / 4 字节字符会触发 JNI 异常并让输出变成乱码。统一走 UTF-16：
+ * PyUnicode_AsUTF16String 产出带 BOM 的 UTF-16LE，NewString 会复制 jchar 数组。 */
+static jstring cp_new_string(JNIEnv *env, const char *utf8) {
+    if (!utf8) return NULL;
+    PyObject *u = PyUnicode_DecodeUTF8(utf8, strlen(utf8), "replace");
+    if (!u) { PyErr_Clear(); return (*env)->NewStringUTF(env, utf8); }
+    PyObject *b = PyUnicode_AsUTF16String(u);
+    Py_DECREF(u);
+    if (!b) { PyErr_Clear(); return (*env)->NewStringUTF(env, utf8); }
+    Py_ssize_t n = PyBytes_GET_SIZE(b);
+    jstring out = NULL;
+    if (n >= 2) {
+        out = (*env)->NewString(env, (const jchar *)(PyBytes_AS_STRING(b) + 2),
+                                (jsize)((n - 2) / 2));
+    }
+    Py_DECREF(b);
+    return out;
+}
+
+/* P1-5：每次运行后清掉用户脚本新增的模块与 sys.path 改动。
+ * 基线在 initialize 末尾抓取，存于 __main__；脚本自身不共享该 dict，
+ * 但 PyRun_SimpleString 的清理代码运行在 __main__，可直接读到。 */
+static void cp_reset_after_run(void) {
+    PyObject *main = PyImport_AddModule("__main__"); /* borrowed */
+    if (!main) { PyErr_Clear(); return; }
+    PyObject *d = PyModule_GetDict(main);
+    if (!d || !PyDict_GetItemString(d, "_CP_BASELINE_MODULES")) {
+        PyErr_Clear();
+        return;
+    }
+    PyRun_SimpleString(
+        "import sys as _cp_sys\n"
+        "for _cp_name in list(_cp_sys.modules):\n"
+        "    if _cp_name not in _CP_BASELINE_MODULES:\n"
+        "        del _cp_sys.modules[_cp_name]\n"
+        "_cp_sys.path[:] = _CP_BASELINE_PATH\n"
+    );
+    PyErr_Clear();
+}
+
 /* ---------------- Python 侧桥接函数 ---------------- */
 
 static PyObject *bridge_output(PyObject *self, PyObject *args) {
@@ -64,8 +106,8 @@ static PyObject *bridge_output(PyObject *self, PyObject *args) {
             }
         }
         if (env) {
-            jstring jStream = (*env)->NewStringUTF(env, stream);
-            jstring jText = (*env)->NewStringUTF(env, text);
+            jstring jStream = cp_new_string(env, stream);
+            jstring jText = cp_new_string(env, text);
             (*env)->CallVoidMethod(env, g_ctx.bridge, g_ctx.onOutput, jStream, jText);
             (*env)->DeleteLocalRef(env, jStream);
             (*env)->DeleteLocalRef(env, jText);
@@ -357,6 +399,8 @@ Java_com_devterminal_engine_NativeBridge_initialize(
         "sys.stdout.flush()\n"
         "import os as _os, sys as _sys\n"
         "_sys.argv = ['']\n"
+        "_CP_BASELINE_MODULES = set(_sys.modules)\n"
+        "_CP_BASELINE_PATH = list(_sys.path)\n"
     );
     PyGILState_Release(gil);
     return Py_IsInitialized() ? JNI_TRUE : JNI_FALSE;
@@ -383,7 +427,7 @@ Java_com_devterminal_engine_NativeBridge_execFile(
         if (!fp) {
             char buf[512];
             snprintf(buf, sizeof(buf), "无法打开文件：%s", p);
-            result = (*env)->NewStringUTF(env, buf);
+            result = cp_new_string(env, buf);
         } else {
             /* FILE 模式：保持用户代码的 __file__ / traceback 行号语义 */
             PyObject *globals = PyDict_New();
@@ -465,10 +509,11 @@ Java_com_devterminal_engine_NativeBridge_execFile(
                 PyErr_NormalizeException(&ptype, &pvalue, &ptb);
                 PyObject *str = PyObject_Str(pvalue);
                 const char *msg = str ? PyUnicode_AsUTF8(str) : "Unknown error";
-                result = (*env)->NewStringUTF(env, msg ? msg : "Unknown error");
+                result = cp_new_string(env, msg ? msg : "Unknown error");
                 Py_XDECREF(str);
                 Py_XDECREF(ptype); Py_XDECREF(pvalue); Py_XDECREF(ptb);
             }
+            cp_reset_after_run();
             Py_DECREF(globals);
             fclose(fp);
         }

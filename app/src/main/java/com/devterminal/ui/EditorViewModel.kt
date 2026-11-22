@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.File
 
 enum class EnvState { PREPARING, READY, ERROR }
@@ -1081,6 +1082,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             val aiClient = AiClient(_ui.value.settings)
             val sb = StringBuilder()
             runCatching {
+                withTimeout(180_000L) {
                 aiClient.chatStream(AiClient.SYSTEM_PROMPT, history.takeLast(6), fileContext)
                     .collect { chunk ->
                         sb.append(chunk)
@@ -1090,6 +1092,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             ))
                         }
                     }
+                }
             }.onFailure { e ->
                 // 流式失败也保留已收到的部分，再追一条错误提示
                 if (sb.isEmpty()) sb.append("⚠️ ${e.message ?: "请求失败"}")
