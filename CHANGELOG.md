@@ -2,6 +2,22 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.22] — 2026-11-23
+
+### 修复
+
+- **原生库未解压导致运行闪退 / 自检误报**：`useLegacyPackaging=false` 时 `/lib/arm64` 下没有 `libpython3.13.so`、`libpybridge.so` 和 C 扩展，CPython 无法初始化。改为 `useLegacyPackaging=true` + `extractNativeLibs=true`，安装时把原生库解压到 `nativeLibraryDir`。
+- **自检诊断更可操作**：工具链缺失时直接给出「重新检测 / 查看使用指南 / 重装最新 APK」路径，不再只罗列缺失文件。
+
+### 新增
+
+- **首次启动新手引导**：说明 CodePocket 是什么、三步开始、界面入口、运行闪退排查。
+- **指南入口**：抽屉「指南」、命令面板「使用指南」、自检失败页均可再次打开。
+
+### 构建
+
+- `versionCode 22` / `versionName 0.0.22`。
+
 ## [0.0.21] — 2026-11-23
 
 ### 新增

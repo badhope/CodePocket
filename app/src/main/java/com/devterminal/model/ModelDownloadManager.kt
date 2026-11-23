@@ -1,5 +1,6 @@
 package com.devterminal.model
 
+import com.devterminal.BuildConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -51,7 +52,7 @@ class ModelDownloadManager(private val repository: ModelRepository) {
         val conn = (URL(spec.url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 60_000
-            setRequestProperty("User-Agent", "CodePocket/0.0.21 (Android; llama.cpp)")
+            setRequestProperty("User-Agent", "CodePocket/${BuildConfig.VERSION_NAME} (Android; llama.cpp)")
             setRequestProperty("Accept-Encoding", "identity")
             if (restartExisting > 0) setRequestProperty("Range", "bytes=$restartExisting-")
         }

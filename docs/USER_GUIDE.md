@@ -1,6 +1,6 @@
 # CodePocket「口袋码」用户手册
 
-> 版本：v0.0.21 · 适用：Android 8.0+（Python 需 ARM64；JavaScript/Lua 任意 ABI）
+> 版本：v0.0.22 · 适用：Android 8.0+（Python 需 ARM64；JavaScript/Lua 任意 ABI）
 
 ---
 
