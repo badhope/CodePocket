@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,13 @@ plugins {
     // 而是作为独立的 Kotlin 编译器插件引入（K2 编译器）。
     alias(libs.plugins.kotlin.compose)
 }
+
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) FileInputStream(file).use { load(it) }
+}
+val hasReleaseKeystore = keystoreProperties.getProperty("storeFile")
+    ?.let { rootProject.file(it).exists() || file(it).exists() } == true
 
 android {
     namespace = "com.devterminal"
@@ -14,17 +24,28 @@ android {
         applicationId = "com.devterminal"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 25
-        versionName = "0.0.25"
+        versionCode = 26
+        versionName = "0.0.26"
         vectorDrawables { useSupportLibrary = true }
-        // 原生 CPython 引擎：只打 arm64（当前覆盖绝大多数 Android 设备）
-        ndk { abiFilters += "arm64-v8a" }
+        // 原生 CPython 引擎：同时打 arm64 与 x86_64（后者用于模拟器/ChromeOS）
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
     }
 
     // 原生 CPython（PEP 738）：jniLibs 里的 libpython3.13.so / libpybridge.so
     // 由 NDK clang 手动编译后放入 src/main/jniLibs/arm64-v8a，不走 externalNativeBuild，
     // 避免构建机下载 CMake 的不确定性
     ndkVersion = "27.3.13750724"
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
 
     buildTypes {
         release {
@@ -34,8 +55,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // 演示阶段复用 debug 签名，正式发布请替换为自己的 keystore
-            signingConfig = signingConfigs.getByName("debug")
+            // 有 keystore.properties 时用正式签名；没有时退回 debug，保证 CI/新克隆能构建
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

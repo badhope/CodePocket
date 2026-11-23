@@ -4,15 +4,15 @@ import android.content.Context
 import java.io.File
 
 /**
- * 运行环境的目录管理（原生 CPython 3.13.9 / arm64-v8a 版）。
+ * 运行环境的目录管理（原生 CPython 3.13.9 / arm64-v8a + x86_64 版）。
  *
  * ## 与旧版的区别
  * 旧版负责把 441MB 的 `assets/usrtar.zip` 解压到 `files/usr`，并模拟 Termux 环境变量
  * 供原生二进制使用。该方案已废弃——工具链不入库、必须联网下载，与「离线」定位矛盾。
- * 现由原生 CPython 3.13.9（arm64-v8a）直接执行，性能与 C 扩展支持均完整。
+ * 现由原生 CPython 3.13.9（arm64-v8a / x86_64）直接执行，性能与 C 扩展支持均完整。
  *
  * 现在 Python 由随 APK 打包的原生 CPython 执行：
- * - libpython3.13.so、libpybridge.so 在 jniLibs/arm64-v8a，由 PackageManager 解压；
+ * - libpython3.13.so、libpybridge.so 在 jniLibs/<abi>，由 PackageManager 解压；
  * - Python C 扩展（math.cpython-...so 等）不在 lib 前缀规则内，首启由
  *   NativeEngine 从 APK 抽到 python-stdlib/lib/python3.13/lib-dynload；
  * - 纯 .py 标准库在 assets/python-stdlib.zip，首启解压到 files/python-stdlib

@@ -1,6 +1,7 @@
 package com.devterminal.engine
 
 import android.content.Context
+import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -21,14 +22,14 @@ import kotlinx.coroutines.flow.buffer
  * 实现 [RunEngine] 接口，UI 层零改动。
  *
  * 特性：
- * - 原生 ARM64 性能（arm64-v8a）
+ * - 原生 arm64-v8a / x86_64（模拟器、ChromeOS）
  * - 真实文件系统：脚本直接读写 App 私有目录，cwd = 项目目录
  * - stdin/stdout 在 Python 层桥接：input()/print() 天然可用
  * - 中断走 CPython 官方 Py_AddPendingCall：死循环可被 KeyboardInterrupt 终止
  *
  * 标准库存放在 files/python-stdlib（首次运行时从 assets 解压），
- * libpython3.13.so、libpybridge.so 在 jniLibs/arm64-v8a；Python C 扩展在首次启动时
- * 从 APK 的 lib/arm64-v8a 抽到 python-stdlib/lib/python3.13/lib-dynload。
+ * libpython3.13.so、libpybridge.so 在 jniLibs/<abi>；Python C 扩展在首次启动时
+ * 从 APK 的 lib/<abi> 抽到 python-stdlib/lib/python3.13/lib-dynload。
  */
 class NativeEngine(private val context: Context) : RunEngine {
 
@@ -69,12 +70,14 @@ class NativeEngine(private val context: Context) : RunEngine {
     private val stdlibMarker = ".unpacked_ok"
 
     /** P1-1：解压完整性校验——标记文件 + 关键 stdlib 文件都在才算可用 */
-    private fun stdlibOk(dest: File): Boolean {
-        if (!File(dest, stdlibMarker).exists()) return false
+    private fun hasStdlibFiles(dest: File): Boolean {
         if (!File(dest, "lib/python3.13/os.py").exists()) return false
         if (!File(dest, "lib/python3.13/encodings/__init__.py").exists()) return false
         return true
     }
+
+    private fun stdlibOk(dest: File): Boolean =
+        File(dest, stdlibMarker).exists() && hasStdlibFiles(dest)
 
     private fun ensureStdlib(onProgress: ((Long, Long) -> Unit)? = null): File {
         // 标准库存放在 files/python-stdlib；不存在或校验失败时从 assets/python-stdlib.zip 解压
@@ -120,7 +123,7 @@ class NativeEngine(private val context: Context) : RunEngine {
                 android.util.Log.e("NativeEngine", "stdlib 解压失败", e)
                 throw RuntimeException("Python 标准库解压失败：${e.message}", e)
             }
-            if (!stdlibOk(dest)) {
+            if (!hasStdlibFiles(dest)) {
                 throw RuntimeException("Python 标准库解压后校验失败")
             }
             File(dest, stdlibMarker).createNewFile()
@@ -163,7 +166,7 @@ class NativeEngine(private val context: Context) : RunEngine {
     }
 
     /**
-     * 把 APK 里 lib/arm64-v8a 下的 Python C 扩展抽到
+     * 把 APK 里 lib/<当前 ABI> 下的 Python C 扩展抽到
      * python-stdlib/lib/python3.13/lib-dynload。
      *
      * 这些文件名形如 math.cpython-313-aarch64-linux-android.so，不满足 Android
@@ -173,9 +176,17 @@ class NativeEngine(private val context: Context) : RunEngine {
      */
     private fun ensureExtensions(stdlib: File): File {
         val dest = File(stdlib, "lib/python3.13/lib-dynload")
+        val abi = Build.SUPPORTED_ABIS.firstOrNull { it == "arm64-v8a" || it == "x86_64" }
+            ?: Build.SUPPORTED_ABIS.firstOrNull().orEmpty()
+        val abiPrefix = "lib/$abi/"
+        val triple = when (abi) {
+            "arm64-v8a" -> "aarch64-linux-android"
+            "x86_64" -> "x86_64-linux-android"
+            else -> abi
+        }
         val marker = File(dest, ".extracted_ok")
-        val math = File(dest, "math.cpython-313-aarch64-linux-android.so")
-        val ssl = File(dest, "_ssl.cpython-313-aarch64-linux-android.so")
+        val math = File(dest, "math.cpython-313-$triple.so")
+        val ssl = File(dest, "_ssl.cpython-313-$triple.so")
         if (marker.isFile && math.isFile && math.length() > 0 &&
             ssl.isFile && ssl.length() > 0) return dest
 
@@ -192,7 +203,7 @@ class NativeEngine(private val context: Context) : RunEngine {
                 while (entries.hasMoreElements()) {
                     val e = entries.nextElement()
                     if (e.isDirectory) continue
-                    if (!e.name.startsWith("lib/arm64-v8a/")) continue
+                    if (!e.name.startsWith(abiPrefix)) continue
                     if (!e.name.endsWith(".so")) continue
                     val name = e.name.substringAfterLast('/')
                     // lib<name>.so 已由 PackageManager 解压；这里只抽 Python 扩展
@@ -209,7 +220,7 @@ class NativeEngine(private val context: Context) : RunEngine {
             throw RuntimeException("Python C 扩展解压失败：${e.message}", e)
         }
         if (copied == 0) {
-            throw RuntimeException("APK 的 lib/arm64-v8a 中没有 Python C 扩展")
+            throw RuntimeException("APK 的 lib/$abi 中没有 Python C 扩展")
         }
         if (!math.isFile || math.length() <= 0L) {
             throw RuntimeException("Python C 扩展缺少 math 模块")

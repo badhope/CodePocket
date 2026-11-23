@@ -2,6 +2,30 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.26] — 2026-11-24
+
+### 新增
+
+- **正式签名**：release 构建使用独立 RSA-4096 证书（`CN=CodePocket`），签名配置从根目录 `keystore.properties` 读取；密钥与密码不入库，仓库只保留 `keystore.properties.example`。新证书与旧 debug 签名不兼容，旧版需卸载重装。
+- **x86_64 支持**：新增 x86_64 CPython 3.13 交叉编译产物、`libpybridge.so`、53 个 C 扩展与 OpenSSL/sqlite 依赖；`abiFilters` 同时打 `arm64-v8a` 与 `x86_64`，`NativeEngine` 按 `Build.SUPPORTED_ABIS` 选择对应目录。APK 可在 x86_64 模拟器/ChromeOS 上运行。
+- **终端面板**：编辑器内新增命令终端，保留项目内 cwd，支持 `cd`/`pwd`、20 秒超时、6000 字符输出上限；从命令面板与编辑器工具栏均可打开。它是非交互式命令会话，不是 PTY，vim/top 等全屏程序不可用。
+- **只读子 Agent**：新增 `delegate_task` 工具，把“先读多个文件再汇总”的独立探索交给隔离子上下文；子 Agent 只挂 `read_file` / `list_files` / `search_text`，不能写文件或执行命令。
+- **离线语义索引**：新增 `semantic_search` 工具，按 TF-IDF + 余弦相似度对项目分块检索，返回路径、行号与相关度；不下载 embedding 模型，完全离线。
+
+### 修复
+
+- **x86_64 自检误报**：`EnvDiagnostics` 与 `EngineProvider` 的架构门槛原本硬编码 arm64-v8a，x86_64 会被拒绝；改为识别 `arm64-v8a` / `x86_64` 两种原生 ABI。
+- **标准库解压校验死锁**：`stdlibOk()` 要求 `.unpacked_ok` 标记，但标记只在校验通过后创建，形成“永远校验失败”的循环。拆成 `hasStdlibFiles()` 与 `stdlibOk()`，校验通过后再落标记。
+- **x86_64 C 扩展名硬编码**：`ensureExtensions()` 只查 `math.cpython-313-aarch64-linux-android.so`；按 ABI 生成 `aarch64-linux-android` / `x86_64-linux-android` 后缀。
+
+### 构建
+
+- `versionCode 26` / `versionName 0.0.26`。
+- 双 ABI release APK 约 31MB，SHA-256 `b11c30d917039e0083bc2f074524d9d1b7f7e06e929cccbb1203bb2f318b1de0`；debug APK 约 49MB，SHA-256 `e6921861db0e73f1f81822208624f48332aa0a1aa9a2b7a92148d52521f699f0`。
+- 签名证书 SHA-256 `1b02135746d1426d7beda47e706fdb2c77a7145ea41e0f7e14addb191b87fac5`（`CN=CodePocket`，RSA-4096）。
+- 单元测试 124 个通过（含终端、语义索引、只读子 Agent）。
+- x86_64 模拟器实测：安装、启动、Python `main.py` 运行退出码 0、自检 12 项全绿、终端 `pwd` 返回项目目录。
+
 ## [0.0.25] — 2026-11-23
 
 ### 新增

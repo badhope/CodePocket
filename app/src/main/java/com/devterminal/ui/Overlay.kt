@@ -44,6 +44,9 @@ sealed interface Overlay {
     /** Agent 历史会话回放 */
     data object AgentHistory : Overlay
 
+    /** 轻量命令终端 */
+    data object Terminal : Overlay
+
     /** 环境自检 */
     data object Diagnostics : Overlay
 

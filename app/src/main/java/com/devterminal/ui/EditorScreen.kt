@@ -144,6 +144,7 @@ private val overlaySaver = run {
         Named("symbols", Overlay.Symbols),
         Named("localModels", Overlay.LocalModels),
         Named("agentHistory", Overlay.AgentHistory),
+        Named("terminal", Overlay.Terminal),
         Named("diagnostics", Overlay.Diagnostics),
         Named("runConfig", Overlay.RunConfig),
         Named("settings", Overlay.Settings),
@@ -775,6 +776,7 @@ fun EditorScreen(vm: EditorViewModel) {
         CommandPalette(
             commands = buildCommands(vm, ui, context,
                 onCommand = { cmd -> when (cmd) {
+                    "terminal" -> { vm.openTerminal(); overlay = Overlay.Terminal }
                     "diag" -> overlay = Overlay.Diagnostics
                     "settings" -> overlay = Overlay.Settings
                     "about" -> overlay = Overlay.About
@@ -948,6 +950,19 @@ fun EditorScreen(vm: EditorViewModel) {
             onRename = { newName -> vm.renameFile(target, newName); closeOverlay() },
             onDelete = { vm.deleteFile(target); closeOverlay() },
             onDismiss = ::closeOverlay
+        )
+    }
+
+    if (overlay == Overlay.Terminal) {
+        TerminalDialog(
+            lines = ui.terminalLines,
+            cwd = ui.terminalCwd,
+            busy = ui.terminalBusy,
+            input = ui.terminalInput,
+            onInputChange = vm::onTerminalInputChanged,
+            onRun = vm::runTerminalCommand,
+            onClear = vm::clearTerminal,
+            onDismiss = { vm.closeTerminal(); closeOverlay() },
         )
     }
 
@@ -1307,6 +1322,8 @@ private fun buildCommands(
         Icons.Filled.AutoAwesome) { onCommand("ai") })
     add(Command("agent", "Agent 模式", "读项目 / 搜索 / 按行改文件 / 批准",
         Icons.Filled.AutoAwesome) { onCommand("agent") })
+    add(Command("terminal", "终端", "在项目根执行 sh 命令",
+        Icons.Outlined.Terminal) { onCommand("terminal") })
     add(Command("runconfig", "运行配置", "命令行参数",
         Icons.Outlined.Terminal) { onCommand("runconfig") })
     add(Command("preview", "实时预览", "Markdown / HTML 分屏渲染",

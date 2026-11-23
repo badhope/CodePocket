@@ -28,7 +28,7 @@ data class EnvReport(
 }
 
 /**
- * 离线环境自检（原生 CPython 3.13.9 / arm64-v8a 版）。
+ * 离线环境自检（原生 CPython 3.13.9 / arm64-v8a + x86_64 版）。
  *
  * 动机：用户拿到 APK 后，最可能的失败是「运行时资源没打进包」或「.so 加载失败」。
  * 与其让他看到一个笼统的报错，不如主动检查 APK 内资源并给出**可执行**的提示。
@@ -38,7 +38,7 @@ data class EnvReport(
  * - nativeLibraryDir 下的 libpython3.13.so / libpybridge.so（解释器与 JNI 桥）
  * - python-stdlib/lib/python3.13/lib-dynload 下的 C 扩展（math/_ssl 等）
  * - nativeLibraryDir 下的 OpenSSL 依赖库（libssl_python.so / libcrypto_python.so）
- * - CPU 架构是否为 arm64-v8a
+ * - CPU 架构是否为支持的原生 ABI（arm64-v8a / x86_64）
  */
 object EnvDiagnostics {
 
@@ -51,11 +51,13 @@ object EnvDiagnostics {
 
         // 1) CPU 架构
         val abis = Build.SUPPORTED_ABIS?.toList().orEmpty()
-        val arm64 = abis.any { it.equals("arm64-v8a", ignoreCase = true) }
-        tools += if (arm64) {
-            ToolStatus("CPU 架构", true, "arm64-v8a · 原生 ABI")
+        val nativeAbi = listOf("arm64-v8a", "x86_64").firstOrNull { abi ->
+            abis.any { it.equals(abi, ignoreCase = true) }
+        }
+        tools += if (nativeAbi != null) {
+            ToolStatus("CPU 架构", true, "$nativeAbi · 原生 ABI")
         } else {
-            ToolStatus("CPU 架构", false, "不支持：当前设备 ${abis.joinToString()}，仅支持 arm64-v8a")
+            ToolStatus("CPU 架构", false, "不支持：当前设备 ${abis.joinToString()}，仅支持 arm64-v8a / x86_64")
         }
 
         // 2) 标准库 zip
@@ -96,7 +98,7 @@ object EnvDiagnostics {
         }
 
         // 5) 能力说明。Python 执行要求解释器 + C 扩展 + 依赖库都就位
-        val pythonReady = arm64 && zipSize > 0 &&
+        val pythonReady = nativeAbi != null && zipSize > 0 &&
             File(libDir, "libpython3.13.so").exists() &&
             File(libDir, "libpybridge.so").exists() &&
             mathSo != null && sslSo != null &&
@@ -111,7 +113,7 @@ object EnvDiagnostics {
             "仅编辑、语法高亮与静态补全；共 17 种编辑级语言"
         )
 
-        val ready = arm64 && zipSize > 0 &&
+        val ready = nativeAbi != null && zipSize > 0 &&
             File(libDir, "libpython3.13.so").exists() &&
             File(libDir, "libpybridge.so").exists()
         return EnvReport(ready, totalSize, tools)

@@ -47,6 +47,8 @@ class AgentLoop(
     /** 先输出计划、等用户批准后才调用工具；对标 Cursor / Claude Code 的 Plan 模式。 */
     private val planFirst: Boolean = false,
     private val approvePlan: suspend (AgentEvent.Plan) -> Boolean = { true },
+    /** 子 Agent 等场景可替换系统提示词；null 时用默认代码 Agent 提示词。 */
+    private val systemPromptOverride: String? = null,
 ) {
     suspend fun run(
         task: String,
@@ -66,7 +68,7 @@ class AgentLoop(
             runCatching { ProjectRules.read(workspace) }.getOrNull()
         }
         val systemPrompt = contextBuilder.systemPrompt(
-            SYSTEM_PROMPT + if (planFirst) PLAN_INSTRUCTION else "",
+            (systemPromptOverride ?: SYSTEM_PROMPT) + if (planFirst) PLAN_INSTRUCTION else "",
             repoMap?.text,
             rules,
         )
@@ -298,7 +300,8 @@ class AgentLoop(
             "你是 CodePocket 的代码 Agent。你可以读取、搜索、按行修改当前项目，并依据工具结果继续决策。" +
                 "不要臆测文件内容；修改前先读取。回答中文、简短。" +
                 "改完代码必须调用 run_tests 验证；项目没有测试时至少用 run_file 跑一次被改动的入口。" +
-                "只有工具结果 ok=true 才能说验证通过，不要凭空声称已验证。"
+                "只有工具结果 ok=true 才能说验证通过，不要凭空声称已验证。" +
+                "遇到需要先读很多文件才能回答的独立探索，可调用 delegate_task 交给只读子 Agent，拿结论后再动手。"
 
         const val PLAN_INSTRUCTION =
             "当前是计划模式。先不要调用任何工具，只输出一个计划 JSON：" +

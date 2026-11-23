@@ -26,6 +26,8 @@ import com.devterminal.agent.tools.SearchTextTool
 import com.devterminal.agent.tools.RunFileTool
 import com.devterminal.agent.tools.RunTestsTool
 import com.devterminal.agent.tools.RunCommandTool
+import com.devterminal.agent.tools.SubAgentTool
+import com.devterminal.agent.tools.SemanticSearchTool
 import com.devterminal.agent.tools.JsPluginTool
 import com.devterminal.agent.tools.McpTool
 import com.devterminal.agent.tools.McpResourceListTool
@@ -48,6 +50,7 @@ import com.devterminal.language.CodeSymbol
 import com.devterminal.language.LanguageService
 import com.devterminal.engine.AiClient
 import com.devterminal.engine.AiHistoryStore
+import com.devterminal.engine.TerminalSession
 import com.devterminal.engine.EngineCommandRunner
 import com.devterminal.engine.EnvironmentInstaller
 import com.devterminal.engine.ExecutionService
@@ -87,6 +90,8 @@ private const val MAX_OUTPUT_LINES = 3000
 
 /** 遍历项目时要跳过的噪音目录（既无意义又拖慢速度） */
 private val WALK_EXCLUDED = setOf(".git", "build", "__pycache__", "node_modules", ".gradle", ".idea")
+
+data class TerminalLine(val text: String, val command: Boolean)
 
 data class UiState(
     val envState: EnvState = EnvState.PREPARING,
@@ -135,6 +140,12 @@ data class UiState(
     val findIndex: Int = 0,
     /** 跳转请求序号，每次自增触发编辑器执行 */
     val findRequestId: Long = 0,
+    // ---------- 终端 ----------
+    val terminalLines: List<TerminalLine> = emptyList(),
+    val terminalCwd: String = "",
+    val terminalBusy: Boolean = false,
+    val terminalInput: String = "",
+
     // ---------- 状态栏 ----------
     val cursorLine: Int = 1,
     val cursorColumn: Int = 1,
@@ -973,6 +984,65 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (s.outputHeightDp != dp) updateSettings(s.copy(outputHeightDp = dp))
     }
 
+    // ---------- 终端 ----------
+    private var terminalSession: TerminalSession? = null
+
+    fun openTerminal() {
+        val projectDir = currentProject ?: return
+        if (terminalSession == null) {
+            terminalSession = TerminalSession(projectDir).also {
+                _ui.update { st ->
+                    st.copy(
+                        terminalCwd = it.prompt().trimEnd(),
+                        terminalLines = listOf(TerminalLine("CodePocket 终端 · ${projectDir.name}", false)),
+                    )
+                }
+            }
+        }
+    }
+
+    fun onTerminalInputChanged(text: String) {
+        _ui.update { it.copy(terminalInput = text) }
+    }
+
+    fun runTerminalCommand() {
+        val command = _ui.value.terminalInput.trim()
+        if (command.isEmpty() || _ui.value.terminalBusy) return
+        val session = terminalSession ?: currentProject?.let { dir ->
+            TerminalSession(dir).also { terminalSession = it }
+        } ?: return
+        _ui.update {
+            it.copy(
+                terminalInput = "",
+                terminalBusy = true,
+                terminalLines = (it.terminalLines + TerminalLine("${'$'} ${it.terminalCwd} $command", true)).takeLast(200),
+            )
+        }
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { session.execute(command) }
+            _ui.update { st ->
+                val out = buildString {
+                    if (result.output.isNotBlank()) append(result.output).append('\n')
+                    if (result.timedOut) append("[超时]")
+                }.trimEnd()
+                st.copy(
+                    terminalBusy = false,
+                    terminalCwd = session.prompt().trimEnd(),
+                    terminalLines = (st.terminalLines + TerminalLine(out.ifBlank { "（无输出）" }, false)).takeLast(200),
+                )
+            }
+        }
+    }
+
+    fun clearTerminal() {
+        _ui.update { it.copy(terminalLines = emptyList()) }
+    }
+
+    fun closeTerminal() {
+        terminalSession = null
+        _ui.update { it.copy(terminalLines = emptyList(), terminalBusy = false, terminalInput = "") }
+    }
+
     // ---------- 状态栏 ----------
 
     /** 编辑器光标变化（行、列，从 0 计） */
@@ -1634,10 +1704,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         workspace: LocalWorkspace,
         runner: EngineCommandRunner?,
         settings: com.devterminal.settings.AppSettings,
+        provider: com.devterminal.model.ModelProvider,
     ): Pair<ToolRegistry, String?> {
         val tools = mutableListOf<Tool>(
             ReadFileTool(), ListFilesTool(), SearchTextTool(), ApplyPatchTool(),
             RunFileTool(runner), RunTestsTool(runner), RunCommandTool(),
+            SemanticSearchTool(), SubAgentTool(provider),
         )
         val warnings = mutableListOf<String>()
         if (settings.pluginsEnabled) {
@@ -1732,7 +1804,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
         agentJob = viewModelScope.launch {
             try {
-                val (tools, toolWarning) = buildAgentTools(workspace, runner, st.settings)
+                val (tools, toolWarning) = buildAgentTools(workspace, runner, st.settings, provider)
                 if (toolWarning != null) {
                     _ui.update { it.copy(message = toolWarning, messageSeq = it.messageSeq + 1) }
                 }

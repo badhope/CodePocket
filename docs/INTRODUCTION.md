@@ -20,7 +20,7 @@ CodePocket 是一款完全离线的安卓多语言 IDE。Python 由 NDK 交叉�
 - 内置模板、命令面板、AI 助手（可选），从"照着写"到"自己写"一路顺畅。
 
 ### 对脚本写手 / 极客
-- 原生 ARM64 性能，跑计算脚本不卡壳；
+- 原生 ARM64 / x86_64 性能，跑计算脚本不卡壳；
 - 真文件系统：脚本直接读写手机私有目录，cwd 就是项目目录；
 - 标准库全量：math / json / socket / ssl / sqlite3 / ctypes 等 C 扩展随包可用；
 - JGit 离线 Git：init / commit / push / pull 都能在手机上完成。
@@ -46,7 +46,7 @@ CodePocket 是一款完全离线的安卓多语言 IDE。Python 由 NDK 交叉�
 
 ## 技术底色
 
-- **引擎**：Python 为 CPython 3.13.9（PEP 738，arm64 原生库）；JavaScript 为 Rhino 1.7.15、Lua 为 LuaJ 3.0.1（纯 Java，无 native 依赖）；
+- **引擎**：Python 为 CPython 3.13.9（PEP 738，arm64 / x86_64 原生库）；JavaScript 为 Rhino 1.7.15、Lua 为 LuaJ 3.0.1（纯 Java，无 native 依赖）；
 - **桥接**：Python 走自写 JNI 桥（`pybridge.c`），三路 stdio；JS/Lua 复用同一套 `RunEngine` 事件流；
 - **界面**：Kotlin 2.0 + Jetpack Compose + Sora Editor；
 - **构建**：零外部申请依赖——NDK（Google 官方）+ CPython 源码（GitHub）+ BeeWare 预编译依赖，全部免费公开。
@@ -55,7 +55,7 @@ CodePocket 是一款完全离线的安卓多语言 IDE。Python 由 NDK 交叉�
 
 ## 诚实的能力边界
 
-- Python 运行：✅ 完整（原生 CPython 3.13，arm64）；
+- Python 运行：✅ 完整（原生 CPython 3.13，arm64 + x86_64）；
 - JavaScript / Lua 运行：✅ 纯 Java，任意 ABI；
 - Java / Kotlin / TypeScript 等 14 种语言：仅编辑、高亮与补全，不提供运行；
 - numpy / pandas / matplotlib：⚠️ **未预装**，离线导入第三方 wheel 的能力后续开放；
