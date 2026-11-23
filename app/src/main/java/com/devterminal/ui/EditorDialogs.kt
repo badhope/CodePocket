@@ -518,10 +518,15 @@ fun DiagnosticsDialog(
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusDot(if (diagnostics.prefixReady) cs.primary else cs.error)
+                val allOk = diagnostics.allCriticalAvailable
+                StatusDot(if (allOk) cs.primary else cs.error)
                 Spacer(Modifier.width(Dimens.sm))
                 Text(
-                    if (diagnostics.prefixReady) "工具链已安装" else "工具链缺失",
+                    when {
+                        allOk -> "工具链已安装"
+                        !diagnostics.prefixReady -> "工具链缺失"
+                        else -> "工具链已安装 · 部分能力缺失"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -554,7 +559,7 @@ fun DiagnosticsDialog(
                     }
                 }
             }
-            if (!diagnostics.prefixReady) {
+            if (!diagnostics.allCriticalAvailable) {
                 Spacer(Modifier.height(Dimens.md))
                 Text(
                     "如果是刚安装的 APK，先点「重新检测」；仍缺失就卸载旧版、安装最新 APK，再到「指南」按步骤排查。",
@@ -803,13 +808,13 @@ private data class BuiltinLibs(
 
 private fun scanBuiltin(context: android.content.Context): BuiltinLibs {
     val extensions = runCatching {
-        File(context.applicationInfo.nativeLibraryDir).listFiles()
-            ?.filter { it.name.startsWith("lib") && it.name.endsWith(".so") }
-            ?.mapNotNull { f ->
-                val m = f.name.removePrefix("lib").removeSuffix(".so")
-                // 引擎本体（libpython3.13 / libpybridge）不算扩展；.so 模块名统一转成 import 名
-                if (m == "python3.13" || m == "pybridge") null else m.replace("_", "_")
-            }?.sorted() ?: emptyList()
+        // C 扩展由 NativeEngine 从 APK 抽到标准库的 lib-dynload；
+        // 文件名是 math.cpython-313-aarch64-linux-android.so，不能拿 lib 前缀去猜模块名。
+        File(context.filesDir, "python-stdlib/lib/python3.13/lib-dynload").listFiles()
+            ?.filter { it.isFile && it.name.endsWith(".so") && it.name.contains(".cpython-") }
+            ?.map { it.name.substringBefore(".cpython-") }
+            ?.filter { it.isNotBlank() }
+            ?.sorted() ?: emptyList()
     }.getOrDefault(emptyList())
     val pure = runCatching {
         // 与引擎实际挂载路径一致（pybridge.c / NativeEngine）：

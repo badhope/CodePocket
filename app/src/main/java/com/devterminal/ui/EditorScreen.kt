@@ -301,17 +301,21 @@ fun EditorScreen(vm: EditorViewModel) {
     }
 
     // 返回键：按「由内到外」的顺序逐层关闭——
-    // 先收查找条，再收抽屉，最后才是退出 App。原先只处理了前两者。
-    // P1-2：环境准备 / 工具链缺失期间也吞掉返回键，避免冷启动准备中按返回直接退出 App。
+    // 先收查找条，再收抽屉，最后才是退出 App。环境准备期间吞掉返回，
+    // 避免解压到一半退出；工具链缺失页则允许返回退出，别把用户困住。
     BackHandler(
         enabled = ui.findVisible || drawerState.isOpen || overlay != Overlay.None
-            || ui.envState == EnvState.PREPARING || ui.envState == EnvState.ERROR
+            || ui.envState == EnvState.PREPARING
     ) {
         when {
             ui.findVisible -> vm.showFind(false)
             drawerState.isOpen -> scope.launch { drawerState.close() }
+            overlay == Overlay.Onboarding -> {
+                uiPrefs.edit().putBoolean("onboarding_seen", true).apply()
+                closeOverlay()
+            }
             overlay != Overlay.None -> closeOverlay()
-            // PREPARING / ERROR：什么都不做，吞掉返回
+            // PREPARING：什么都不做，吞掉返回，避免解压到一半退出
         }
     }
 
@@ -1206,6 +1210,7 @@ private fun MissingToolchainScreen(
     onRetry: () -> Unit
 ) {
     val cs = MaterialTheme.colorScheme
+    val context = LocalContext.current
     Box(
         Modifier
             .fillMaxSize()
@@ -1243,6 +1248,16 @@ private fun MissingToolchainScreen(
             Spacer(Modifier.height(Dimens.xl))
             androidx.compose.material3.TextButton(onClick = onRetry) {
                 Text("重新检测", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+            }
+            androidx.compose.material3.TextButton(onClick = {
+                val ctx = context
+                val log = com.devterminal.engine.CrashLogger.readAll(ctx).ifBlank { "（暂无崩溃日志）" }
+                val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                    as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("CodePocket crash log", log))
+                android.widget.Toast.makeText(ctx, "崩溃日志已复制", android.widget.Toast.LENGTH_SHORT).show()
+            }) {
+                Text("复制崩溃日志", style = MaterialTheme.typography.labelLarge, color = cs.muted)
             }
         }
     }

@@ -12,6 +12,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import java.util.zip.ZipFile
 import kotlinx.coroutines.flow.buffer
 
 /**
@@ -26,7 +27,8 @@ import kotlinx.coroutines.flow.buffer
  * - 中断走 CPython 官方 Py_AddPendingCall：死循环可被 KeyboardInterrupt 终止
  *
  * 标准库存放在 files/python-stdlib（首次运行时从 assets 解压），
- * libpython3.13.so、libpybridge.so 及全部 C 扩展在 jniLibs/arm64-v8a。
+ * libpython3.13.so、libpybridge.so 在 jniLibs/arm64-v8a；Python C 扩展在首次启动时
+ * 从 APK 的 lib/arm64-v8a 抽到 python-stdlib/lib/python3.13/lib-dynload。
  */
 class NativeEngine(private val context: Context) : RunEngine {
 
@@ -134,8 +136,19 @@ class NativeEngine(private val context: Context) : RunEngine {
         if (initialized) return true
         synchronized(initLock) {
             if (initialized) return true
-            val stdlib = ensureStdlib(onProgress)
-            // P0-1：传入 nativeLibraryDir（C 扩展 .so 所在）与 crash-native.log 路径
+            val stdlib = try {
+                ensureStdlib(onProgress)
+            } catch (e: Exception) {
+                android.util.Log.e("NativeEngine", "准备 Python 标准库失败", e)
+                return false
+            }
+            // Android PackageManager 只会把 lib<name>.so 解压到 nativeLibraryDir；
+            // CPython 的 C 扩展名是 math.cpython-313-...so，不带 lib 前缀，必须由 App
+            // 自己从 APK 抽到标准库的 lib-dynload 目录，否则 import math/_ssl/_socket
+            // 会全部失败。此步骤失败不让解释器整体罢工——基础 print 仍可用，自检会报红。
+            runCatching { ensureExtensions(stdlib) }
+                .onFailure { android.util.Log.e("NativeEngine", "准备 Python C 扩展失败", it) }
+            // P0-1：传入 nativeLibraryDir（依赖库 .so 所在）与 crash-native.log 路径
             val nativeLibDir = context.applicationInfo.nativeLibraryDir
             val crashLog = File(context.filesDir, "crash-native.log").absolutePath
             val ok = runCatching {
@@ -147,6 +160,62 @@ class NativeEngine(private val context: Context) : RunEngine {
             readyFlag.set(ok)
             return ok
         }
+    }
+
+    /**
+     * 把 APK 里 lib/arm64-v8a 下的 Python C 扩展抽到
+     * python-stdlib/lib/python3.13/lib-dynload。
+     *
+     * 这些文件名形如 math.cpython-313-aarch64-linux-android.so，不满足 Android
+     * PackageManager 的 lib&lt;name&gt;.so 规则，安装时不会被解压到 nativeLibraryDir。
+     * 依赖库（libpython3.13.so / libssl_python.so 等）仍由 PackageManager 解压，
+     * dlopen 时会从 nativeLibraryDir 正常解析。
+     */
+    private fun ensureExtensions(stdlib: File): File {
+        val dest = File(stdlib, "lib/python3.13/lib-dynload")
+        val marker = File(dest, ".extracted_ok")
+        val math = File(dest, "math.cpython-313-aarch64-linux-android.so")
+        val ssl = File(dest, "_ssl.cpython-313-aarch64-linux-android.so")
+        if (marker.isFile && math.isFile && math.length() > 0 &&
+            ssl.isFile && ssl.length() > 0) return dest
+
+        dest.deleteRecursively()
+        dest.mkdirs()
+        val apk = File(context.applicationInfo.sourceDir)
+        if (!apk.isFile) {
+            throw RuntimeException("找不到已安装的 APK：${apk.absolutePath}")
+        }
+        var copied = 0
+        try {
+            ZipFile(apk).use { zf ->
+                val entries = zf.entries()
+                while (entries.hasMoreElements()) {
+                    val e = entries.nextElement()
+                    if (e.isDirectory) continue
+                    if (!e.name.startsWith("lib/arm64-v8a/")) continue
+                    if (!e.name.endsWith(".so")) continue
+                    val name = e.name.substringAfterLast('/')
+                    // lib<name>.so 已由 PackageManager 解压；这里只抽 Python 扩展
+                    if (name.startsWith("lib")) continue
+                    if (!name.contains(".cpython-")) continue
+                    val target = File(dest, name)
+                    zf.getInputStream(e).use { src ->
+                        target.outputStream().use { dst -> src.copyTo(dst) }
+                    }
+                    copied++
+                }
+            }
+        } catch (e: Exception) {
+            throw RuntimeException("Python C 扩展解压失败：${e.message}", e)
+        }
+        if (copied == 0) {
+            throw RuntimeException("APK 的 lib/arm64-v8a 中没有 Python C 扩展")
+        }
+        if (!math.isFile || math.length() <= 0L) {
+            throw RuntimeException("Python C 扩展缺少 math 模块")
+        }
+        marker.createNewFile()
+        return dest
     }
 
     override suspend fun prepareEnvironment(onProgress: (Long, Long) -> Unit) {
@@ -188,7 +257,7 @@ class NativeEngine(private val context: Context) : RunEngine {
         }
         // 首次运行前初始化解释器（预热过则秒过）
         if (!ensureInitialized()) {
-            trySend(RunEvent.Failed("原生 Python 初始化失败，请检查 libpython 是否随 APK 打包"))
+            trySend(RunEvent.Failed("原生 Python 初始化失败，请检查原生库与 C 扩展是否随 APK 安装"))
             busy.set(false); close(); return@callbackFlow
         }
 

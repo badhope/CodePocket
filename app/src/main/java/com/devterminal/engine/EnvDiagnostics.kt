@@ -18,9 +18,7 @@ data class EnvReport(
     val tools: List<ToolStatus>
 ) {
     val allCriticalAvailable: Boolean
-        get() = tools.filter { it.name == "Python" }.let { list ->
-            list.isEmpty() || list.any { it.available }
-        }
+        get() = tools.all { it.available }
 
     /** 给 UI 用的一行摘要 */
     fun summary(): String {
@@ -38,7 +36,8 @@ data class EnvReport(
  * 探测项（对齐原生引擎）：
  * - assets/python-stdlib.zip（纯 Python 标准库）
  * - nativeLibraryDir 下的 libpython3.13.so / libpybridge.so（解释器与 JNI 桥）
- * - nativeLibraryDir 下的 C 扩展（math._random 等）与依赖库（libcrypto_python.so）
+ * - python-stdlib/lib/python3.13/lib-dynload 下的 C 扩展（math/_ssl 等）
+ * - nativeLibraryDir 下的 OpenSSL 依赖库（libcrypto_python.so）
  * - CPU 架构是否为 arm64-v8a
  */
 object EnvDiagnostics {
@@ -73,20 +72,25 @@ object EnvDiagnostics {
         totalSize += nativeLib(context, tools, libDir, "libpython3.13.so", "解释器本体")
         totalSize += nativeLib(context, tools, libDir, "libpybridge.so", "JNI 桥")
 
-        // 4) C 扩展与依赖库（P0-1：确认 math/_random/_socket/_ctypes 等已打包）
-        val mathSo = File(libDir).listFiles()?.firstOrNull {
-            it.name.startsWith("math.") && it.name.endsWith(".so")
-        }
-        tools += if (mathSo != null && mathSo.length() > 0) {
-            totalSize += mathSo.length()
-            ToolStatus("C 扩展模块", true, "${formatSize(mathSo.length())} · math/_random/_socket/_ctypes 等")
+        // 4) C 扩展与依赖库。注意：PackageManager 不会解压 math.cpython-...so
+        //    这类非 lib 前缀文件，引擎会从 APK 抽到 python-stdlib/lib-dynload。
+        val extDir = File(context.filesDir, "python-stdlib/lib/python3.13/lib-dynload")
+        val mathSo = extensionLib(extDir, "math.") ?: extensionLib(File(libDir), "math.")
+        val sslSo = extensionLib(extDir, "_ssl.") ?: extensionLib(File(libDir), "_ssl.")
+        tools += if (mathSo != null && sslSo != null) {
+            totalSize += mathSo.length() + sslSo.length()
+            ToolStatus("C 扩展模块", true, "${formatSize(mathSo.length() + sslSo.length())} · lib-dynload（math/_ssl 等）")
         } else {
-            ToolStatus("C 扩展模块", false, "缺失：math.*.so（lib-dynload 未打包）")
+            ToolStatus("C 扩展模块", false, "缺失：lib-dynload 下的 math/_ssl 等 .so")
         }
         totalSize += nativeLib(context, tools, libDir, "libcrypto_python.so", "OpenSSL 依赖(_ssl/_hashlib)")
 
-        // 5) 能力说明
-        tools += ToolStatus("Python 执行", arm64 && zipSize > 0, "原生 CPython 3.13.9 · 完全离线")
+        // 5) 能力说明。Python 执行要求解释器 + C 扩展都就位
+        val pythonReady = arm64 && zipSize > 0 &&
+            File(libDir, "libpython3.13.so").exists() &&
+            File(libDir, "libpybridge.so").exists() &&
+            mathSo != null && sslSo != null
+        tools += ToolStatus("Python 执行", pythonReady, "原生 CPython 3.13.9 · 完全离线")
         tools += ToolStatus("JavaScript 执行", true, "Rhino 1.7.15（纯 Java）· 无 native")
         tools += ToolStatus("Lua 执行", true, "LuaJ 3.0.1（纯 Java，Lua 5.2）· 无 native")
         tools += ToolStatus("Git 操作", true, "JGit（纯 Java）· 完全离线")
@@ -101,6 +105,12 @@ object EnvDiagnostics {
             File(libDir, "libpybridge.so").exists()
         return EnvReport(ready, totalSize, tools)
     }
+
+    /** 在指定目录中找形如 math.cpython-313-...so 的扩展，避免把 libpython 误判成模块 */
+    private fun extensionLib(dir: File, prefix: String): File? =
+        dir.listFiles()?.firstOrNull {
+            it.isFile && it.length() > 0 && it.name.startsWith(prefix) && it.name.endsWith(".so")
+        }
 
     /** 检查 nativeLibraryDir 下某个 .so，返回其字节数（用于累计体积） */
     private fun nativeLib(context: Context, tools: MutableList<ToolStatus>,

@@ -13,11 +13,14 @@
  * 3. 解释器在专用线程里跑（Py_Initialize 必须在持 GIL 的线程完成）；
  *    Kotlin 侧通过 JNI 调用时用 PyGILState_Ensure/Release 临时拿 GIL。
  *
- * 运行时约束：libpython3.13.so、libpybridge.so 以及全部 C 扩展（lib-dynload）
- * 与依赖库（libssl_python.so / libcrypto_python.so / libsqlite3_python.so）
- * 都放 jniLibs/arm64-v8a，由 Android linker 自动解析。安装后这些 .so 落在
- * nativeLibraryDir，初始化时把该目录 insert 进 sys.path，CPython 即可 import
- * math/random/json/datetime/socket/ctypes/_ssl/_sqlite3 等 C 扩展。
+ * 运行时约束：libpython3.13.so、libpybridge.so 以及依赖库（libssl_python.so /
+ * libcrypto_python.so / libsqlite3_python.so）都放 jniLibs/arm64-v8a，由 Android
+ * linker 自动解析。Python C 扩展（math.cpython-...so 等）不满足 PackageManager
+ * 的 lib<name>.so 规则，由 NativeEngine 首启从 APK 抽到
+ * python-stdlib/lib/python3.13/lib-dynload，再随标准库加入 sys.path。
+ * 初始化时把 nativeLibraryDir insert 进 sys.path，CPython 即可加载依赖库；
+ * 纯 Python 扩展（math/random/json/datetime/socket/ctypes/_ssl/_sqlite3 等）
+ * 从 lib-dynload 读取。
  */
 #include <jni.h>
 #include <Python.h>
@@ -299,7 +302,8 @@ Java_com_devterminal_engine_NativeBridge_detach(JNIEnv *env, jobject thiz)
 
 /* 初始化解释器：必须在持有 GIL 的线程调用（专用 Python 线程）
  * stdlibPath  : files/python-stdlib（PYTHONHOME/PYTHONPATH）
- * nativeLibDir: context.applicationInfo.nativeLibraryDir（C 扩展 .so 所在目录）
+ * nativeLibDir: context.applicationInfo.nativeLibraryDir（依赖库 .so 所在目录；
+ *               Python C 扩展在 python-stdlib/lib/python3.13/lib-dynload）
  * crashLogPath: files/crash-native.log（native crash 日志） */
 JNIEXPORT jboolean JNICALL
 Java_com_devterminal_engine_NativeBridge_initialize(
@@ -314,7 +318,8 @@ Java_com_devterminal_engine_NativeBridge_initialize(
         /* 让标准库从 APK 解压目录加载：/data/user/0/.../files/python-stdlib */
         setenv("PYTHONHOME", sp, 1);
         setenv("PYTHONPATH", sp, 1);
-        (*env)->ReleaseStringUTFChars(env, stdlibPath, sp);
+        /* 不能在这里 Release：后面拼 lib-dynload/site-packages 路径还要用 sp。
+         * 提前释放会造成 JNI 字符串野指针，是初始化阶段随机闪退的根因之一。 */
     }
 
     /* 记录 native crash 日志路径 */
@@ -342,8 +347,8 @@ Java_com_devterminal_engine_NativeBridge_initialize(
         return JNI_FALSE;
     }
 
-    /* 注入 nativeLibDir 到 sys.path：CPython 据此在 jniLibs 解压目录找到
-     * math/_random/_json/_datetime/_socket/_ctypes/_ssl/_sqlite3 等 C 扩展。
+    /* 注入 nativeLibDir 到 sys.path：依赖库（libpython/libssl 等）从此加载；
+     * C 扩展本体在 stdlib/lib/python3.13/lib-dynload（NativeEngine 首启从 APK 抽出）。
      * 同时把 site-packages 加进 sys.path（P2-4）。路径均为 Android 文件系统路径，
      * 不含引号/反斜杠，无需转义。 */
     const char *nld = nativeLibDir ? (*env)->GetStringUTFChars(env, nativeLibDir, NULL) : NULL;
@@ -361,9 +366,12 @@ Java_com_devterminal_engine_NativeBridge_initialize(
         snprintf(spInject, sizeof(spInject),
                  "import sys, os\n"
                  "_sp = os.path.join('%s', 'lib', 'python3.13', 'site-packages')\n"
+                 "_dyn = os.path.join('%s', 'lib', 'python3.13', 'lib-dynload')\n"
+                 "if os.path.isdir(_dyn): sys.path.insert(0, _dyn)\n"
                  "if os.path.isdir(_sp): sys.path.append(_sp)\n",
-                 sp);
+                 sp, sp);
         PyRun_SimpleString(spInject);
+        (*env)->ReleaseStringUTFChars(env, stdlibPath, sp);
     }
 
     /* 挂载自定义 stdin/stdout/stderr（纯 Python，不碰 C 层）
