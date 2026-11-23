@@ -254,27 +254,42 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
 
-            // P1-2：在协程内构造引擎，构造失败（缺 .so/错 ABI/缺 stdlib.zip）不闪退，
-            // 而是置 ERROR 态，由 MissingToolchainScreen + 重试按钮接管。
-            val engineOk = withContext(Dispatchers.IO) {
-                runCatching { pythonEngine = EngineProvider.create(context) }.isSuccess
+            // P1-2：在协程内构造引擎，构造失败（缺 .so/错 ABI/缺 stdlib.zip）不闪退。
+            // 构造成功后真正初始化一次，确保首次启动的“解压标准库 + 抽 C 扩展”完成后再放行；
+            // 否则用户一进来就点自检，会看到 lib-dynload 尚未解压的假红。
+            val created = withContext(Dispatchers.IO) {
+                runCatching { EngineProvider.create(context) }.getOrNull()
             }
+            val pythonReady = if (created != null) {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        created.prepareEnvironment { done, total ->
+                            val progress = if (total > 0) done.toFloat() / total else -1f
+                            _ui.update { it.copy(
+                                envMessage = "正在准备 Python 标准库与 C 扩展…",
+                                installProgress = progress
+                            ) }
+                        }
+                    }.isSuccess
+                }
+            } else false
+            if (!pythonReady) runCatching { created?.release() }
+            pythonEngine = created.takeIf { pythonReady }
             // 即使 Python 原生库不可用（非 arm64 / 资产缺失），也把纯 Java 的 JS/Lua 撑起来。
             runtimes = RuntimeRegistry(pythonEngine)
-            pythonEngine?.warmup()
             runtimes?.warmup()
 
             val hasGit = withContext(Dispatchers.IO) { git.isGitInstalled() }
             _ui.update { it.copy(
                 envState = EnvState.READY,
-                envMessage = if (engineOk) "离线环境就绪（Python · JavaScript · Lua）"
+                envMessage = if (pythonReady) "离线环境就绪（Python · JavaScript · Lua）"
                              else "JavaScript / Lua 就绪（Python 当前不可用）",
                 installProgress = -1f,
                 gitInstalled = hasGit,
                 output = buildList {
                     add("[CodePocket] 离线环境已就绪，全程无需联网。")
-                    if (engineOk) add("[CodePocket] Python 由原生 CPython 执行；JavaScript 由 Rhino、Lua 由 LuaJ 执行。")
-                    else add("[CodePocket] Python 原生库不可用（常见于非 arm64 设备），JavaScript/Lua 仍可运行。")
+                    if (pythonReady) add("[CodePocket] Python 由原生 CPython 执行；JavaScript 由 Rhino、Lua 由 LuaJ 执行。")
+                    else add("[CodePocket] Python 原生运行时初始化失败，JavaScript/Lua 仍可运行；请点「自检」查看缺失项。")
                     add("[CodePocket] 其余 17 种语言提供编辑、语法高亮与静态补全。")
                 }
             ) }

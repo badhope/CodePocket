@@ -4,7 +4,7 @@
 
 ---
 
-## 已实现（v0.0.22 稳定性 + 新手引导）
+## 已实现（v0.0.24 稳定性 + 新手引导）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换

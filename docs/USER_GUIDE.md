@@ -1,16 +1,16 @@
 # CodePocket「口袋码」用户手册
 
-> 版本：v0.0.22 · 适用：Android 8.0+（Python 需 ARM64；JavaScript/Lua 任意 ABI）
+> 版本：v0.0.24 · 适用：Android 8.0+（Python 需 ARM64；JavaScript/Lua 任意 ABI）
 
 ---
 
 ## 1. 安装
 
-1. 从 [Releases](https://gitcode.com/badhope/CodePocket/releases) 下载 release APK（约 39MB，debug 约 56MB）；
+1. 从 [Releases](https://gitcode.com/badhope/CodePocket/releases) 下载 release APK（约 25MB，debug 约 43MB）；
 2. 手机允许"安装未知来源应用"（不同厂商路径不同，一般在 设置 → 安全 → 未知来源）；
 3. 安装后打开，首次运行会自动解压内置 Python 标准库（约 1~5 秒，之后秒开）。
 
-> 提示：release 约 39MB，因为内置了完整 CPython 3.13 原生运行时、标准库与 arm64 本地推理桥。装完即离线，无需再下载任何东西；本地模型权重按需下载。
+> 提示：release 约 25MB，因为内置了完整 CPython 3.13 原生运行时、标准库与 arm64 本地推理桥。装完即离线，无需再下载任何东西；本地模型权重按需下载。
 
 ---
 

@@ -37,16 +37,17 @@ ls -la "$PREFIX/lib/libpython3.13.so"
 cp "$PREFIX/lib/libpython3.13.so" "$JDIR/"
 
 echo "== 2. 拷贝 C 扩展（lib-dynload）与依赖库到 jniLibs =="
-# C 扩展走 jniLibs 方案：APK 安装时系统把它们解压到 nativeLibraryDir，
-# pybridge.c initialize 时把该目录 insert 进 sys.path，CPython 即可 import
-# math/random/json/datetime/socket/ctypes/_ssl/_sqlite3 等。
+# C 扩展（math.cpython-...so 等）放进 jniLibs/arm64-v8a；
+# 但 Android PackageManager 只解压 lib<name>.so，非 lib 前缀的扩展不会出现在
+# nativeLibraryDir。NativeEngine 首启会从 APK 把它们抽到
+# files/python-stdlib/lib/python3.13/lib-dynload，再交给 CPython 加载。
 # 过滤测试模块（_test* / _ctypes_test / xxlimited* / xxsubtype / _xxtestfuzz）。
 DYLOAD="$PREFIX/lib/python3.13/lib-dynload"
 copied=0
 for f in "$DYLOAD"/*.so; do
   base=$(basename "$f")
   case "$base" in
-    _test*|_ctypes_test*|xxlimited*|xxsubtype*|_xxtestfuzz) ;;  # skip
+    _test*|_ctypes_test*|xxlimited*|xxsubtype*|_xxtestfuzz*) ;;  # skip
     *) cp "$f" "$JDIR/"; copied=$((copied+1)) ;;
   esac
 done

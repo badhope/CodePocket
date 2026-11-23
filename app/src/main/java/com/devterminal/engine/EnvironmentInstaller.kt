@@ -12,7 +12,9 @@ import java.io.File
  * 现由原生 CPython 3.13.9（arm64-v8a）直接执行，性能与 C 扩展支持均完整。
  *
  * 现在 Python 由随 APK 打包的原生 CPython 执行：
- * - libpython3.13.so、libpybridge.so 及全部 C 扩展在 jniLibs/arm64-v8a；
+ * - libpython3.13.so、libpybridge.so 在 jniLibs/arm64-v8a，由 PackageManager 解压；
+ * - Python C 扩展（math.cpython-...so 等）不在 lib 前缀规则内，首启由
+ *   NativeEngine 从 APK 抽到 python-stdlib/lib/python3.13/lib-dynload；
  * - 纯 .py 标准库在 assets/python-stdlib.zip，首启解压到 files/python-stdlib
  *   （由 NativeEngine.ensureStdlib 负责，含完整性校验与 site-packages 创建）。
  * 本类只负责用户工作目录布局。

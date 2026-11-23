@@ -2,6 +2,31 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.24] — 2026-11-23
+
+### 修复
+
+- **Python 子线程 input() 的 JNI 野指针**：`bridge_input` 在 `AttachCurrentThread` 后先 `DetachCurrentThread`，随后继续用已失效的 `JNIEnv` 调用 `GetStringUTFChars` / `DeleteLocalRef`。在 Python 自建线程里调用 `input()` 会触发 native 崩溃。0.0.24 改为先取字符串、删局部引用，最后再 Detach。
+- 重新编译并剥离 `libpybridge.so` / `libpython3.13.so`，APK 内 C 扩展仍为 53 个。
+
+### 构建
+
+- `versionCode 24` / `versionName 0.0.24`。
+
+## [0.0.23] — 2026-11-23
+
+### 修复
+
+- **C 扩展仍然缺失（0.0.22 未覆盖的真根因）**：Android PackageManager 只解压 `lib<name>.so`；`math.cpython-313-...so`、`_ssl...so` 等 Python 扩展不带 `lib` 前缀，安装后不会出现在 `nativeLibraryDir`。0.0.23 在首次启动时从 APK 的 `lib/arm64-v8a` 把 53 个 C 扩展抽到 `python-stdlib/lib/python3.13/lib-dynload`，CPython 从默认 `lib-dynload` 路径加载；`libpython3.13.so`、`libpybridge.so`、`libssl_python.so` 等仍由系统解压到 `nativeLibraryDir`。
+- **首次启动自检误报**：环境准备阶段先完成标准库解压与 C 扩展抽取，再进入主界面，避免用户一进来点自检就看到“C 扩展缺失”的假红。
+- **JNI 初始化阶段的野指针**：`libpybridge` 先 `ReleaseStringUTFChars(stdlibPath)`，随后又用已释放的 `sp` 拼 `lib-dynload/site-packages` 路径；在部分设备上会直接触发 native 崩溃（表现为一运行就退出）。0.0.23 把释放移到路径注入之后。
+- **加密设置损坏导致启动崩溃**：`EncryptedSharedPreferences` 读取失败（Keystore key 失效 / 文件损坏）时回退默认值并标记 `encryptionFallback`，不再在 ViewModel 构造期抛异常。
+- **引导返回键**：从新手引导按系统返回键也会记为已看过，避免每次启动重复弹。
+
+### 构建
+
+- `versionCode 23` / `versionName 0.0.23`。
+
 ## [0.0.22] — 2026-11-23
 
 ### 修复
