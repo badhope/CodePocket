@@ -573,9 +573,10 @@ Java_com_devterminal_engine_NativeBridge_shutdown(JNIEnv *env, jobject thiz)
 {
     (void)env; (void)thiz;
     if (Py_IsInitialized()) {
-        PyGILState_STATE gil = PyGILState_Ensure();
+        /* Py_FinalizeEx 会销毁当前 thread state；之后不能再 PyGILState_Release，
+         * 否则会访问已释放的 thread state。这里只 Ensure 拿 GIL，让 Finalize 自己收尾。 */
+        PyGILState_Ensure();
         Py_FinalizeEx();
-        PyGILState_Release(gil);
         /* 允许同一进程内重建解释器：inittab 只对下一次 Py_Initialize 生效，
          * 若这里不复位，release 后重新 prepare 会因 dtbridge 未注册而初始化失败。 */
         g_dtbridge_registered = 0;
