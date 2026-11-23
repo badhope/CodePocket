@@ -385,12 +385,12 @@ class NativeEngine(private val context: Context) : RunEngine {
     }
 
     override fun release() {
-        if (initialized) {
-            runCatching { bridge.shutdown() }
-            runCatching { bridge.detach() }
-            initialized = false
-            readyFlag.set(false)
-        }
+        // 即使 initialized=false 也要 shutdown：initialize 可能在 Py_Initialize 之后、
+        // 返回失败之前就退出，留下一个未关闭的解释器；下一次重建会踩到它。
+        runCatching { bridge.shutdown() }
+        runCatching { bridge.detach() }
+        initialized = false
+        readyFlag.set(false)
         // P3-3：复位静态 sink，避免重建引擎时 C 回调串到旧实例
         NativeEngine.unbind()
     }

@@ -159,16 +159,19 @@ static PyObject *bridge_input(PyObject *self, PyObject *args) {
     }
     /* 阻塞等待 Kotlin 侧返回一行输入（内部用协程 + 输入队列） */
     jstring line = (jstring)(*env)->CallObjectMethod(env, g_ctx.bridge, g_ctx.onInputLine);
-    if (needDetach) (*g_ctx.jvm)->DetachCurrentThread(g_ctx.jvm);
     if (line == NULL) {
         /* Kotlin 侧 pushEof()：Python 层表现为 EOFError */
         PyErr_SetString(PyExc_EOFError, "EOF when reading a line");
+        if (needDetach) (*g_ctx.jvm)->DetachCurrentThread(g_ctx.jvm);
         return NULL;
     }
+    /* 必须先 GetStringUTFChars 再 Detach：JNIEnv 在 Detach 后失效，
+     * 提前 detach 再使用 env/line 是另一个 native 野指针。 */
     const char *utf = (*env)->GetStringUTFChars(env, line, NULL);
     PyObject *result = PyUnicode_FromString(utf ? utf : "");
-    (*env)->ReleaseStringUTFChars(env, line, utf);
+    if (utf) (*env)->ReleaseStringUTFChars(env, line, utf);
     (*env)->DeleteLocalRef(env, line);
+    if (needDetach) (*g_ctx.jvm)->DetachCurrentThread(g_ctx.jvm);
     return result;
 }
 
@@ -573,5 +576,8 @@ Java_com_devterminal_engine_NativeBridge_shutdown(JNIEnv *env, jobject thiz)
         PyGILState_STATE gil = PyGILState_Ensure();
         Py_FinalizeEx();
         PyGILState_Release(gil);
+        /* 允许同一进程内重建解释器：inittab 只对下一次 Py_Initialize 生效，
+         * 若这里不复位，release 后重新 prepare 会因 dtbridge 未注册而初始化失败。 */
+        g_dtbridge_registered = 0;
     }
 }

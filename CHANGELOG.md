@@ -2,6 +2,17 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.24] — 2026-11-23
+
+### 修复
+
+- **Python 子线程 input() 的 JNI 野指针**：`bridge_input` 在 `AttachCurrentThread` 后先 `DetachCurrentThread`，随后继续用已失效的 `JNIEnv` 调用 `GetStringUTFChars` / `DeleteLocalRef`。在 Python 自建线程里调用 `input()` 会触发 native 崩溃。0.0.24 改为先取字符串、删局部引用，最后再 Detach。
+- 重新编译并剥离 `libpybridge.so` / `libpython3.13.so`，APK 内 C 扩展仍为 53 个。
+
+### 构建
+
+- `versionCode 24` / `versionName 0.0.24`。
+
 ## [0.0.23] — 2026-11-23
 
 ### 修复

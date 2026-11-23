@@ -212,12 +212,15 @@ class SettingsStore(context: Context) {
             .putString(KEY_GIT_NAME, s.gitUserName)
             .putString(KEY_GIT_EMAIL, s.gitUserEmail)
             .apply()
-        // 敏感字段写加密 prefs
-        encrypted.edit()
-            .putString(KEY_AI_KEY, s.aiApiKey)
-            .putString(KEY_GIT_REMOTE, s.gitRemoteUrl)
-            .putString(KEY_MCP_ENDPOINT, s.mcpEndpoint)
-            .apply()
+        // 敏感字段写加密 prefs。Keystore 在极少数 ROM 上可能失效，
+        // 这里必须兜底：写失败最多丢敏感字段，不能让设置页保存动作直接崩溃。
+        runCatching {
+            encrypted.edit()
+                .putString(KEY_AI_KEY, s.aiApiKey)
+                .putString(KEY_GIT_REMOTE, s.gitRemoteUrl)
+                .putString(KEY_MCP_ENDPOINT, s.mcpEndpoint)
+                .apply()
+        }.onFailure { android.util.Log.w("SettingsStore", "敏感设置写入失败", it) }
     }
 
     // ---------- 会话恢复：重启后回到上次的编辑现场 ----------
