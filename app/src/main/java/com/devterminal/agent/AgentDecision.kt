@@ -10,6 +10,9 @@ sealed interface AgentDecision {
 
     data class Final(val answer: String) : AgentDecision
 
+    /** 计划模式：只列步骤，等用户批准后再进入工具执行阶段。 */
+    data class Plan(val steps: List<String>) : AgentDecision
+
     data class Invalid(val reason: String, val raw: String) : AgentDecision
 }
 
@@ -38,7 +41,13 @@ class JsonAgentDecisionParser : AgentDecisionParser {
         val fallbackTool = json.optString("name").trim()
             .ifEmpty { function?.optString("name").orEmpty().trim() }
 
+        val planSteps = parsePlanSteps(json)
+
         return when {
+            action == "plan" || (action.isEmpty() && planSteps.isNotEmpty() && tool.isEmpty() && fallbackTool.isEmpty()) ->
+                if (planSteps.isEmpty()) AgentDecision.Invalid("plan 缺少 steps", raw.take(500))
+                else AgentDecision.Plan(planSteps.take(8))
+
             action == "final" || (action.isEmpty() && answer.isNotEmpty()) ->
                 if (answer.isEmpty()) AgentDecision.Invalid("final 缺少 answer", raw.take(500))
                 else AgentDecision.Final(answer)
@@ -61,6 +70,21 @@ class JsonAgentDecisionParser : AgentDecisionParser {
 
             else -> AgentDecision.Invalid("action/tool 不完整", raw.take(500))
         }
+    }
+
+    /** 兼容 ["步骤1","步骤2"] 与 "1. 步骤1\n2. 步骤2" 两种写法。 */
+    private fun parsePlanSteps(json: JSONObject): List<String> {
+        val array = json.optJSONArray("steps")
+        if (array != null) {
+            return (0 until array.length())
+                .mapNotNull { array.opt(it)?.toString()?.trim()?.trimStart('-', '*', '•')?.trim() }
+                .filter { it.isNotEmpty() }
+        }
+        val text = json.optString("steps").trim()
+        if (text.isEmpty()) return emptyList()
+        return text.split('\n')
+            .map { it.trim().replace(Regex("^\\d+[.、)]\\s*"), "").trimStart('-', '*', '•').trim() }
+            .filter { it.isNotEmpty() }
     }
 
     private fun extractJsonObject(raw: String): String? {

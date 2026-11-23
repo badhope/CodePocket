@@ -37,6 +37,7 @@ import com.devterminal.model.ModelCatalog
 import com.devterminal.model.ModelDownloadManager
 import com.devterminal.model.ModelRepository
 import com.devterminal.model.ProviderRegistry
+import com.devterminal.model.ModelMessage
 import com.devterminal.workspace.LocalWorkspace
 import com.devterminal.language.CodeSymbol
 import com.devterminal.language.LanguageService
@@ -151,6 +152,7 @@ data class UiState(
     val agentInputDraft: String = "",
     val agentPendingCall: ToolCall? = null,
     val agentPendingProposal: AgentEvent.PatchProposed? = null,
+    val agentPendingPlan: AgentEvent.Plan? = null,
     val lastAgentCheckpoint: AgentEvent.Checkpoint? = null,
     val agentCheckpoints: List<AgentEvent.Checkpoint> = emptyList(),
     // ---------- 符号大纲（v0.0.18） ----------
@@ -206,6 +208,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var aiCancelRequested = false
     private var agentJob: Job? = null
     private var agentApproval: CompletableDeferred<Boolean>? = null
+    private var agentPlanApproval: CompletableDeferred<Boolean>? = null
+    /** 跨轮对话历史：上一轮的用户目标与最终答复会带进下一轮，避免每次从零开始。 */
+    private var agentPriorMessages: List<ModelMessage> = emptyList()
     private var activeCheckpointStore: CheckpointStore? = null
     /** 当前这次运行使用的引擎，stop/sendInput 必须打到同一个实例 */
     private var activeEngine: RunEngine? = null
@@ -1273,6 +1278,29 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 结束当前对话：下一轮从空上下文重新开始，不删除已保存的历史会话。 */
+    fun startNewAgentSession() {
+        if (_ui.value.agentBusy) return
+        agentPriorMessages = emptyList()
+        agentSessionId = null
+        _ui.update {
+            it.copy(
+                agentEvents = emptyList(),
+                agentPendingCall = null,
+                agentPendingProposal = null,
+                agentPendingPlan = null,
+                lastAgentCheckpoint = null,
+                agentCheckpoints = emptyList(),
+                agentRecovered = false,
+                agentInputDraft = "",
+            )
+        }
+    }
+
+    fun setAgentPlanFirst(enabled: Boolean) {
+        updateSettings(_ui.value.settings.copy(agentPlanFirst = enabled))
+    }
+
     fun approveAgentPatch() {
         agentApproval?.complete(true)
         _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
@@ -1283,9 +1311,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
     }
 
+    fun approveAgentPlan() {
+        agentPlanApproval?.complete(true)
+        _ui.update { it.copy(agentPendingPlan = null) }
+    }
+
+    fun rejectAgentPlan() {
+        agentPlanApproval?.complete(false)
+        agentPlanApproval = null
+        _ui.update { it.copy(agentPendingPlan = null) }
+    }
+
     fun cancelAgent() {
         agentApproval?.complete(false)
         agentApproval = null
+        agentPlanApproval?.complete(false)
+        agentPlanApproval = null
         agentJob?.cancel()
         agentJob = null
         _ui.update {
@@ -1293,6 +1334,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 agentBusy = false,
                 agentPendingCall = null,
                 agentPendingProposal = null,
+                agentPendingPlan = null,
             )
         }
     }
@@ -1357,6 +1399,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             if (events.isEmpty()) return@launch
             if (_ui.value.agentBusy || _ui.value.agentEvents.isNotEmpty()) return@launch
             agentSessionId = meta.id
+            agentPriorMessages = emptyList()
             _ui.update {
                 it.copy(
                     agentEvents = events.takeLast(200),
@@ -1387,12 +1430,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             agentSessionId = id
+            agentPriorMessages = emptyList()
             _ui.update {
                 it.copy(
                     agentEvents = events.takeLast(200),
                     agentRecovered = true,
                     agentPendingCall = null,
                     agentPendingProposal = null,
+                    agentPendingPlan = null,
                     lastAgentCheckpoint = null,
                     agentCheckpoints = emptyList(),
                 )
@@ -1404,7 +1449,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (_ui.value.agentBusy) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { agentSessions.delete(id) }
-            if (agentSessionId == id) agentSessionId = null
+            if (agentSessionId == id) {
+                agentSessionId = null
+                agentPriorMessages = emptyList()
+            }
             loadAgentSessions()
         }
     }
@@ -1643,14 +1691,17 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val provider = ready.provider
         val runner = runtimes?.let { EngineCommandRunner(context, it, projectDir) }
         activeCheckpointStore = checkpoints
+        // 已有会话就续写同一条时间线；只有新会话才清空事件与上下文。
+        val continuing = agentSessionId != null && st.agentEvents.isNotEmpty()
         _ui.update {
             it.copy(
                 agentBusy = true,
-                agentEvents = emptyList(),
+                agentEvents = if (continuing) it.agentEvents else emptyList(),
                 agentPendingCall = null,
                 agentPendingProposal = null,
+                agentPendingPlan = null,
                 lastAgentCheckpoint = null,
-                agentCheckpoints = emptyList(),
+                agentCheckpoints = if (continuing) it.agentCheckpoints else emptyList(),
                 agentRecovered = false,
             )
         }
@@ -1661,7 +1712,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     _ui.update { it.copy(message = toolWarning, messageSeq = it.messageSeq + 1) }
                 }
                 // 会话只在确定要启动后创建，避免路径/模型错误留下空会话文件。
-                agentSessionId = runCatching { agentSessions.create(projectDir.absolutePath, task) }.getOrNull()
+                if (!continuing) {
+                    agentSessionId = runCatching { agentSessions.create(projectDir.absolutePath, task) }.getOrNull()
+                }
                 val loop = AgentLoop(
                     workspace = workspace,
                     tools = tools,
@@ -1672,6 +1725,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         maxHistoryChars = 1800,
                         maxMessageChars = 1000,
                     ) else ContextBuilder(),
+                    planFirst = st.settings.agentPlanFirst,
+                    approvePlan = { plan ->
+                        val deferred = CompletableDeferred<Boolean>()
+                        agentPlanApproval = deferred
+                        _ui.update { it.copy(agentPendingPlan = plan) }
+                        deferred.await()
+                    },
                     approve = ApprovalHandler { call ->
                         val deferred = CompletableDeferred<Boolean>()
                         agentApproval = deferred
@@ -1679,7 +1739,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         deferred.await()
                     },
                 )
-                loop.run(task) { event ->
+                loop.run(task, agentPriorMessages) { event ->
                     agentSessionId?.let { sessionId ->
                         withContext(Dispatchers.IO) {
                             runCatching { agentSessions.append(sessionId, event) }
@@ -1687,6 +1747,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     if (event is AgentEvent.PatchProposed) {
                         _ui.update { it.copy(agentPendingProposal = event) }
+                    }
+                    if (event is AgentEvent.Plan) {
+                        _ui.update { it.copy(agentPendingPlan = event) }
+                    }
+                    if (event is AgentEvent.SessionFinished) {
+                        agentPriorMessages = (agentPriorMessages +
+                            ModelMessage("user", task) +
+                            ModelMessage("assistant", event.summary)).takeLast(12)
                     }
                     if (event is AgentEvent.Checkpoint) {
                         _ui.update {
@@ -1701,7 +1769,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     when (event) {
                         is AgentEvent.Approval -> _ui.update {
-                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                            it.copy(
+                                agentPendingCall = null,
+                                agentPendingProposal = null,
+                                agentPendingPlan = null,
+                            )
                         }
                         is AgentEvent.PatchApplied -> {
                             _ui.update {
@@ -1710,7 +1782,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             reloadAfterAgent(event.paths, projectDir)
                         }
                         is AgentEvent.SessionFinished, is AgentEvent.Failure -> _ui.update {
-                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                            it.copy(
+                                agentPendingCall = null,
+                                agentPendingProposal = null,
+                                agentPendingPlan = null,
+                            )
                         }
                         else -> Unit
                     }
@@ -1728,11 +1804,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 localProvider?.close()
                 agentApproval?.complete(false)
                 agentApproval = null
+                agentPlanApproval?.complete(false)
+                agentPlanApproval = null
                 _ui.update {
                     it.copy(
                         agentBusy = false,
                         agentPendingCall = null,
                         agentPendingProposal = null,
+                        agentPendingPlan = null,
                     )
                 }
                 agentJob = null

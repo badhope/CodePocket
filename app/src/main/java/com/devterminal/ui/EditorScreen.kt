@@ -853,6 +853,8 @@ fun EditorScreen(vm: EditorViewModel) {
                 }),
             inputDraft = ui.agentInputDraft,
             pendingProposal = ui.agentPendingProposal,
+            pendingPlan = ui.agentPendingPlan,
+            planFirst = ui.settings.agentPlanFirst,
             lastCheckpoint = ui.lastAgentCheckpoint,
             checkpointCount = ui.agentCheckpoints.size,
             recovered = ui.agentRecovered,
@@ -862,6 +864,10 @@ fun EditorScreen(vm: EditorViewModel) {
             onReject = vm::rejectAgentPatch,
             onRestoreCheckpoint = vm::restoreAgentCheckpoint,
             onOpenHistory = { vm.loadAgentSessions(); overlay = Overlay.AgentHistory },
+            onNewSession = vm::startNewAgentSession,
+            onPlanToggle = vm::setAgentPlanFirst,
+            onApprovePlan = vm::approveAgentPlan,
+            onRejectPlan = vm::rejectAgentPlan,
             onCancel = vm::cancelAgent,
             onDismiss = { vm.cancelAgent(); closeOverlay() }
         )
@@ -971,6 +977,7 @@ fun EditorScreen(vm: EditorViewModel) {
             onMcpConfigChange = { enabled, endpoint ->
                 vm.updateSettings(ui.settings.copy(mcpEnabled = enabled, mcpEndpoint = endpoint))
             },
+            onAgentPlanFirstChange = vm::setAgentPlanFirst,
             onPluginsEnabledChange = { enabled ->
                 vm.updateSettings(ui.settings.copy(pluginsEnabled = enabled))
             },

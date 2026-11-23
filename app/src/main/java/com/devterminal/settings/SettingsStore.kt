@@ -75,6 +75,8 @@ data class AppSettings(
     val mcpEndpoint: String = "",
     /** 项目 `.codepocket/plugins` 的 JS 工具，默认关闭。 */
     val pluginsEnabled: Boolean = false,
+    /** Agent 是否先出计划、等用户批准再执行（对标 Cursor / Claude Code 的 Plan 模式）。 */
+    val agentPlanFirst: Boolean = false,
     // ---------- Git ----------
     val gitUserName: String = "",
     val gitUserEmail: String = "",
@@ -177,6 +179,7 @@ class SettingsStore(context: Context) {
         mcpEnabled = prefs.getBoolean(KEY_MCP_ENABLED, false),
         mcpEndpoint = readEncrypted(KEY_MCP_ENDPOINT, ""),
         pluginsEnabled = prefs.getBoolean(KEY_PLUGINS_ENABLED, false),
+        agentPlanFirst = prefs.getBoolean(KEY_AGENT_PLAN_FIRST, false),
         gitUserName = prefs.getString(KEY_GIT_NAME, "") ?: "",
         gitUserEmail = prefs.getString(KEY_GIT_EMAIL, "") ?: "",
         gitRemoteUrl = readEncrypted(KEY_GIT_REMOTE, ""),
@@ -209,6 +212,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_LOCAL_MODEL_ID, s.localModelId)
             .putBoolean(KEY_MCP_ENABLED, s.mcpEnabled)
             .putBoolean(KEY_PLUGINS_ENABLED, s.pluginsEnabled)
+            .putBoolean(KEY_AGENT_PLAN_FIRST, s.agentPlanFirst)
             .putString(KEY_GIT_NAME, s.gitUserName)
             .putString(KEY_GIT_EMAIL, s.gitUserEmail)
             .apply()
@@ -291,6 +295,7 @@ class SettingsStore(context: Context) {
         const val KEY_MCP_ENABLED = "mcp_enabled"
         const val KEY_MCP_ENDPOINT = "mcp_endpoint"
         const val KEY_PLUGINS_ENABLED = "plugins_enabled"
+        const val KEY_AGENT_PLAN_FIRST = "agent_plan_first"
         const val KEY_GIT_NAME = "git_user_name"
         const val KEY_GIT_EMAIL = "git_user_email"
         const val KEY_GIT_REMOTE = "git_remote_url"

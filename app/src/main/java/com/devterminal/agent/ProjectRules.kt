@@ -3,14 +3,24 @@ package com.devterminal.agent
 import com.devterminal.workspace.Workspace
 
 /**
- * 项目级 Agent 规则：优先 AGENTS.md，其次 .codepocket/rules.md。
- * 规则只作为提示词，不是权限系统；写文件仍然要经过审批。
+ * 项目级 Agent 规则：兼容常见 AI 编程工具的规则文件。
+ *
+ * 读取顺序不代表权限优先级，只是把项目已有约定带进提示词；
+ * 写文件仍然要经过审批。单个文件最多读 80 行，合并后统一截断。
  */
 object ProjectRules {
     private const val MAX_CHARS = 1200
 
+    private val candidates = listOf(
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".cursorrules",
+        ".windsurfrules",
+        ".github/copilot-instructions.md",
+        ".codepocket/rules.md",
+    )
+
     fun read(workspace: Workspace): String? {
-        val candidates = listOf("AGENTS.md", ".codepocket/rules.md")
         val parts = candidates.mapNotNull { path ->
             runCatching {
                 val window = workspace.readText(path, 1, 80)

@@ -44,9 +44,13 @@ class AgentLoop(
     private val approve: ApprovalHandler = ApprovalHandler { false },
     private val maxSteps: Int = 8,
     private val contextBuilder: ContextBuilder = ContextBuilder(),
+    /** 先输出计划、等用户批准后才调用工具；对标 Cursor / Claude Code 的 Plan 模式。 */
+    private val planFirst: Boolean = false,
+    private val approvePlan: suspend (AgentEvent.Plan) -> Boolean = { true },
 ) {
     suspend fun run(
         task: String,
+        priorMessages: List<ModelMessage> = emptyList(),
         emit: suspend (AgentEvent) -> Unit,
     ): AgentRunResult {
         require(task.isNotBlank()) { "Agent task is blank" }
@@ -61,13 +65,72 @@ class AgentLoop(
         val rules = withContext(Dispatchers.IO) {
             runCatching { ProjectRules.read(workspace) }.getOrNull()
         }
-        val systemPrompt = contextBuilder.systemPrompt(SYSTEM_PROMPT, repoMap?.text, rules)
+        val systemPrompt = contextBuilder.systemPrompt(
+            SYSTEM_PROMPT + if (planFirst) PLAN_INSTRUCTION else "",
+            repoMap?.text,
+            rules,
+        )
         repoMap?.let {
             emit(AgentEvent.ContextBuilt(it.files.size, it.totalFiles, it.text.length))
         }
 
-        val history = mutableListOf(ModelMessage("user", task))
+        val history = priorMessages.toMutableList()
+        history += ModelMessage("user", task)
         var lastFailure = ""
+
+        if (planFirst) {
+            val planRaw = try {
+                provider.complete(
+                    systemPrompt = systemPrompt,
+                    messages = contextBuilder.compactHistory(history),
+                    tools = tools.specs(),
+                    maxTokens = provider.maxOutputTokens,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val message = "计划生成失败：${e.message ?: e::class.simpleName}"
+                emit(AgentEvent.Failure(message))
+                return AgentRunResult(false, message, 0)
+            }
+            val plan = when (val decision = parser.parse(planRaw)) {
+                is AgentDecision.Plan -> decision
+                is AgentDecision.Final -> {
+                    val message = "计划模式要求先输出计划 JSON，模型却直接给了最终答案。请重试，或在面板关闭计划模式。"
+                    emit(AgentEvent.Failure(message))
+                    return AgentRunResult(false, message, 0)
+                }
+                is AgentDecision.Invalid -> {
+                    val message = "计划无法解析：${decision.reason}"
+                    emit(AgentEvent.Failure(message))
+                    return AgentRunResult(false, message, 0)
+                }
+                is AgentDecision.ToolCall -> {
+                    val message = "计划阶段不允许调用工具，模型却请求了 ${decision.tool}"
+                    emit(AgentEvent.Failure(message))
+                    return AgentRunResult(false, message, 0)
+                }
+            }
+            val planEvent = AgentEvent.Plan(plan.steps)
+            emit(planEvent)
+            val approved = try {
+                approvePlan(planEvent)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val message = "计划审批失败：${e.message}"
+                emit(AgentEvent.Failure(message))
+                return AgentRunResult(false, message, 0)
+            }
+            emit(AgentEvent.Approval(planEvent.id, approved))
+            if (!approved) {
+                val message = "用户拒绝了计划"
+                emit(AgentEvent.Failure(message))
+                return AgentRunResult(false, message, 0)
+            }
+            history += ModelMessage("assistant", planRaw.take(1200))
+            history += ModelMessage("user", "计划已批准，请开始执行。每完成一步就继续下一步，全部完成后给出 final。")
+        }
 
         for (step in 1..maxSteps) {
             val raw = try {
@@ -96,6 +159,13 @@ class AgentLoop(
                     emit(AgentEvent.Failure(lastFailure))
                     history += ModelMessage("assistant", raw.take(1200))
                     history += ModelMessage("user", "上一条不是合法 JSON。请只输出一个 JSON 对象。")
+                }
+
+                is AgentDecision.Plan -> {
+                    lastFailure = "计划已批准，执行阶段请直接调用工具或 final"
+                    emit(AgentEvent.Failure(lastFailure))
+                    history += ModelMessage("assistant", raw.take(1200))
+                    history += ModelMessage("user", lastFailure)
                 }
 
                 is AgentDecision.ToolCall -> {
@@ -221,6 +291,13 @@ class AgentLoop(
     companion object {
         const val SYSTEM_PROMPT =
             "你是 CodePocket 的代码 Agent。你可以读取、搜索、按行修改当前项目，并依据工具结果继续决策。" +
-                "不要臆测文件内容；修改前先读取。回答中文、简短。"
+                "不要臆测文件内容；修改前先读取。回答中文、简短。" +
+                "改完代码必须调用 run_tests 验证；项目没有测试时至少用 run_file 跑一次被改动的入口。" +
+                "只有工具结果 ok=true 才能说验证通过，不要凭空声称已验证。"
+
+        const val PLAN_INSTRUCTION =
+            "当前是计划模式。先不要调用任何工具，只输出一个计划 JSON：" +
+                "{\"action\":\"plan\",\"steps\":[\"步骤1\",\"步骤2\"]}。" +
+                "步骤要具体到文件与动作，最多 6 步；等用户批准后再执行。"
     }
 }

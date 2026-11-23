@@ -93,6 +93,7 @@ fun SettingsDialog(
     onAiConfigChange: (url: String, key: String, model: String) -> Unit,
     onMcpConfigChange: (enabled: Boolean, endpoint: String) -> Unit,
     onPluginsEnabledChange: (Boolean) -> Unit,
+    onAgentPlanFirstChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onOpenLocalModels: () -> Unit = {},
 ) {
@@ -296,6 +297,13 @@ fun SettingsDialog(
             Text("保存 AI 配置", style = MaterialTheme.typography.labelLarge,
                 color = if (aiUrl.isNotBlank()) cs.primary else cs.faint)
         }
+        Spacer(Modifier.height(Dimens.sm))
+        QuietSwitchRow(
+            label = "Agent 先计划后执行",
+            hint = "开启后先列出步骤，等你批准再改文件；对标 Cursor / Claude Code 的 Plan 模式",
+            checked = settings.agentPlanFirst,
+            onChange = onAgentPlanFirstChange,
+        )
         Spacer(Modifier.height(Dimens.xl))
         SectionLabel("本地模型")
         Spacer(Modifier.height(6.dp))
