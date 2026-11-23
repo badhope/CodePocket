@@ -19,11 +19,96 @@ class McpClient(private val endpoint: String) {
 
     private var nextId = 1
     private var sessionId: String? = null
+    private var initialized = false
 
     suspend fun listTools(): List<McpToolDefinition> = withContext(Dispatchers.IO) {
+        ensureInitialized()
+        val response = postRpc("tools/list", JSONObject(), expectResponse = true)
+        parseTools(response)
+    }
+
+    suspend fun listResources(): List<McpResource> = withContext(Dispatchers.IO) {
+        ensureInitialized()
+        val response = postRpc("resources/list", JSONObject(), expectResponse = true)
+        val items = response.optJSONObject("result")?.optJSONArray("resources") ?: JSONArray()
+        (0 until minOf(items.length(), MAX_RESOURCES)).mapNotNull { i ->
+            val item = items.optJSONObject(i) ?: return@mapNotNull null
+            val uri = item.optString("uri").trim()
+            if (uri.isEmpty()) return@mapNotNull null
+            McpResource(
+                uri = uri,
+                name = item.optString("name", uri).take(120),
+                description = item.optString("description").take(300),
+                mimeType = item.optString("mimeType").take(80),
+            )
+        }
+    }
+
+    suspend fun readResource(uri: String): String = withContext(Dispatchers.IO) {
+        ensureInitialized()
+        val response = postRpc(
+            "resources/read",
+            JSONObject().put("uri", uri),
+            expectResponse = true,
+        )
+        val result = response.optJSONObject("result")
+            ?: throw IllegalStateException("MCP 返回缺少 result")
+        val contents = result.optJSONArray("contents") ?: JSONArray()
+        buildString {
+            for (i in 0 until contents.length()) {
+                val item = contents.optJSONObject(i) ?: continue
+                item.optString("text").takeIf { it.isNotEmpty() }?.let { append(it) }
+                if (item.has("blob")) append("[二进制资源 ${item.optString("mimeType", "unknown")}]")
+                append('\n')
+            }
+        }.trim().ifBlank { "资源为空：$uri" }
+    }
+
+    suspend fun listPrompts(): List<McpPrompt> = withContext(Dispatchers.IO) {
+        ensureInitialized()
+        val response = postRpc("prompts/list", JSONObject(), expectResponse = true)
+        val items = response.optJSONObject("result")?.optJSONArray("prompts") ?: JSONArray()
+        (0 until minOf(items.length(), MAX_PROMPTS)).mapNotNull { i ->
+            val item = items.optJSONObject(i) ?: return@mapNotNull null
+            val name = item.optString("name").trim()
+            if (name.isEmpty()) return@mapNotNull null
+            val args = item.optJSONArray("arguments") ?: JSONArray()
+            McpPrompt(
+                name = name,
+                description = item.optString("description").take(300),
+                arguments = (0 until args.length()).mapNotNull { j ->
+                    args.optJSONObject(j)?.optString("name")?.takeIf { it.isNotBlank() }
+                },
+            )
+        }
+    }
+
+    suspend fun getPrompt(name: String, arguments: JSONObject = JSONObject()): String = withContext(Dispatchers.IO) {
+        ensureInitialized()
+        val response = postRpc(
+            "prompts/get",
+            JSONObject().put("name", name).put("arguments", arguments),
+            expectResponse = true,
+        )
+        val result = response.optJSONObject("result")
+            ?: throw IllegalStateException("MCP 返回缺少 result")
+        val messages = result.optJSONArray("messages") ?: JSONArray()
+        buildString {
+            for (i in 0 until messages.length()) {
+                val message = messages.optJSONObject(i) ?: continue
+                val content = message.optJSONObject("content")
+                append(message.optString("role", "user")).append("：")
+                append(content?.optString("text").orEmpty().ifBlank { "[非文本内容]" })
+                append('\n')
+            }
+        }.trim().ifBlank { "Prompt 为空：$name" }
+    }
+
+    private fun ensureInitialized() {
         require(endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
             "MCP 端点必须是 http(s) URL"
         }
+        if (initialized) return
         postRpc(
             method = "initialize",
             params = JSONObject()
@@ -33,11 +118,11 @@ class McpClient(private val endpoint: String) {
             expectResponse = true,
         )
         notify("notifications/initialized", JSONObject())
-        val response = postRpc("tools/list", JSONObject(), expectResponse = true)
-        parseTools(response)
+        initialized = true
     }
 
     suspend fun callTool(name: String, arguments: JSONObject): McpCallResult = withContext(Dispatchers.IO) {
+        ensureInitialized()
         val response = postRpc(
             method = "tools/call",
             params = JSONObject().put("name", name).put("arguments", arguments),
@@ -149,6 +234,8 @@ class McpClient(private val endpoint: String) {
 
     companion object {
         private const val MAX_TOOLS = 20
+        private const val MAX_RESOURCES = 20
+        private const val MAX_PROMPTS = 20
     }
 }
 
@@ -161,3 +248,16 @@ data class McpToolDefinition(
 )
 
 data class McpCallResult(val ok: Boolean, val output: String)
+
+data class McpResource(
+    val uri: String,
+    val name: String,
+    val description: String,
+    val mimeType: String,
+)
+
+data class McpPrompt(
+    val name: String,
+    val description: String,
+    val arguments: List<String>,
+)

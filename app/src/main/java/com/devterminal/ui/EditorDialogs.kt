@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.devterminal.BuildConfig
 import com.devterminal.project.Templates
+import com.devterminal.model.ProviderPresets
 import com.devterminal.settings.AppSettings
 import com.devterminal.settings.ThemeModes
 import com.devterminal.engine.CrashLogger
@@ -257,6 +258,36 @@ fun SettingsDialog(
             style = MaterialTheme.typography.labelSmall,
             color = cs.muted
         )
+        Spacer(Modifier.height(Dimens.sm))
+        Text(
+            "常用预设（只带端点和模型名，密钥仍需自己填）",
+            style = MaterialTheme.typography.labelSmall,
+            color = cs.muted,
+        )
+        ProviderPresets.all.chunked(3).forEach { rowPresets ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.xs),
+            ) {
+                rowPresets.forEach { preset ->
+                    TextButton(
+                        onClick = {
+                            aiUrl = preset.baseUrl
+                            aiModel = preset.model
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            preset.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            color = cs.primary,
+                        )
+                    }
+                }
+                repeat(3 - rowPresets.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
         Spacer(Modifier.height(Dimens.sm))
         QuietTextField(
             value = aiUrl,

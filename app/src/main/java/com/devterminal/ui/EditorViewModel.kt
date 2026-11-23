@@ -25,8 +25,13 @@ import com.devterminal.agent.tools.ReadFileTool
 import com.devterminal.agent.tools.SearchTextTool
 import com.devterminal.agent.tools.RunFileTool
 import com.devterminal.agent.tools.RunTestsTool
+import com.devterminal.agent.tools.RunCommandTool
 import com.devterminal.agent.tools.JsPluginTool
 import com.devterminal.agent.tools.McpTool
+import com.devterminal.agent.tools.McpResourceListTool
+import com.devterminal.agent.tools.McpResourceReadTool
+import com.devterminal.agent.tools.McpPromptListTool
+import com.devterminal.agent.tools.McpPromptGetTool
 import com.devterminal.agent.mcp.McpClient
 import com.devterminal.model.OpenAiCompatibleProvider
 import com.devterminal.model.LocalLlamaProvider
@@ -42,6 +47,7 @@ import com.devterminal.workspace.LocalWorkspace
 import com.devterminal.language.CodeSymbol
 import com.devterminal.language.LanguageService
 import com.devterminal.engine.AiClient
+import com.devterminal.engine.AiHistoryStore
 import com.devterminal.engine.EngineCommandRunner
 import com.devterminal.engine.EnvironmentInstaller
 import com.devterminal.engine.ExecutionService
@@ -216,6 +222,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
     private val settingsStore = com.devterminal.settings.SettingsStore(context)
+    private val aiHistoryStore = AiHistoryStore(File(context.filesDir, "ai-chat.json"))
     private val agentSessions = AgentSessionStore(File(context.filesDir, "agent-sessions"))
     private var agentSessionId: String? = null
     private val modelRepository = ModelRepository(
@@ -238,6 +245,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var cursorSaveJob: kotlinx.coroutines.Job? = null
 
     init {
+        _ui.update { it.copy(aiMessages = aiHistoryStore.load()) }
         prepareEnvironment()
         restoreLastAgentSession()
         refreshLocalModels()
@@ -1208,9 +1216,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val fileContext = if (st.currentFile != null)
             "【当前文件 ${st.currentFile.name}】\n${st.editorText.take(3500)}\n\n【用户请求】\n$prompt"
         else prompt
-        _ui.update {
-            it.copy(aiBusy = true, aiMessages = history + AiClient.ChatMessage("user", prompt))
-        }
+        val pendingMessages = history + AiClient.ChatMessage("user", prompt)
+        _ui.update { it.copy(aiBusy = true, aiMessages = pendingMessages) }
+        aiHistoryStore.save(pendingMessages)
         aiJob = viewModelScope.launch {
             // P2-2：改流式输出——先放一个空 assistant 气泡，逐段 append，不再阻塞等整段返回。
             _ui.update { it.copy(aiMessages = it.aiMessages + AiClient.ChatMessage("assistant", "")) }
@@ -1245,6 +1253,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     aiMessages = st.aiMessages.withLast(AiClient.ChatMessage("assistant", finalText))
                 )
             }
+            aiHistoryStore.save(_ui.value.aiMessages)
             aiJob = null
         }
     }
@@ -1253,6 +1262,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun cancelAi() {
         aiCancelRequested = true
         aiJob?.cancel()
+    }
+
+    /** 清空 AI 助手当前对话，并删除本地历史文件。 */
+    fun startNewAiChat() {
+        if (_ui.value.aiBusy) return
+        aiHistoryStore.clear()
+        _ui.update { it.copy(aiMessages = emptyList(), aiInputDraft = "") }
     }
 
     /** 替换 aiMessages 列表的最后一条（流式追加用）；空列表原样返回 */
@@ -1621,7 +1637,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     ): Pair<ToolRegistry, String?> {
         val tools = mutableListOf<Tool>(
             ReadFileTool(), ListFilesTool(), SearchTextTool(), ApplyPatchTool(),
-            RunFileTool(runner), RunTestsTool(runner),
+            RunFileTool(runner), RunTestsTool(runner), RunCommandTool(),
         )
         val warnings = mutableListOf<String>()
         if (settings.pluginsEnabled) {
@@ -1640,7 +1656,16 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     val client = McpClient(endpoint)
                     val defs = client.listTools()
                     tools += defs.map { McpTool(client, it) }
+                    tools += McpResourceListTool(client)
+                    tools += McpResourceReadTool(client)
+                    tools += McpPromptListTool(client)
+                    tools += McpPromptGetTool(client)
                     if (defs.isNotEmpty()) warnings += "已加载 ${defs.size} 个 MCP 工具"
+                    val resourceCount = runCatching { client.listResources().size }.getOrDefault(0)
+                    val promptCount = runCatching { client.listPrompts().size }.getOrDefault(0)
+                    if (resourceCount + promptCount > 0) {
+                        warnings += "MCP resources $resourceCount · prompts $promptCount"
+                    }
                 }.onFailure { e ->
                     warnings += "MCP 连接失败，本次只使用内置工具：${e.message ?: "未知错误"}"
                 }
@@ -1724,6 +1749,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         maxSystemChars = 2400,
                         maxHistoryChars = 1800,
                         maxMessageChars = 1000,
+                        maxPromptTokens = 2048,
                     ) else ContextBuilder(),
                     planFirst = st.settings.agentPlanFirst,
                     approvePlan = { plan ->

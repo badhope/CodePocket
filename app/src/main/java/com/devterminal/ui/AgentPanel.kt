@@ -312,7 +312,7 @@ private fun AgentEventRow(event: AgentEvent) {
         }
 
         is AgentEvent.ContextBuilt -> QuietHint(
-            "项目地图：挑选 ${event.mappedFiles}/${event.totalFiles} 个文件（${event.chars} 字符）",
+            "项目地图：挑选 ${event.mappedFiles}/${event.totalFiles} 个文件（${event.chars} 字符 · 约 ${event.tokens} tokens）",
         )
         is AgentEvent.Plan -> Column {
             Text("计划", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.muted)

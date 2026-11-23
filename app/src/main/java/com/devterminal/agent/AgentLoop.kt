@@ -71,7 +71,12 @@ class AgentLoop(
             rules,
         )
         repoMap?.let {
-            emit(AgentEvent.ContextBuilt(it.files.size, it.totalFiles, it.text.length))
+            emit(AgentEvent.ContextBuilt(
+                it.files.size,
+                it.totalFiles,
+                it.text.length,
+                tokens = contextBuilder.estimateTokens(systemPrompt),
+            ))
         }
 
         val history = priorMessages.toMutableList()
@@ -82,7 +87,7 @@ class AgentLoop(
             val planRaw = try {
                 provider.complete(
                     systemPrompt = systemPrompt,
-                    messages = contextBuilder.compactHistory(history),
+                    messages = contextBuilder.compactHistoryFor(history, systemPrompt),
                     tools = tools.specs(),
                     maxTokens = provider.maxOutputTokens,
                 )
@@ -136,7 +141,7 @@ class AgentLoop(
             val raw = try {
                 provider.complete(
                     systemPrompt = systemPrompt,
-                    messages = contextBuilder.compactHistory(history),
+                    messages = contextBuilder.compactHistoryFor(history, systemPrompt),
                     tools = tools.specs(),
                     maxTokens = provider.maxOutputTokens,
                 )

@@ -839,6 +839,7 @@ fun EditorScreen(vm: EditorViewModel) {
                 closeOverlay()
             },
             onOpenAgent = { overlay = Overlay.Agent },
+            onNewChat = vm::startNewAiChat,
             onDismiss = { vm.cancelAi(); closeOverlay() }
         )
     }

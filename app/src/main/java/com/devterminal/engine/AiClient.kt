@@ -77,32 +77,48 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
     }
 
     private fun request(url: URL, body: String): String {
-        val conn = url.openConnection() as HttpURLConnection
-        try {
-            conn.requestMethod = "POST"
-            conn.connectTimeout = TimeUnit.SECONDS.toMillis(8).toInt()
-            conn.readTimeout = TimeUnit.SECONDS.toMillis(90).toInt()
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json")
-            if (settings.aiApiKey.isNotBlank()) {
-                conn.setRequestProperty("Authorization", "Bearer ${settings.aiApiKey}")
-            }
-            conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+        var attempt = 1
+        while (true) {
+            val conn = url.openConnection() as HttpURLConnection
+            try {
+                conn.requestMethod = "POST"
+                conn.connectTimeout = TimeUnit.SECONDS.toMillis(8).toInt()
+                conn.readTimeout = TimeUnit.SECONDS.toMillis(90).toInt()
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json")
+                if (settings.aiApiKey.isNotBlank()) {
+                    conn.setRequestProperty("Authorization", "Bearer ${settings.aiApiKey}")
+                }
+                conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
 
-            val code = conn.responseCode
-            val reader: BufferedReader = if (code in 200..299)
-                BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8))
-            else
-                BufferedReader(InputStreamReader(conn.errorStream ?: conn.inputStream, Charsets.UTF_8))
-            val resp = reader.use { it.readText() }
+                val code = conn.responseCode
+                val reader: BufferedReader = if (code in 200..299)
+                    BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8))
+                else
+                    BufferedReader(InputStreamReader(conn.errorStream ?: conn.inputStream, Charsets.UTF_8))
+                val resp = reader.use { it.readText() }
 
-            if (code !in 200..299) {
-                throw java.io.IOException(friendlyHttp(code, resp))
+                if (code !in 200..299) {
+                    if (isRetryable(code) && attempt < MAX_ATTEMPTS) {
+                        sleepBeforeRetry(attempt, conn.getHeaderField("Retry-After"))
+                        attempt++
+                        continue
+                    }
+                    throw java.io.IOException(friendlyHttp(code, resp))
+                }
+                return parseChoices(resp)
+            } finally {
+                conn.disconnect()
             }
-            return parseChoices(resp)
-        } finally {
-            conn.disconnect()
         }
+    }
+
+    private fun isRetryable(code: Int): Boolean = code == 429 || code in 500..599
+
+    private fun sleepBeforeRetry(attempt: Int, retryAfter: String?) {
+        val fromHeader = retryAfter?.trim()?.toLongOrNull()?.let { it * 1000L }
+        val delay = fromHeader ?: (attempt * 800L)
+        Thread.sleep(delay.coerceIn(400L, 4000L))
     }
 
     /**
@@ -142,22 +158,32 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
         var conn: HttpURLConnection? = null
         val worker = Thread {
             try {
-                conn = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = TimeUnit.SECONDS.toMillis(8).toInt()
-                    readTimeout = TimeUnit.SECONDS.toMillis(120).toInt() // 流空闲超时：模型卡死时不再无限等
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Accept", "text/event-stream")
-                    if (settings.aiApiKey.isNotBlank()) {
-                        setRequestProperty("Authorization", "Bearer ${settings.aiApiKey}")
+                var attempt = 1
+                var code: Int
+                var err = ""
+                while (true) {
+                    conn = (url.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        connectTimeout = TimeUnit.SECONDS.toMillis(8).toInt()
+                        readTimeout = TimeUnit.SECONDS.toMillis(120).toInt()
+                        doOutput = true
+                        setRequestProperty("Content-Type", "application/json")
+                        setRequestProperty("Accept", "text/event-stream")
+                        if (settings.aiApiKey.isNotBlank()) {
+                            setRequestProperty("Authorization", "Bearer ${settings.aiApiKey}")
+                        }
                     }
-                }
-                conn!!.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-
-                val code = conn!!.responseCode
-                if (code !in 200..299) {
-                    val err = conn!!.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+                    conn!!.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                    code = conn!!.responseCode
+                    if (code in 200..299) break
+                    err = conn!!.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+                    if (isRetryable(code) && attempt < MAX_ATTEMPTS) {
+                        val retryAfter = conn!!.getHeaderField("Retry-After")
+                        conn!!.disconnect()
+                        sleepBeforeRetry(attempt, retryAfter)
+                        attempt++
+                        continue
+                    }
                     close(java.io.IOException(friendlyHttp(code, err)))
                     return@Thread
                 }
@@ -203,6 +229,8 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
     }
 
     companion object {
+        private const val MAX_ATTEMPTS = 3
+
         /** 内置系统提示词：明确告知运行环境与回答风格 */
         const val SYSTEM_PROMPT =
             "你是 CodePocket 的编程助手。用户在安卓手机上的离线 IDE 里写 Python / JavaScript / Lua。" +

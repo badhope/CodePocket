@@ -2,6 +2,24 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.25] — 2026-11-23
+
+### 新增
+
+- **Agent 计划模式**：先输出 `Plan` 步骤并等待用户批准，再进入工具执行；Agent 面板与设置页均可开关，默认关闭以兼容小模型。
+- **跨轮对话**：同一 Agent 会话保留上一轮目标与结论，新增「新会话」入口；项目规则兼容 `CLAUDE.md`、`.cursorrules`、`.windsurfrules`、`.github/copilot-instructions.md`。
+- **上下文 token 预算**：`ContextBuilder` 增加粗略 token 估算、系统提示/历史消息双重裁剪，Agent 面板显示约多少 tokens；本地模型按 2048 token 预算收紧。
+- **多 Provider 预设**：设置页内置 DeepSeek、硅基流动、智谱、月之暗面、本机 Ollama 的端点与模型名，密钥仍由用户填写。
+- **网络重试**：AI 助手与 Agent 的 429/5xx 请求自动退避重试，支持 `Retry-After`。
+- **AI 助手会话持久化**：对话落到应用私有目录，重启恢复最近 40 条，新增「新对话」。
+- **MCP resources / prompts**：除 tools 外桥接资源列表、资源读取、prompt 列表与 prompt 获取。
+- **终端命令工具**：Agent 可在项目根目录执行非交互式 `sh` 命令，超时/输出截断，执行前仍需审批。
+- 系统提示要求改完代码调用 `run_tests`，没有测试时至少 `run_file` 验证入口。
+
+### 构建
+
+- `versionCode 25` / `versionName 0.0.25`。
+
 ## [0.0.24] — 2026-11-23
 
 ### 修复

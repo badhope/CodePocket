@@ -4,7 +4,7 @@
 
 ---
 
-## 已实现（v0.0.24 稳定性 + 新手引导）
+## 已实现（v0.0.25 Agent 工作流）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
@@ -17,7 +17,13 @@
 - ✅ Agent 面板「撤销本次 Agent 修改」：确认后按逆序恢复整轮全部检查点
 - ✅ `RepoMapBuilder`：任务关键词排序、符号提取、2200 字符预算、大文件与二进制跳过
 - ✅ `ContextBuilder`：系统提示词预算、RepoMap 裁剪、历史消息按字符预算压缩
-- ✅ 项目规则：自动读取 `AGENTS.md` / `.codepocket/rules.md`，注入 Agent 提示词
+- ✅ 项目规则：兼容 `AGENTS.md` / `CLAUDE.md` / `.cursorrules` / `.windsurfrules` / `.github/copilot-instructions.md` / `.codepocket/rules.md`，注入 Agent 提示词
+- ✅ Agent 计划模式：先 `Plan`、再审批、后执行，面板/设置双入口
+- ✅ Agent 跨轮上下文：同一会话携带上一轮目标与结论，支持新会话
+- ✅ 上下文 token 估算与双预算裁剪，面板显示上下文规模
+- ✅ 多 Provider 预设（DeepSeek / 硅基流动 / 智谱 / 月之暗面 / Ollama）
+- ✅ AI 助手会话持久化（最近 40 条）与 429/5xx 退避重试
+- ✅ MCP resources / prompts 桥接；Agent 终端命令工具
 - ✅ Agent 文件 IO 全部切到 `Dispatchers.IO`，扫描项目不再阻塞主线程
 - ✅ `LanguageService`：Python / Kotlin / Java / JS / TS / Lua 文件符号大纲，行号可跳转
 - ✅ 命令面板新增「符号大纲」，当前文件函数/类一屏看完，点击直达
@@ -75,7 +81,7 @@
 ### 开发体验
 - 📋 调试器（断点/单步/变量查看）
 - 📋 代码格式化（Black/ruff 风格）与 lint
-- 📋 终端面板（真实 PTY 风格，可跑交互命令）
+- 📋 真实 PTY 终端面板（当前已有非交互式 `run_command` 工具）
 
 ### 生态与平台
 - ✅ MCP 工具 / 项目自定义命令 / Rhino 沙箱插件
