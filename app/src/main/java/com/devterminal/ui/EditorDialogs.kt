@@ -342,6 +342,70 @@ fun SettingsDialog(
     }
 }
 
+/** 新手引导：第一次打开 App 时最缺的不是功能，而是「我现在该点哪」。 */
+@Composable
+fun OnboardingDialog(
+    onDismiss: () -> Unit,
+    onNewProject: () -> Unit
+) {
+    val cs = MaterialTheme.colorScheme
+    QuietDialog(
+        onDismiss = onDismiss,
+        title = "先花 1 分钟看懂 CodePocket",
+        confirmLabel = "新建项目",
+        onConfirm = onNewProject,
+        dismissLabel = "先自己逛逛",
+    ) {
+        Text(
+            "CodePocket 是装进口袋的离线代码工作台：编辑、运行、Git、AI/Agent 都在本机完成，不需要云端 IDE。",
+            style = MaterialTheme.typography.bodySmall,
+            color = cs.muted
+        )
+        Spacer(Modifier.height(Dimens.lg))
+
+        SectionLabel("三步开始")
+        Spacer(Modifier.height(6.dp))
+        GuideStep("1", "新建项目", "点「新建项目」选 Python / JavaScript / Lua 模板；已有代码用「导入」。")
+        GuideStep("2", "打开并运行", "左侧文件树点文件，顶栏 ▶ 运行，底部面板看输出。Python 是原生 CPython，JS 是 Rhino，Lua 是 LuaJ。")
+        GuideStep("3", "想用 AI / Agent", "设置里填 OpenAI 兼容端点（BYOK），或下载本地模型；Agent 读写文件前会等你批准。")
+
+        Spacer(Modifier.height(Dimens.lg))
+        SectionLabel("界面在哪")
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "左上角菜单 = 文件树 / 项目 / Git / 自检；顶栏 = 保存 / 命令面板 / 运行；底部 = 输出与输入。",
+            style = MaterialTheme.typography.bodySmall,
+            color = cs.muted
+        )
+
+        Spacer(Modifier.height(Dimens.lg))
+        SectionLabel("如果一运行就退出")
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "先点底部「自检」→「重新检测」。如果仍报解释器 / JNI / C 扩展缺失，说明 APK 的原生库没有解压：卸载旧版，安装最新 APK；还不行就到「关于」复制崩溃日志。",
+            style = MaterialTheme.typography.bodySmall,
+            color = cs.muted
+        )
+    }
+}
+
+@Composable
+private fun GuideStep(number: String, title: String, body: String) {
+    val cs = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
+        Text(
+            number,
+            style = MaterialTheme.typography.labelMedium,
+            color = cs.primary,
+            modifier = Modifier.width(22.dp)
+        )
+        Column {
+            Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+            Text(body, style = MaterialTheme.typography.labelSmall, color = cs.muted)
+        }
+    }
+}
+
 /** 关于页：版本与开源许可 */
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
@@ -436,7 +500,8 @@ fun RunConfigDialog(
 fun DiagnosticsDialog(
     diagnostics: EnvReport?,
     onRefresh: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenGuide: () -> Unit = {}
 ) {
     val cs = MaterialTheme.colorScheme
     QuietDialog(
@@ -487,6 +552,17 @@ fun DiagnosticsDialog(
                         Text(t.name, style = MaterialTheme.typography.bodySmall)
                         MonoText(t.detail, color = cs.faint, fontSize = 10)
                     }
+                }
+            }
+            if (!diagnostics.prefixReady) {
+                Spacer(Modifier.height(Dimens.md))
+                Text(
+                    "如果是刚安装的 APK，先点「重新检测」；仍缺失就卸载旧版、安装最新 APK，再到「指南」按步骤排查。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cs.muted
+                )
+                TextButton(onClick = onOpenGuide) {
+                    Text("查看使用指南", style = MaterialTheme.typography.labelMedium, color = cs.primary)
                 }
             }
         }

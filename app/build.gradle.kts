@@ -14,8 +14,8 @@ android {
         applicationId = "com.devterminal"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 21
-        versionName = "0.0.21"
+        versionCode = 22
+        versionName = "0.0.22"
         vectorDrawables { useSupportLibrary = true }
         // 原生 CPython 引擎：只打 arm64（当前覆盖绝大多数 Android 设备）
         ndk { abiFilters += "arm64-v8a" }
@@ -62,7 +62,7 @@ android {
         }
         // ⚠ 关键：python-stdlib.zip 若被 APK 再压缩，运行时解压/读取会失败，
         // 必须原样存储（noCompress）。wasm 资产已随 Pyodide 方案一并移除。
-        jniLibs { useLegacyPackaging = false }
+        jniLibs { useLegacyPackaging = true }
     }
 
     // 让 assets 里的 python-stdlib.zip 原样打包，不被 AAPT 压缩

@@ -1,5 +1,6 @@
 package com.devterminal.agent.mcp
 
+import com.devterminal.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -28,7 +29,7 @@ class McpClient(private val endpoint: String) {
             params = JSONObject()
                 .put("protocolVersion", "2025-03-26")
                 .put("capabilities", JSONObject())
-                .put("clientInfo", JSONObject().put("name", "CodePocket").put("version", "0.0.21")),
+                .put("clientInfo", JSONObject().put("name", "CodePocket").put("version", BuildConfig.VERSION_NAME)),
             expectResponse = true,
         )
         notify("notifications/initialized", JSONObject())
@@ -87,7 +88,7 @@ class McpClient(private val endpoint: String) {
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json, text/event-stream")
-            setRequestProperty("User-Agent", "CodePocket/0.0.21")
+            setRequestProperty("User-Agent", "CodePocket/${BuildConfig.VERSION_NAME}")
             sessionId?.let { setRequestProperty("Mcp-Session-Id", it) }
         }
         try {

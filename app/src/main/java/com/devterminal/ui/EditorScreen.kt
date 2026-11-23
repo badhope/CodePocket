@@ -148,6 +148,7 @@ private val overlaySaver = run {
         Named("runConfig", Overlay.RunConfig),
         Named("settings", Overlay.Settings),
         Named("about", Overlay.About),
+        Named("onboarding", Overlay.Onboarding),
     )
     mapSaver(
         save = { o ->
@@ -231,14 +232,14 @@ fun EditorScreen(vm: EditorViewModel) {
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* 无论授予与否都不再追问 */ }
-    val notifPrefs = remember {
+    val uiPrefs = remember {
         context.getSharedPreferences("devterminal_ui", android.content.Context.MODE_PRIVATE)
     }
     LaunchedEffect(ui.envState) {
         if (ui.envState == EnvState.READY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-            && !notifPrefs.getBoolean("notif_asked", false)
+            && !uiPrefs.getBoolean("notif_asked", false)
         ) {
-            notifPrefs.edit().putBoolean("notif_asked", true).apply()
+            uiPrefs.edit().putBoolean("notif_asked", true).apply()
             val r = snackbar.showSnackbar(
                 message = "允许通知，才能在后台保持代码运行",
                 actionLabel = "允许",
@@ -247,6 +248,16 @@ fun EditorScreen(vm: EditorViewModel) {
             if (r == SnackbarResult.ActionPerformed) {
                 notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+    }
+
+    // 首次进入且环境就绪时，先给一次「这是什么 / 从哪开始」的说明；
+    // 只在第一次出现，后续可通过抽屉「指南」或命令面板再次打开。
+    LaunchedEffect(ui.envState) {
+        if (ui.envState == EnvState.READY && overlay == Overlay.None &&
+            !uiPrefs.getBoolean("onboarding_seen", false)
+        ) {
+            overlay = Overlay.Onboarding
         }
     }
 
@@ -412,6 +423,9 @@ fun EditorScreen(vm: EditorViewModel) {
                             ActionTile(Icons.Filled.Settings, "设置",
                                 onClick = { overlay = Overlay.Settings },
                                 modifier = Modifier.weight(1f))
+                            ActionTile(Icons.Outlined.LibraryBooks, "指南",
+                                onClick = { overlay = Overlay.Onboarding },
+                                modifier = Modifier.weight(1f))
                             ActionTile(Icons.Outlined.Info, "关于",
                                 onClick = { overlay = Overlay.About },
                                 modifier = Modifier.weight(1f))
@@ -572,7 +586,8 @@ fun EditorScreen(vm: EditorViewModel) {
                         hasProject = ui.tree != null,
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onNewProject = { overlay = Overlay.NewProject },
-                        onImport = { importLauncher.launch(arrayOf("*/*")) }
+                        onImport = { importLauncher.launch(arrayOf("*/*")) },
+                        onGuide = { overlay = Overlay.Onboarding }
                     )
                 } else if (isImageFile(ui.currentFile)) {
                     ImageFileViewer(
@@ -759,6 +774,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "diag" -> overlay = Overlay.Diagnostics
                     "settings" -> overlay = Overlay.Settings
                     "about" -> overlay = Overlay.About
+                    "guide" -> overlay = Overlay.Onboarding
                     "newproj" -> overlay = Overlay.NewProject
                     "git" -> { overlay = Overlay.Git; vm.refreshGitStatus() }
                     "ai" -> overlay = Overlay.Ai
@@ -901,7 +917,8 @@ fun EditorScreen(vm: EditorViewModel) {
         DiagnosticsDialog(
             diagnostics = ui.diagnostics,
             onRefresh = { vm.runDiagnostics() },
-            onDismiss = ::closeOverlay
+            onDismiss = ::closeOverlay,
+            onOpenGuide = { closeOverlay(); overlay = Overlay.Onboarding }
         )
     }
 
@@ -958,6 +975,20 @@ fun EditorScreen(vm: EditorViewModel) {
                 closeOverlay()
                 vm.refreshLocalModels()
                 overlay = Overlay.LocalModels
+            },
+        )
+    }
+
+    if (overlay == Overlay.Onboarding) {
+        OnboardingDialog(
+            onDismiss = {
+                uiPrefs.edit().putBoolean("onboarding_seen", true).apply()
+                closeOverlay()
+            },
+            onNewProject = {
+                uiPrefs.edit().putBoolean("onboarding_seen", true).apply()
+                closeOverlay()
+                overlay = Overlay.NewProject
             },
         )
     }
@@ -1024,7 +1055,8 @@ private fun EditorEmptyState(
     hasProject: Boolean,
     onOpenDrawer: () -> Unit,
     onNewProject: () -> Unit,
-    onImport: () -> Unit
+    onImport: () -> Unit,
+    onGuide: () -> Unit
 ) {
     val cs = MaterialTheme.colorScheme
     // 入场动效：内容淡入并轻微上移。
@@ -1085,6 +1117,14 @@ private fun EditorEmptyState(
                         color = cs.muted
                     )
                 }
+            }
+            Spacer(Modifier.height(Dimens.sm))
+            TextButton(onClick = onGuide) {
+                Text(
+                    "先看 1 分钟使用指南",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = cs.primary
+                )
             }
         }
     }
@@ -1177,17 +1217,17 @@ private fun MissingToolchainScreen(
             Text(message, style = MaterialTheme.typography.titleMedium, color = cs.error)
             Spacer(Modifier.height(Dimens.md))
             Text(
-                "CodePocket 的 Python 运行时随 APK 打包，装完即离线；JavaScript/Lua 为纯 Java，不依赖 .so。",
+                "这不是你的代码问题：CodePocket 的 Python 运行时没有从安装包里解压出来。JavaScript/Lua 是纯 Java，不受影响。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = cs.muted
             )
             Spacer(Modifier.height(Dimens.xl))
-            SectionLabel("修复步骤")
+            SectionLabel("先这样做")
             Spacer(Modifier.height(Dimens.sm))
             listOf(
-                "1. 确认 assets/python-stdlib.zip 已随 APK 打包",
-                "2. 确认 lib/arm64-v8a/libpython3.13.so 已随 APK 打包",
-                "3. 重新构建并安装 APK"
+                "1. 点下面的「重新检测」，多数情况会恢复",
+                "2. 仍失败：卸载旧版，安装最新 APK（不要只覆盖更新）",
+                "3. 还不行：到「关于」复制崩溃日志反馈，日志里会记录缺失的 .so"
             ).forEach { step ->
                 MonoText(
                     step,
@@ -1202,7 +1242,7 @@ private fun MissingToolchainScreen(
             }
             Spacer(Modifier.height(Dimens.xl))
             androidx.compose.material3.TextButton(onClick = onRetry) {
-                Text("重试", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+                Text("重新检测", style = MaterialTheme.typography.labelLarge, color = cs.primary)
             }
         }
     }
@@ -1272,6 +1312,8 @@ private fun buildCommands(
         Icons.Outlined.HealthAndSafety) { onCommand("diag") })
     add(Command("settings", "设置", "主题 / 字号 / 超时 / AI 端点",
         Icons.Filled.Settings) { onCommand("settings") })
+    add(Command("guide", "使用指南", "3 分钟上手 / 运行失败排查",
+        Icons.Outlined.LibraryBooks) { onCommand("guide") })
     add(Command("about", "关于 CodePocket", "版本与开源许可",
         Icons.Outlined.Info) { onCommand("about") })
     ui.customCommands.forEach { cmd ->
