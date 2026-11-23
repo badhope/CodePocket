@@ -37,7 +37,7 @@ data class EnvReport(
  * - assets/python-stdlib.zip（纯 Python 标准库）
  * - nativeLibraryDir 下的 libpython3.13.so / libpybridge.so（解释器与 JNI 桥）
  * - python-stdlib/lib/python3.13/lib-dynload 下的 C 扩展（math/_ssl 等）
- * - nativeLibraryDir 下的 OpenSSL 依赖库（libcrypto_python.so）
+ * - nativeLibraryDir 下的 OpenSSL 依赖库（libssl_python.so / libcrypto_python.so）
  * - CPU 架构是否为 arm64-v8a
  */
 object EnvDiagnostics {
@@ -83,13 +83,24 @@ object EnvDiagnostics {
         } else {
             ToolStatus("C 扩展模块", false, "缺失：lib-dynload 下的 math/_ssl 等 .so")
         }
-        totalSize += nativeLib(context, tools, libDir, "libcrypto_python.so", "OpenSSL 依赖(_ssl/_hashlib)")
+        // OpenSSL 需要 libssl 与 libcrypto 两个依赖都就位：只查 crypto 会把
+        // “_ssl 存在但 libssl 缺失”误判成可用，实际 import ssl 仍会失败。
+        val sslDep = File(libDir, "libssl_python.so")
+        val cryptoDep = File(libDir, "libcrypto_python.so")
+        tools += if (sslDep.exists() && sslDep.length() > 0 &&
+                     cryptoDep.exists() && cryptoDep.length() > 0) {
+            totalSize += sslDep.length() + cryptoDep.length()
+            ToolStatus("OpenSSL 依赖", true, "${formatSize(sslDep.length() + cryptoDep.length())} · libssl/libcrypto")
+        } else {
+            ToolStatus("OpenSSL 依赖", false, "缺失：libssl_python.so 或 libcrypto_python.so")
+        }
 
-        // 5) 能力说明。Python 执行要求解释器 + C 扩展都就位
+        // 5) 能力说明。Python 执行要求解释器 + C 扩展 + 依赖库都就位
         val pythonReady = arm64 && zipSize > 0 &&
             File(libDir, "libpython3.13.so").exists() &&
             File(libDir, "libpybridge.so").exists() &&
-            mathSo != null && sslSo != null
+            mathSo != null && sslSo != null &&
+            sslDep.exists() && cryptoDep.exists()
         tools += ToolStatus("Python 执行", pythonReady, "原生 CPython 3.13.9 · 完全离线")
         tools += ToolStatus("JavaScript 执行", true, "Rhino 1.7.15（纯 Java）· 无 native")
         tools += ToolStatus("Lua 执行", true, "LuaJ 3.0.1（纯 Java，Lua 5.2）· 无 native")
