@@ -49,6 +49,8 @@
 | `GitManager.kt` | JGit 封装：init / commit / push / pull |
 | `FriendlyError.kt` | Python / JavaScript / Lua 高频错误的"人话"翻译 |
 | `CompletionProvider.kt` | 静态补全：按 `CompletionProfile` 的关键字 / 内置函数 / 文件符号 |
+| `LanguageService.kt` | 当前文件符号大纲：Python / Kotlin / Java / JS / TS / Lua，点击行号跳转 |
+| `ProjectSymbolIndex.kt` | Python 跨文件定义：`class` / `def` / 模块级变量，import 优先，300 文件 / 512KB 上限；不是 LSP |
 
 ---
 
