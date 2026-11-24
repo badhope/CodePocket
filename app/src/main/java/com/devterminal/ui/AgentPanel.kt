@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -78,6 +77,19 @@ fun AgentPanelDialog(
         title = "Agent",
         confirmLabel = if (configured && inputDraft.isNotBlank() && !busy) "执行" else null,
         onConfirm = if (configured && inputDraft.isNotBlank() && !busy) onSend else null,
+        // 输入框固定在底部，键盘弹出时不被正文或按钮遮住。
+        footer = {
+            QuietTextField(
+                value = inputDraft,
+                onValueChange = onInputChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = if (busy) "Agent 正在执行…" else "让 Agent 改点什么…",
+                mono = false,
+                enabled = !busy,
+                imeAction = androidx.compose.ui.text.input.ImeAction.Send,
+                onImeAction = { if (inputDraft.isNotBlank() && !busy) onSend() },
+            )
+        },
     ) {
         if (!configured) {
             QuietHint(
@@ -185,40 +197,24 @@ fun AgentPanelDialog(
                 }
             }
         }
-
-        Spacer(Modifier.height(Dimens.sm))
-        QuietTextField(
-            value = inputDraft,
-            onValueChange = onInputChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = if (busy) "Agent 正在执行…" else "让 Agent 改点什么…",
-            mono = false,
-            enabled = !busy,
-            imeAction = androidx.compose.ui.text.input.ImeAction.Send,
-            onImeAction = { if (inputDraft.isNotBlank() && !busy) onSend() },
-        )
     }
 
     if (confirmRestore) {
-        AlertDialog(
-            onDismissRequest = { confirmRestore = false },
-            title = { Text("恢复到 Agent 修改前") },
-            text = {
-                Text(
-                    "将把本次修改过的文件（${lastCheckpoint?.label ?: "检查点"}）恢复为快照内容。" +
-                        "当前未保存的编辑会丢失，确定继续？",
-                )
+        QuietDialog(
+            onDismiss = { confirmRestore = false },
+            title = "恢复到 Agent 修改前",
+            confirmLabel = "恢复",
+            onConfirm = {
+                confirmRestore = false
+                onRestoreCheckpoint()
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmRestore = false
-                    onRestoreCheckpoint()
-                }) { Text("恢复") }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmRestore = false }) { Text("取消") }
-            },
-        )
+            dismissLabel = "取消",
+        ) {
+            Text(
+                "将把本次修改过的文件（${lastCheckpoint?.label ?: "检查点"}）恢复为快照内容。" +
+                    "当前未保存的编辑会丢失，确定继续？",
+            )
+        }
     }
 }
 

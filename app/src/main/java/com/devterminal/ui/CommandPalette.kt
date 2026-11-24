@@ -7,11 +7,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import com.devterminal.ui.components.EdgeToEdgeDialog
 import com.devterminal.ui.components.QuietHint
 import com.devterminal.ui.components.SectionLabel
 import com.devterminal.ui.theme.Dimens
@@ -86,14 +87,17 @@ fun CommandPalette(
 
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
-    Dialog(onDismissRequest = onDismiss) {
+    EdgeToEdgeDialog(onDismiss = onDismiss, contentAlignment = Alignment.TopCenter) {
         Surface(
+            modifier = Modifier
+                .widthIn(max = 560.dp)
+                .fillMaxWidth()
+                .heightIn(max = maxHeight),
             shape = RoundedCornerShape(24.dp),
             color = cs.surface,
-            // imePadding：软键盘弹起时整个面板随之上推，列表不被键盘遮掉
-            modifier = Modifier.fillMaxWidth().imePadding()
+            shadowElevation = 8.dp,
         ) {
-            Column(Modifier.padding(top = Dimens.lg, bottom = Dimens.sm)) {
+            Column(Modifier.fillMaxWidth().padding(top = Dimens.lg, bottom = Dimens.sm)) {
                 TextField(
                     value = query,
                     onValueChange = { query = it },
@@ -128,7 +132,12 @@ fun CommandPalette(
                         .height(1.dp)
                         .background(cs.hairline)
                 )
-                LazyColumn(modifier = Modifier.fillMaxWidth().height(340.dp)) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(max = 380.dp)
+                ) {
                     // 最近打开：仅在未输入查询时展示，命中搜索时只显示过滤后的命令
                     if (query.isBlank() && recent.isNotEmpty()) {
                         item(key = "hdr_recent") {

@@ -107,6 +107,13 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
+### Mobile layout & keyboard (0.0.30)
+- **No more clipped panels**: every dialog is edge-to-edge and sized to the area above the IME; title, footer input and action buttons stay fixed while only the body scrolls
+- **Terminal resizes with the keyboard**: PTY body uses the remaining height, so Esc/Tab/Ctrl/arrow keys stay visible instead of being pushed under the soft keyboard
+- **Stable orientation**: screen mode follows the system orientation, not the content height, so opening the keyboard no longer flips a portrait phone into the landscape layout
+- **Output height remembers you**: keyboard-only clamping is temporary; the preferred draggable height is not overwritten, and the stdin row keeps 220dp when space allows and yields to 150dp on very short screens
+- **Small-screen polish**: one-line ellipsis for title/status, scrollable status text, capped tab width, and scrollable quick-action/special-key rows
+
 ### Agent & terminal (0.0.29)
 - **Agent plan mode**: plan → approval → tool execution, with cross-turn context and token budgets
 - **Project rules**: reads `AGENTS.md` / `CLAUDE.md` / `.cursorrules` / `.windsurfrules` / Copilot instructions

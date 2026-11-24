@@ -2,6 +2,7 @@ package com.devterminal.ui
 
 import android.Manifest
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -91,8 +92,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -449,7 +452,10 @@ fun EditorScreen(vm: EditorViewModel) {
                             MonoText(
                                 ui.currentFile?.name ?: "未打开文件",
                                 color = if (ui.currentFile != null) cs.onSurface else cs.faint,
-                                fontSize = 13
+                                fontSize = 13,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
                             if (ui.dirty) {
                                 Spacer(Modifier.width(6.dp))
@@ -464,14 +470,17 @@ fun EditorScreen(vm: EditorViewModel) {
                                 Text(
                                     currentSpec.displayName,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = cs.muted
+                                    color = cs.muted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 if (!currentSpec.isRunnable) {
                                     Spacer(Modifier.width(4.dp))
                                     Text(
                                         "仅编辑",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = cs.faint
+                                        color = cs.faint,
+                                        maxLines = 1
                                     )
                                 }
                             }
@@ -532,30 +541,49 @@ fun EditorScreen(vm: EditorViewModel) {
                     )
                 )
             },
-            snackbarHost = { SnackbarHost(snackbar) },
+            bottomBar = {
+                // 状态栏放进 Scaffold 的 bottomBar：Snackbar 会自动落在它上方，
+                // 不再盖住行号/保存状态，也不会在终端按键条上叠一层。
+                Column {
+                    Hairline()
+                    StatusBar(
+                        line = ui.cursorLine,
+                        column = ui.cursorColumn,
+                        language = ui.languageLabel,
+                        charCount = ui.editorText.length,
+                        dirty = ui.dirty,
+                    )
+                }
+            },
+            snackbarHost = {
+                SnackbarHost(
+                    snackbar,
+                    modifier = Modifier.padding(horizontal = Dimens.lg, vertical = Dimens.sm),
+                )
+            },
             containerColor = cs.background
         ) { padding ->
-            // 输出面板高度：初始值来自设置，拖拽即时调整，松手才落盘
+            // 输出面板高度：preferred 是用户偏好，visible 是本轮键盘/横竖屏下的临时高度。
+            // 键盘弹起时只夹取 visible，不把临时值写回设置，否则键盘收起后编辑器会永久变矮。
             var outputHeight by remember(ui.settings.outputHeightDp) {
                 mutableStateOf(ui.settings.outputHeightDp.toFloat())
             }
             BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
-            // 当前可用高度（已扣除顶栏与系统栏）。用于给输出面板动态设上限：
-            // 横屏 / 小屏上固定上限会让面板吃掉整个编辑器。
             val availableHeight = maxHeight.value
-            // 换屏后旧高度可能已超过新上限，这里夹一次，避免布局瞬间被撑爆
-            LaunchedEffect(availableHeight) {
-                val cap = (availableHeight * 0.62f).coerceAtLeast(120f)
-                if (outputHeight > cap) {
-                    outputHeight = cap
-                    vm.persistOutputHeight(cap.roundToInt())
-                }
-            }
             // ---- 横竖屏共用同一份内容、只是摆放不同 ----
             // 内容抽成局部 Composable（捕获 ui/vm 等闭包变量），避免两份拷贝日后走样。
             // 横屏下编辑器与输出面板左右分栏：横屏最缺的是纵向空间，
             // 继续上下排布会把编辑器挤到看不见代码（设计稿 grid 方案已验证过两栏收益）。
-            val isLandscape = maxWidth > maxHeight
+            // 不能用内容区高度判断横竖屏：键盘弹起会让可用高度骤减，
+            // 竖屏手机可能被误判成横屏并突然变成左右分栏。这里以系统方向为准。
+            val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+            // 只在渲染时夹取；键盘收起后自动恢复用户偏好高度。
+            val visibleOutputHeight = LayoutMetrics.visibleOutputHeight(
+                preferredHeight = outputHeight,
+                availableHeight = availableHeight,
+                inputVisible = ui.inputVisible,
+            )
 
             val envBanner: @Composable ColumnScope.() -> Unit = {
                 if (ui.envState == EnvState.ERROR) {
@@ -713,14 +741,6 @@ fun EditorScreen(vm: EditorViewModel) {
                             outputArea(Modifier.fillMaxWidth().fillMaxHeight())
                         }
                     }
-                    Hairline()
-                    StatusBar(
-                        line = ui.cursorLine,
-                        column = ui.cursorColumn,
-                        language = ui.languageLabel,
-                        charCount = ui.editorText.length,
-                        dirty = ui.dirty
-                    )
                 }
             } else {
             Column(Modifier.fillMaxSize()) {
@@ -734,14 +754,19 @@ fun EditorScreen(vm: EditorViewModel) {
                         .background(cs.surface)
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
+                                onDragStart = {
+                                    // 从「当前可见高度」开始拖，避免键盘夹取后手指一按就跳变。
+                                    outputHeight = visibleOutputHeight
+                                },
                                 onDragEnd = { vm.persistOutputHeight(outputHeight.roundToInt()) }
                             ) { _, dragAmount ->
                                 // 上限按当前可用高度动态计算，而不是写死 560dp。
-                                // 矮屏（横屏 / 小屏）上固定 560dp 的上限等于没有上限——
+                                // 矮屏（横屏 / 小屏 / 键盘弹起）上固定上限等于没有上限——
                                 // 面板会把编辑器整个挤没，用户再也看不到自己的代码。
-                                val maxHeight = (availableHeight * 0.62f).coerceAtLeast(120f)
+                                val maxHeight = LayoutMetrics.maxOutputHeight(availableHeight)
+                                val minHeight = LayoutMetrics.minOutputHeight(ui.inputVisible, availableHeight)
                                 outputHeight = (outputHeight + dragAmount)
-                                    .coerceIn(120f, maxHeight)
+                                    .coerceIn(minHeight, maxHeight.coerceAtLeast(minHeight))
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -753,15 +778,7 @@ fun EditorScreen(vm: EditorViewModel) {
                             .background(cs.outline.copy(alpha = 0.7f), RoundedCornerShape(2.dp))
                     )
                 }
-                outputArea(Modifier.fillMaxWidth().height(outputHeight.dp))
-                Hairline()
-                StatusBar(
-                    line = ui.cursorLine,
-                    column = ui.cursorColumn,
-                    language = ui.languageLabel,
-                    charCount = ui.editorText.length,
-                    dirty = ui.dirty
-                )
+                outputArea(Modifier.fillMaxWidth().height(visibleOutputHeight.dp))
             }
             }
             }
