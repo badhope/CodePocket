@@ -107,6 +107,16 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
+### Data safety & lifecycle (0.0.31)
+- **No silent data loss**: with auto-save off, switching files/tabs/projects now asks Save / Discard / Cancel instead of overwriting the dirty buffer
+- **Atomic saves**: temp file + `fsync` + `rename` for editor files, workspace writes and Agent checkpoints; a crash leaves the old version, not half a file
+- **Durable background save**: `onStop` writes synchronously, so a kill right after backgrounding cannot drop the latest snapshot
+- **Bounded I/O**: 5MB editor files, 8MB checkpoint blobs, 32MB SAF imports, 16MB Agent session logs, 10k file-tree nodes, 2MB AI responses, 200KB share/clipboard text
+- **Lifecycle cleanup**: Back closing the terminal stops the PTY; closing the Agent panel cancels the running Agent; renaming/deleting a directory migrates/removes its open tabs
+- **Agent overwrite guard**: Agent edits and checkpoint restore never silently replace an unsaved editor buffer
+- **Execution robustness**: foreground-service stop no longer relies on background `startService`; a partial wakelock keeps long scripts running with the screen off; PTY input is FIFO and JNI callback exceptions are cleared
+- **Theme/IME polish**: status/navigation bar icon contrast follows the in-app theme; two-finger pinch no longer steals one-finger editor scrolling
+
 ### Mobile layout & keyboard (0.0.30)
 - **No more clipped panels**: every dialog is edge-to-edge and sized to the area above the IME; title, footer input and action buttons stay fixed while only the body scrolls
 - **Terminal resizes with the keyboard**: PTY body uses the remaining height, so Esc/Tab/Ctrl/arrow keys stay visible instead of being pushed under the soft keyboard

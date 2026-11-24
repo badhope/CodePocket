@@ -1,5 +1,6 @@
 package com.devterminal.agent.tools
 
+import android.os.Build
 import com.devterminal.agent.Tool
 import com.devterminal.agent.ToolCall
 import com.devterminal.agent.ToolResult
@@ -61,7 +62,8 @@ class RunCommandTool : Tool {
         }
         if (isProcessAlive(process)) {
             timedOut = true
-            process.destroy()
+            destroyTree(process)
+            runCatching { process.inputStream.close() }
         }
         reader.join(1500)
         val exitCode = if (timedOut) -1 else runCatching { process.exitValue() }.getOrDefault(-1)
@@ -76,6 +78,15 @@ class RunCommandTool : Tool {
         } else {
             ToolResult.failure(call.id, body)
         }
+    }
+
+    /** Android 的 Process 没有 ProcessHandle；至少强杀 sh 并关闭输出流，避免 reader 挂死。 */
+    private fun destroyTree(process: Process) {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) process.destroyForcibly()
+            else process.destroy()
+        }
+        runCatching { process.inputStream.close() }
     }
 
     private fun isProcessAlive(process: Process): Boolean = runCatching {

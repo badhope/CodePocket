@@ -134,6 +134,17 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 - 输出面板的持久偏好（`preferredHeight`）与当前渲染高度（`visibleHeight`）分离：`LayoutMetrics.visibleOutputHeight()` 按 `availableHeight - 120dp 编辑器 - 14dp 把手` 临时夹取；键盘/横屏变化不写回 `SettingsStore`。
 - `CodeEditorView` 监听 `WindowInsetsCompat.Type.ime()`，在键盘弹起/切换输入法后再次 `ensureSelectionVisible()`，避免 SoraEditor 的光标被推出可视区。
 
+## 4.3 数据安全、文件生命周期与后台执行（v0.0.31）
+
+- **未保存修改不再静默丢弃**：`UiState.pendingNavigation` 记录待执行的 OpenFile / CloseTab / OpenProject；只有用户在 `UnsavedChangesDialog` 选择「保存并继续」或「不保存直接继续」后才继续。`autoSave=true` 仍走原自动保存路径。
+- **原子写**：`ProjectManager.write`、`LocalWorkspace.writeBytes`、`CheckpointStore.writeAtomic` 均为「同目录临时文件 → `fd.sync()` → `rename`」；`ProjectManager.read` 在 5MB / 二进制探测前拦截。
+- **PTY 输入 FIFO**：`EditorViewModel` 用 `Channel<String>(UNLIMITED)` + 单消费者协程串行写 `PtyBridge.write`；`xterm onData` 不再为每个按键 `launch`，避免快速输入乱序。终端关闭/退出时关闭队列并取消 writer。
+- **Agent 覆盖护栏**：`reloadAfterAgent` 发现当前文件 `dirty` 时只提示不写 `editorText`；`restoreAgentCheckpoint` 直接拒绝；检查点 `snapshot` 单文件 8MB，`gc()` 保留最近 20 份并删除无引用 blob。
+- **会话日志上限**：`AgentSessionStore` 单会话 16MB、回放 2000 条、总量 128MB；`prune()` 在 `create()` 时执行。
+- **前台执行**：`ExecutionService` 同进程弱引用直接 `stopTag`，避免 Android O+ 后台 `startService` 限制；启动时持有 `PARTIAL_WAKE_LOCK`，最后一个 tag 停止时释放。
+- **输出边界**：共享/剪贴板 200KB、单行 4000 字符；`AiClient` 非流式响应 2MB 字符。
+- **手势与系统栏**：`CodeEditorView` 的捏合只在两指及以上消费事件；`MainActivity` 按 `themeMode.resolvesDark()` 同步状态栏/导航栏图标明暗。
+
 ---
 
 ## 5. 标准库与 C 扩展的打包

@@ -83,6 +83,19 @@ class CheckpointStoreTest {
     }
 
     @Test
+    fun `delete removes unreferenced blobs`() {
+        val project = temp.newFolder("project")
+        val storeDir = temp.newFolder("checkpoints")
+        File(project, "a.txt").writeText("a")
+        val store = CheckpointStore(storeDir, LocalWorkspace(project))
+        val checkpoint = store.snapshot("x", listOf("a.txt"))
+
+        assertEquals(1, File(storeDir, "blobs").listFiles()?.count { it.isFile })
+        store.delete(checkpoint.id)
+        assertEquals(0, File(storeDir, "blobs").listFiles()?.count { it.isFile })
+    }
+
+    @Test
     fun `snapshot rejects files outside workspace`() {
         val project = temp.newFolder("project")
         val storeDir = temp.newFolder("checkpoints")

@@ -2,6 +2,7 @@ package com.devterminal.agent
 
 import com.devterminal.workspace.Workspace
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -46,6 +47,9 @@ class CheckpointStore(
         for (path in distinct.sorted()) {
             val file = workspace.resolve(path)
             require(file.isFile) { "Not a file: $path" }
+            require(file.length() <= MAX_SNAPSHOT_BYTES) {
+                "文件过大，无法建立检查点：$path (${file.length()} bytes)"
+            }
             val bytes = file.readBytes()
             val hash = sha256(bytes)
             val blob = File(blobsDir, hash)
@@ -54,6 +58,9 @@ class CheckpointStore(
         }
 
         writeAtomic(File(snapshotsDir, "$id.tsv"), body.toString().toByteArray(Charsets.UTF_8))
+        // 快照会持续产生新 blob；每次落盘后回收无引用对象并限制保留份数，
+        // 否则反复 Agent 修改/撤销会把手机存储慢慢吃满。
+        runCatching { gc() }
         return Checkpoint(id, label, createdAt, distinct.sorted())
     }
 
@@ -63,6 +70,7 @@ class CheckpointStore(
         for ((path, expectedHash) in manifest.entries) {
             val blob = File(blobsDir, expectedHash)
             if (!blob.isFile) throw IOException("Missing checkpoint blob: $expectedHash")
+            require(blob.length() <= MAX_SNAPSHOT_BYTES) { "Checkpoint blob too large: $expectedHash" }
             val bytes = blob.readBytes()
             val actual = sha256(bytes)
             if (actual != expectedHash) throw IOException("Checkpoint blob is corrupted: $expectedHash")
@@ -89,6 +97,27 @@ class CheckpointStore(
     fun delete(checkpointId: String) {
         val file = File(snapshotsDir, "$checkpointId.tsv")
         if (!file.delete() && file.exists()) throw IOException("Cannot delete checkpoint: $checkpointId")
+        runCatching { gc() }
+    }
+
+    /** 只保留最近 [MAX_CHECKPOINTS] 份快照，并删除没有任何清单引用的 blob。 */
+    private fun gc() {
+        ensureDirs()
+        val manifests = snapshotsDir.listFiles { f -> f.isFile && f.name.endsWith(".tsv") }
+            ?.sortedByDescending { it.lastModified() }
+            ?: return
+        manifests.drop(MAX_CHECKPOINTS).forEach { runCatching { it.delete() } }
+
+        val referenced = HashSet<String>()
+        // 只引用「实际还存在」的清单：若旧清单删除失败，它的 blob 不能被误删。
+        manifests.filter { it.exists() }.forEach { file ->
+            runCatching {
+                readManifest(file.name.removeSuffix(".tsv")).entries.forEach { referenced += it.second }
+            }
+        }
+        blobsDir.listFiles()?.forEach { blob ->
+            if (blob.isFile && blob.name !in referenced) runCatching { blob.delete() }
+        }
     }
 
     private fun readManifest(id: String): Manifest {
@@ -128,7 +157,10 @@ class CheckpointStore(
     private fun writeAtomic(target: File, bytes: ByteArray) {
         val temp = File(target.parentFile, ".${target.name}.tmp-${UUID.randomUUID()}")
         try {
-            temp.writeBytes(bytes)
+            FileOutputStream(temp).use { out ->
+                out.write(bytes)
+                out.fd.sync()
+            }
             if (!temp.renameTo(target)) {
                 target.outputStream().use { it.write(bytes) }
             }
@@ -145,4 +177,9 @@ class CheckpointStore(
     private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
 
     private fun decode(value: String): String = URLDecoder.decode(value, "UTF-8")
+
+    private companion object {
+        const val MAX_SNAPSHOT_BYTES = 8L * 1024 * 1024
+        const val MAX_CHECKPOINTS = 20
+    }
 }

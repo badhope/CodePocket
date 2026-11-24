@@ -6,13 +6,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devterminal.engine.CrashLogger
+import com.devterminal.settings.resolvesDark
 import com.devterminal.ui.EditorScreen
 import com.devterminal.ui.EditorViewModel
 import com.devterminal.ui.theme.CodePocketTheme
@@ -34,6 +37,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             // 主题跟随用户设置（跟随系统/浅色/深色），设置页可实时切换
             val ui by viewModel.ui.collectAsStateWithLifecycle()
+            val dark = ui.settings.themeMode.resolvesDark(this@MainActivity)
+            // enableEdgeToEdge 只按系统深色模式定一次状态栏图标；App 内切换主题后
+            // 必须同步图标明暗，否则深色主题 + 浅色系统会出现「黑图标压黑背景」。
+            LaunchedEffect(dark) {
+                WindowCompat.getInsetsController(window, window.decorView).apply {
+                    isAppearanceLightStatusBars = !dark
+                    isAppearanceLightNavigationBars = !dark
+                }
+            }
             CodePocketTheme(themeMode = ui.settings.themeMode) {
                 // safeDrawingPadding：edge-to-edge 下吃掉系统栏与软键盘(IME) inset，
                 // 软键盘弹出时整屏内容随之上推，输入框/编辑器不被遮挡。

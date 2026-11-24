@@ -50,6 +50,9 @@ static void call_bytes(JNIEnv *env, const char *buf, int len) {
     if (!arr) return;
     (*env)->SetByteArrayRegion(env, arr, 0, len, (const jbyte *)buf);
     (*env)->CallVoidMethod(env, g_callback, g_on_bytes, arr);
+    // Kotlin 回调一旦抛异常，异常会挂在 native 线程上；不清理会让后续所有
+    // JNI 调用（包括 on_exit）失败。终端已经出错时静默丢弃本次回调即可。
+    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
     (*env)->DeleteLocalRef(env, arr);
 }
 

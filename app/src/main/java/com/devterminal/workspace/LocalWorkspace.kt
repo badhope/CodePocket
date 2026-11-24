@@ -1,6 +1,7 @@
 package com.devterminal.workspace
 
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.util.UUID
 
@@ -87,7 +88,10 @@ class LocalWorkspace(rootDir: File) : Workspace {
 
         val temp = File(parent, ".${target.name}.tmp-${UUID.randomUUID()}")
         try {
-            temp.writeBytes(bytes)
+            FileOutputStream(temp).use { out ->
+                out.write(bytes)
+                out.fd.sync()
+            }
             if (!temp.renameTo(target)) {
                 // 某些文件系统不允许 rename 覆盖已有文件，退化为覆盖写。
                 target.outputStream().use { it.write(bytes) }
@@ -137,6 +141,9 @@ class LocalWorkspace(rootDir: File) : Workspace {
     ): TextWindow {
         val file = resolve(path)
         require(file.isFile) { "Not a file: $path" }
+        require(file.length() <= MAX_TEXT_BYTES) {
+            "File too large for line replacement: $path (${file.length()} bytes)"
+        }
         val lines = file.readLines()
         val total = lines.size
         require(startLine in 1..(total + 1)) { "startLine out of range: $startLine (total=$total)" }

@@ -3,6 +3,7 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- 仅 AI 助手（可选功能）访问用户自配端点使用；默认未配置时 App 不发起任何网络请求 -->
     <uses-permission android:name="android.permission.INTERNET" />
