@@ -51,6 +51,7 @@ import com.devterminal.language.LanguageService
 import com.devterminal.language.ProjectSymbolIndex
 import com.devterminal.engine.AiClient
 import com.devterminal.engine.AiHistoryStore
+import com.devterminal.engine.PtyBridge
 import com.devterminal.engine.TerminalSession
 import com.devterminal.engine.EngineCommandRunner
 import com.devterminal.engine.EnvironmentInstaller
@@ -83,11 +84,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 
 enum class EnvState { PREPARING, READY, ERROR }
 
 /** 输出面板最多保留的行数：死循环式输出若不加闸，几秒就能把内存吃干 */
 private const val MAX_OUTPUT_LINES = 3000
+private const val MAX_TERMINAL_LINES = 400
 
 /** 遍历项目时要跳过的噪音目录（既无意义又拖慢速度） */
 private val WALK_EXCLUDED = setOf(".git", "build", "__pycache__", "node_modules", ".gradle", ".idea")
@@ -104,6 +108,8 @@ data class UiState(
     val output: List<String> = emptyList(),
     val running: Boolean = false,
     val exitCode: Int? = null,
+    /** Python pdb 交互式调试中；running 仍表示进程活着 */
+    val debugging: Boolean = false,
     val message: String? = null,
     /**
      * 提示序号：内容相同的两条消息（例如连续两次「已保存」）也能各自弹出一次。
@@ -145,6 +151,9 @@ data class UiState(
     val terminalLines: List<TerminalLine> = emptyList(),
     val terminalCwd: String = "",
     val terminalBusy: Boolean = false,
+    /** PTY 交互模式（真实伪终端，非 ANSI 模拟器） */
+    val terminalPty: Boolean = false,
+    val terminalPtyRunning: Boolean = false,
     val terminalInput: String = "",
 
     // ---------- 状态栏 ----------
@@ -601,7 +610,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- 运行 ----------
 
-    fun runCurrent() {
+    fun runCurrent() = startRun(debug = false)
+
+    /**
+     * Python pdb 调试入口。命令走输出面板的 stdin 行，输出走 stdout：
+     * `b 12` 下断点、`n` 下一步、`s` 进入、`c` 继续、`p locals()` 看变量、`w` 看栈。
+     *
+     * 这不是图形化 DAP 调试器，但它是真实 pdb，不是静态模拟。
+     * 调试期间程序自身的 input() 与 pdb 命令共用一个 stdin，交互式输入程序不建议调试。
+     */
+    fun debugCurrent() = startRun(debug = true)
+
+    private fun startRun(debug: Boolean) {
         val st = _ui.value
         // 防止重复点击导致多个进程并发、输出互相穿插
         if (st.running) return
@@ -613,19 +633,25 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             _ui.update { it.copy(message = "请先打开一个文件", messageSeq = it.messageSeq + 1) }
             return
         }
+        if (debug && file.extension.lowercase() != "py") {
+            _ui.update { it.copy(message = "调试目前只支持 Python 文件", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        val spec = LanguageRegistry.forFile(file)
+        val engine = runtimes?.engineFor(spec.id)
         // 运行前自动保存，保证跑的是最新代码
         if (st.dirty) {
             viewModelScope.launch {
                 withContext(Dispatchers.IO) { projects.write(file.absolutePath, st.editorText) }
                 _ui.update { it.copy(dirty = false) }
-                launchRun(file, LanguageRegistry.forFile(file), runtimes?.engineFor(LanguageRegistry.forFile(file).id))
+                launchRun(file, spec, engine, debug)
             }
         } else {
-            launchRun(file, LanguageRegistry.forFile(file), runtimes?.engineFor(LanguageRegistry.forFile(file).id))
+            launchRun(file, spec, engine, debug)
         }
     }
 
-    private fun launchRun(file: File, spec: LanguageSpec, engine: RunEngine?) {
+    private fun launchRun(file: File, spec: LanguageSpec, engine: RunEngine?, debug: Boolean = false) {
         if (!spec.isRunnable) {
             _ui.update { it.copy(
                 message = "${spec.displayName} 仅支持编辑、语法高亮与补全",
@@ -643,11 +669,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         activeEngine = engine
         val projectDir = currentProject ?: file.parentFile ?: file
         _ui.update { it.copy(
-            running = true, output = emptyList(), exitCode = null,
-            // 默认不弹键盘/不展开 stdin 行：避免每次运行都把键盘顶起来；
-            // 需要交互 input() 的程序由用户在输出区点「点击输入」手动展开。
-            inputVisible = false, inputDraft = "", friendlyHint = null,
-            message = "运行 ${file.name} …", messageSeq = it.messageSeq + 1
+            running = true, output = emptyList(), exitCode = null, debugging = debug,
+            // 普通运行不弹键盘；调试模式必须直接展开 stdin，pdb 命令就在这里输入。
+            inputVisible = debug, inputDraft = "", friendlyHint = null,
+            message = if (debug) "调试 ${file.name}（pdb）…" else "运行 ${file.name} …",
+            messageSeq = it.messageSeq + 1
         ) }
         // 提升为前台服务，避免 Android 12+ 在后台把进程杀掉
         runCatching { ExecutionService.start(context, "正在运行 ${file.name}") }
@@ -677,7 +703,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         workingDir = projectDir.absolutePath,
                         languageId = spec.id,
                         // 支持带引号的参数，如: --name "hello world"
-                        args = parseArgs(_ui.value.runArgs)
+                        args = parseArgs(_ui.value.runArgs),
+                        debug = debug,
                     ),
                     // 超时时长来自用户设置
                     timeoutMs = _ui.value.settings.timeoutSeconds * 1000L
@@ -695,6 +722,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             val hint = if (event.exitCode != 0) FriendlyError.hint(st.output, spec.id) else null
                             st.copy(
                                 running = false,
+                                debugging = false,
                                 exitCode = event.exitCode,
                                 inputVisible = false,
                                 friendlyHint = hint,
@@ -714,6 +742,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             val hint = FriendlyError.hint(listOf(event.message), spec.id)
                             st.copy(
                                 running = false,
+                                debugging = false,
                                 inputVisible = false,
                                 output = appendLines(
                                     st.output, "[启动失败] ${event.message}",
@@ -769,6 +798,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 else it.copy(message = "当前进程不接受输入", messageSeq = it.messageSeq + 1)
             }
         }
+    }
+
+    /** 调试快捷命令（pdb 语法）：c 继续、n 下一步、s 进入、p locals() 看变量、w 看栈、q 退出 */
+    fun sendDebugCommand(command: String) {
+        val st = _ui.value
+        if (!st.debugging || !st.running) return
+        val engine = activeEngine() ?: return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { engine.writeStdin(command) }
+        }
+    }
+
+    /** 在当前光标行下断点；pdb 的 b 命令按 1 基行号。 */
+    fun debugBreakHere() {
+        val st = _ui.value
+        if (!st.debugging) {
+            _ui.update { it.copy(message = "先点「调试当前文件」进入 pdb", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        sendDebugCommand("b ${st.cursorLine}")
     }
 
     /** 发送 EOF（等价 Ctrl-D） */
@@ -997,6 +1046,37 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- 终端 ----------
     private var terminalSession: TerminalSession? = null
+    private var ptyBridge: PtyBridge? = null
+    private val ptyDecoder = Charsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPLACE)
+        .onUnmappableCharacter(CodingErrorAction.REPLACE)
+    private val ptyLineBuf = StringBuilder()
+
+    /** 剥掉 CSI/OSC 转义；PTY 后端真实，但 UI 不是终端模拟器，不解释光标定位。 */
+    private val ansiEscape = Regex("\u001B\\[[0-?]*[ -/]*[@-~]|\u001B\\][^\u0007]*\u0007")
+    private val ptyCallback = object : PtyBridge.Callback {
+        override fun onBytes(bytes: ByteArray) {
+            val text = synchronized(ptyDecoder) {
+                ptyDecoder.decode(ByteBuffer.wrap(bytes)).toString()
+            }
+            if (text.isNotEmpty()) viewModelScope.launch { appendPtyText(text) }
+        }
+
+        override fun onExit(code: Int) {
+            viewModelScope.launch {
+                ptyBridge = null
+                ptyLineBuf.clear()
+                _ui.update {
+                    it.copy(
+                        terminalPtyRunning = false,
+                        terminalLines = (it.terminalLines + TerminalLine(
+                            "[PTY 已退出，退出码 $code]", false
+                        )).takeLast(MAX_TERMINAL_LINES),
+                    )
+                }
+            }
+        }
+    }
 
     fun openTerminal() {
         val projectDir = currentProject ?: return
@@ -1016,9 +1096,106 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(terminalInput = text) }
     }
 
+    /** 切到真实 PTY：forkpty + /system/bin/sh -i，工作目录固定为项目根。 */
+    fun toggleTerminalPty(enabled: Boolean) {
+        if (enabled) startPty() else stopPty()
+    }
+
+    private fun startPty() {
+        val projectDir = currentProject ?: return
+        if (ptyBridge != null) return
+        ptyLineBuf.clear()
+        synchronized(ptyDecoder) { ptyDecoder.reset() }
+        val bridge = runCatching { PtyBridge(ptyCallback) }.getOrElse { e ->
+            _ui.update { it.copy(message = "PTY 初始化失败：${e.message}", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        val rc = runCatching { bridge.start(projectDir.absolutePath) }.getOrElse { e ->
+            _ui.update { it.copy(message = "PTY 启动异常：${e.message}", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        if (rc != 0) {
+            _ui.update {
+                it.copy(
+                    message = "PTY 启动失败（errno $rc）；设备可能不支持 forkpty",
+                    messageSeq = it.messageSeq + 1,
+                )
+            }
+            return
+        }
+        ptyBridge = bridge
+        _ui.update {
+            it.copy(
+                terminalPty = true,
+                terminalPtyRunning = true,
+                terminalCwd = "PTY · ${projectDir.name}",
+                terminalLines = (it.terminalLines + TerminalLine(
+                    "已进入 PTY 交互模式 · /system/bin/sh -i · 输入 exit 退出", false
+                )).takeLast(MAX_TERMINAL_LINES),
+            )
+        }
+    }
+
+    private fun stopPty() {
+        val bridge = ptyBridge
+        ptyBridge = null
+        runCatching { bridge?.stop() }
+        ptyLineBuf.clear()
+        synchronized(ptyDecoder) { ptyDecoder.reset() }
+        _ui.update { it.copy(terminalPty = false, terminalPtyRunning = false) }
+    }
+
+    private fun appendPtyText(raw: String) {
+        val text = ansiEscape.replace(raw, "")
+        ptyLineBuf.append(text)
+        val newLines = ArrayList<String>()
+        var start = 0
+        var idx: Int
+        while (ptyLineBuf.indexOf('\n', start).also { idx = it } >= 0) {
+            val line = ptyLineBuf.substring(start, idx).replace("\r", "")
+            if (line.isNotEmpty()) newLines.add(line)
+            start = idx + 1
+        }
+        if (start > 0) ptyLineBuf.delete(0, start)
+        // 终端常把提示符留在无换行前缀里；超过一屏仍未换行就截断，避免无限增长。
+        if (ptyLineBuf.length > 4096) {
+            newLines.add("… " + ptyLineBuf.takeLast(200))
+            ptyLineBuf.clear()
+        }
+        if (newLines.isEmpty()) return
+        _ui.update { st ->
+            st.copy(
+                terminalLines = (st.terminalLines + newLines.map { TerminalLine(it, false) })
+                    .takeLast(MAX_TERMINAL_LINES)
+            )
+        }
+    }
+
     fun runTerminalCommand() {
         val command = _ui.value.terminalInput.trim()
-        if (command.isEmpty() || _ui.value.terminalBusy) return
+        if (command.isEmpty()) return
+
+        // PTY 分支：不等待进程结束，直接把整行写进 master fd。
+        if (_ui.value.terminalPty) {
+            val bridge = ptyBridge ?: return
+            if (!_ui.value.terminalPtyRunning) return
+            _ui.update {
+                it.copy(
+                    terminalInput = "",
+                    terminalLines = (it.terminalLines + TerminalLine("$ $command", true))
+                        .takeLast(MAX_TERMINAL_LINES),
+                )
+            }
+            viewModelScope.launch {
+                val rc = withContext(Dispatchers.IO) { bridge.write(command + "\n") }
+                if (rc < 0) {
+                    _ui.update { it.copy(message = "PTY 写入失败（errno $rc）", messageSeq = it.messageSeq + 1) }
+                }
+            }
+            return
+        }
+
+        if (_ui.value.terminalBusy) return
         val session = terminalSession ?: currentProject?.let { dir ->
             TerminalSession(dir).also { terminalSession = it }
         } ?: return
@@ -1026,7 +1203,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 terminalInput = "",
                 terminalBusy = true,
-                terminalLines = (it.terminalLines + TerminalLine("${'$'} ${it.terminalCwd} $command", true)).takeLast(200),
+                terminalLines = (it.terminalLines + TerminalLine("${'$'} ${it.terminalCwd} $command", true)).takeLast(MAX_TERMINAL_LINES),
             )
         }
         viewModelScope.launch {
@@ -1039,7 +1216,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 st.copy(
                     terminalBusy = false,
                     terminalCwd = session.prompt().trimEnd(),
-                    terminalLines = (st.terminalLines + TerminalLine(out.ifBlank { "（无输出）" }, false)).takeLast(200),
+                    terminalLines = (st.terminalLines + TerminalLine(out.ifBlank { "（无输出）" }, false)).takeLast(MAX_TERMINAL_LINES),
                 )
             }
         }
@@ -1050,8 +1227,16 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeTerminal() {
+        stopPty()
         terminalSession = null
-        _ui.update { it.copy(terminalLines = emptyList(), terminalBusy = false, terminalInput = "") }
+        _ui.update {
+            it.copy(
+                terminalLines = emptyList(),
+                terminalBusy = false,
+                terminalInput = "",
+                terminalCwd = "",
+            )
+        }
     }
 
     // ---------- 状态栏 ----------

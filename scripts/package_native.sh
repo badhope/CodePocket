@@ -85,7 +85,20 @@ if [ -x "$STRIP" ]; then
 fi
 ls -la "$JDIR/libpybridge.so"
 
-echo "== 4. 打包纯 .py 标准库到 assets/python-stdlib.zip =="
+echo "== 4. 编译 libptybridge.so（真 PTY 终端） =="
+# forkpty 在 bionic 里是 API 23+，用 24 编译以匹配 minSdk。
+"$TC/bin/${HOST_TRIPLE}24-clang" \
+  -shared -fPIC -O2 \
+  -o "$JDIR/libptybridge.so" \
+  "$APP/src/main/cpp/ptybridge.c" \
+  -llog -Wl,--no-undefined \
+  -Wl,-z,max-page-size=16384
+if [ -x "$STRIP" ]; then
+  "$STRIP" --strip-unneeded "$JDIR/libptybridge.so" 2>/dev/null || true
+fi
+ls -la "$JDIR/libptybridge.so"
+
+echo "== 5. 打包纯 .py 标准库到 assets/python-stdlib.zip =="
 # 注意：C 扩展（lib-dynload 下的 .so）不进 zip——它们走 jniLibs（见步骤 2）。
 # 这里只打纯 Python 标准库，解压后落在 files/python-stdlib/lib/python3.13/。
 STDLIB="$PREFIX/lib/python3.13"

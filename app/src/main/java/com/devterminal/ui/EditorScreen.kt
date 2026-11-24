@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Folder
@@ -508,6 +509,14 @@ fun EditorScreen(vm: EditorViewModel) {
                             )
                         } else {
                             val canRun = vm.canRun(ui.currentFile)
+                            if (canRun && ui.currentFile?.extension.equals("py", ignoreCase = true)) {
+                                QuietIconButton(
+                                    Icons.Outlined.BugReport, "调试当前文件",
+                                    onClick = { vm.debugCurrent() },
+                                    tint = cs.muted,
+                                    size = 20.dp
+                                )
+                            }
                             QuietIconButton(
                                 Icons.Filled.PlayArrow, "运行",
                                 onClick = { vm.runCurrent() },
@@ -681,6 +690,9 @@ fun EditorScreen(vm: EditorViewModel) {
                         // 报错行 → 编辑器光标。seq 自增保证连点同一行也会重新执行。
                         scrollToLine = ScrollToLineRequest(line, (scrollToLine?.seq ?: 0L) + 1L)
                     },
+                    debugging = ui.debugging,
+                    onDebugCommand = vm::sendDebugCommand,
+                    onDebugBreak = vm::debugBreakHere,
                     modifier = mod
                 )
             }
@@ -788,6 +800,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "gsearch" -> overlay = Overlay.GlobalSearch
                     "symbols" -> { vm.loadSymbols(); overlay = Overlay.Symbols }
                     "definition" -> if (vm.findDefinition()) overlay = Overlay.Definitions
+                    "debug" -> vm.debugCurrent()
                     "models" -> { vm.refreshLocalModels(); overlay = Overlay.LocalModels }
                     "agentHistory" -> { vm.loadAgentSessions(); overlay = Overlay.AgentHistory }
                     "runconfig" -> overlay = Overlay.RunConfig
@@ -977,6 +990,9 @@ fun EditorScreen(vm: EditorViewModel) {
             onRun = vm::runTerminalCommand,
             onClear = vm::clearTerminal,
             onDismiss = { vm.closeTerminal(); closeOverlay() },
+            pty = ui.terminalPty,
+            ptyRunning = ui.terminalPtyRunning,
+            onTogglePty = vm::toggleTerminalPty,
         )
     }
 
@@ -1312,6 +1328,8 @@ private fun buildCommands(
 ): List<Command> = buildList {
     add(Command("run", "运行当前文件", ui.currentFile?.name ?: "未打开文件",
         Icons.Filled.PlayArrow) { vm.runCurrent() })
+    add(Command("debug", "调试当前文件", "pdb 断点 / 单步 / 变量（Python）",
+        Icons.Outlined.BugReport) { onCommand("debug") })
     add(Command("save", "保存当前文件", "写入磁盘",
         Icons.Filled.Save) { vm.save() })
     add(Command("undo", "撤销", "编辑器撤销栈上一步",
@@ -1352,6 +1370,15 @@ private fun buildCommands(
         Icons.Filled.AccountTree) { onCommand("symbols") })
     add(Command("definition", "跳转到定义", "光标下的 Python 符号 / 跨文件",
         Icons.Filled.Search) { onCommand("definition") })
+    if (ui.debugging) {
+        add(Command("debug-c", "调试：继续", "pdb c", Icons.Outlined.BugReport) { vm.sendDebugCommand("c") })
+        add(Command("debug-n", "调试：下一步", "pdb n", Icons.Outlined.BugReport) { vm.sendDebugCommand("n") })
+        add(Command("debug-s", "调试：进入", "pdb s", Icons.Outlined.BugReport) { vm.sendDebugCommand("s") })
+        add(Command("debug-p", "调试：变量", "pdb p locals()", Icons.Outlined.BugReport) { vm.sendDebugCommand("p locals()") })
+        add(Command("debug-w", "调试：调用栈", "pdb w", Icons.Outlined.BugReport) { vm.sendDebugCommand("w") })
+        add(Command("debug-b", "调试：当前行断点", "pdb b <光标行>", Icons.Outlined.BugReport) { vm.debugBreakHere() })
+        add(Command("debug-q", "调试：退出", "pdb q", Icons.Outlined.BugReport) { vm.sendDebugCommand("q") })
+    }
     add(Command("models", "本地模型", "下载 MiniCPM5 / 离线 Agent",
         Icons.Filled.AutoAwesome) { onCommand("models") })
     add(Command("agentHistory", "Agent 历史会话", "回放之前的工具轨迹",

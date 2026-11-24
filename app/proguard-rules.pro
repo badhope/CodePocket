@@ -1,5 +1,8 @@
 # JNI：C 侧按方法名/签名查找回调，不能被 R8 改名或裁剪
 -keep class com.devterminal.engine.NativeBridge { *; }
+-keep class com.devterminal.engine.PtyBridge { *; }
+-keep class com.devterminal.engine.PtyBridge$Callback { *; }
+-keepclassmembers class * implements com.devterminal.engine.PtyBridge$Callback { *; }
 -keep class com.devterminal.engine.NativeEngine { *; }
 -keepclasseswithmembernames class * { native <methods>; }
 

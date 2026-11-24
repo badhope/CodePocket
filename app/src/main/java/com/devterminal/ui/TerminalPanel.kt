@@ -3,6 +3,7 @@ package com.devterminal.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,8 +29,9 @@ import com.devterminal.ui.theme.Dimens
 import com.devterminal.ui.theme.muted
 
 /**
- * 轻量命令终端：不是 PTY，不接管全屏交互程序；每条命令独立执行，
- * 工作目录在当前项目内连续保留。输入框为空时按发送不会发空命令。
+ * 终端对话框。默认是轻量命令会话：每条命令独立执行，保留项目内 cwd；
+ * 打开「PTY 交互模式」后切到原生 forkpty 后端，可运行 vim/top 这类需要 tty 的程序，
+ * 但 UI 只按行展示输出，不解释 ANSI 光标定位。输入框为空时发送不会发空命令。
  */
 @Composable
 fun TerminalDialog(
@@ -40,6 +43,10 @@ fun TerminalDialog(
     onRun: () -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
+    /** 真实 PTY 后端（forkpty + sh -i），不解释 ANSI 光标定位 */
+    pty: Boolean = false,
+    ptyRunning: Boolean = false,
+    onTogglePty: (Boolean) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(lines.size, busy) {
@@ -49,14 +56,37 @@ fun TerminalDialog(
     QuietDialog(
         onDismiss = onDismiss,
         title = "终端",
-        confirmLabel = if (!busy && input.isNotBlank()) "执行" else null,
+        confirmLabel = if (!busy && input.isNotBlank()) (if (pty) "发送" else "执行") else null,
         onConfirm = if (!busy && input.isNotBlank()) onRun else null,
     ) {
         Text(
-            "工作目录：$cwd",
+            "工作目录：$cwd${if (pty) " · PTY 后端" else ""}",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.muted,
         )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "PTY 交互模式（vim / top）",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = pty,
+                onCheckedChange = onTogglePty,
+                enabled = !busy,
+            )
+        }
+        if (pty) {
+            Text(
+                "真实伪终端：isatty 为真、支持交互 shell；不是 ANSI 终端模拟器，全屏程序的光标定位与颜色会被剥离/按行显示。",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.muted,
+            )
+        }
         Spacer(Modifier.height(Dimens.sm))
         Box(Modifier.fillMaxWidth().height(300.dp)) {
             if (lines.isEmpty()) {
@@ -86,10 +116,15 @@ fun TerminalDialog(
                         MonoText("… 正在执行", fontSize = 11, color = MaterialTheme.colorScheme.muted)
                     }
                 }
+                if (pty && ptyRunning) {
+                    item {
+                        MonoText("● PTY 运行中", fontSize = 11, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
         }
         Column(Modifier.fillMaxWidth()) {
-            TextButton(onClick = onClear, enabled = !busy) {
+            TextButton(onClick = onClear, enabled = !busy || pty) {
                 Text(
                     "清屏",
                     style = MaterialTheme.typography.labelSmall,
@@ -100,7 +135,11 @@ fun TerminalDialog(
                 value = input,
                 onValueChange = onInputChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = if (busy) "等待上一条命令…" else "输入命令",
+                placeholder = when {
+                    busy -> "等待上一条命令…"
+                    pty -> "输入命令，回车发送到 PTY"
+                    else -> "输入命令"
+                },
                 mono = true,
                 enabled = !busy,
                 imeAction = ImeAction.Send,

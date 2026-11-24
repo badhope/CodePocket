@@ -250,6 +250,13 @@ class NativeEngine(private val context: Context) : RunEngine {
 
     // ==================== 运行 ====================
 
+    /** 把 pdb 包装器写到 cacheDir；不污染用户项目文件树。 */
+    private fun writePdbRunner(): File {
+        val runner = File(context.cacheDir, PdbRunner.FILE_NAME)
+        runner.writeText(PdbRunner.SCRIPT)
+        return runner
+    }
+
     override fun run(request: RunRequest, timeoutMs: Long): Flow<RunEvent> = callbackFlow {
         if (busy.getAndSet(true)) {
             trySend(RunEvent.Failed("已有程序在运行中，请先停止。"))
@@ -272,7 +279,7 @@ class NativeEngine(private val context: Context) : RunEngine {
             busy.set(false); close(); return@callbackFlow
         }
 
-        trySend(RunEvent.Started("python ${script.name}"))
+        trySend(RunEvent.Started(if (request.debug) "python -m pdb ${script.name}" else "python ${script.name}"))
         val started = System.currentTimeMillis()
         startedAt = started
         running = true
@@ -284,6 +291,10 @@ class NativeEngine(private val context: Context) : RunEngine {
         val workingDir = if (request.workingDir.isNotBlank()) request.workingDir
                          else script.parentFile?.absolutePath ?: "/"
         val scriptDir = script.parentFile?.absolutePath ?: ""
+        // pdb 不能直接跑目标文件：需要一个 Python 包装器把目标代码编译后交给
+        // pdb.run。包装器放在 cacheDir，不污染用户文件树；sys.path 仍指向项目目录。
+        val execScript = if (request.debug) writePdbRunner() else script
+        val execArgs = if (request.debug) listOf(script.absolutePath) + request.args else request.args
 
         // 事件出口（C 回调线程 → Flow）。注意这里只做转发；
         // busy/running 的复位统一交给 exec 线程的 finally 收尾（见下）。
@@ -310,7 +321,12 @@ class NativeEngine(private val context: Context) : RunEngine {
             try {
                 // 跑在专用线程，Py_Initialize 已在 initialize() 完成（持 GIL 语义由 C 层管理）
                 // P1-2：把命令行参数透传到 sys.argv[1:]
-                val err = bridge.execFile(script.absolutePath, workingDir, scriptDir, request.args.toTypedArray())
+                val err = bridge.execFile(
+                    execScript.absolutePath,
+                    workingDir,
+                    scriptDir,
+                    execArgs.toTypedArray(),
+                )
                 // P2-1：无尾换行的最后一行残留在此 flush
                 bridge.flushBuffers()
                 val dropped = droppedLines.get()

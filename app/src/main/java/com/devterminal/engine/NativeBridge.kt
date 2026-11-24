@@ -118,9 +118,17 @@ class NativeBridge {
         NativeEngine.postState(state ?: "", msg ?: "")
     }
 
-    /** 由 C 层回调（Python 线程，阻塞）：取下一行输入，队列空则等待 */
+    /**
+     * 由 C 层回调（Python 线程，阻塞）：取下一行输入，队列空则等待。
+     *
+     * 等待前先 flush 未完结输出：pdb/交互程序常先 write("(Pdb) ") 再等输入，
+     * 若把无换行前缀留在缓冲区，用户会看到一个没有提示符的空白等待。
+     */
     @Suppress("unused")
-    fun onInputLine(): String? = inputQueue.take()
+    fun onInputLine(): String? {
+        flushBuffers()
+        return inputQueue.take()
+    }
 
     // ---- JNI 方法声明（签名与 pybridge.c 对应） ----
     external fun attach(bridge: NativeBridge)
