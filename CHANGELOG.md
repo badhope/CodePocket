@@ -2,6 +2,33 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.29] — 2026-11-24
+
+### 新增
+
+- **ANSI 终端模拟器**：把 0.0.28 的「行式 PTY」升级为本地 xterm.js 5.5.0（MIT，随 APK 打包在 `assets/terminal/`）。PTY 原始字节直接写入 xterm，光标定位、颜色、清屏、备用屏、滚动回看与全屏重绘都由终端模拟器解释；`vim`、`top`、`less` 等程序可以正常显示。
+- **窗口尺寸联动**：xterm 用 `FitAddon` 按容器计算行列，变化时经 JS 桥回调 `PtyBridge.resize`，shell 收到真实 `TIOCSWINSZ`。
+- **移动端补充键**：终端下方提供 Esc / Tab / Ctrl-C / Ctrl-D / 方向键与「清屏」，解决软键盘没有这些键的问题。
+- **亮暗双主题**：xterm 配色随应用 `effectiveDarkTheme()` 切换；WebView 强制 `blockNetworkLoads` 且拦截外部跳转，终端页不联网。
+
+### 改变
+
+- `EditorViewModel` 不再在 Kotlin 侧做 UTF-8 解码、按行切分、剥离 CSI/OSC；PTY 字节进 `MutableSharedFlow<ByteArray>`（replay 64）后交给 xterm，避免无换行提示符与全屏程序被吞。
+- 终端面板在 PTY 模式下隐藏原来的单行输入框，键盘输入直接进 xterm；非 PTY 的轻量命令会话保持不变。
+
+### 边界
+
+- 终端渲染依赖系统 WebView（Android 8.0+ 自带）。WebView 被禁用/损坏时 PTY 仍能启动，但终端页面无法显示；这是当前为「成熟终端模拟器」付出的体积与依赖代价（xterm 资产约 296KB）。
+- 本轮未取得 Android 真机/模拟器交互验收：TCG 模拟器仍受 QEMU hanging thread 影响；xterm 页面已用 Chromium 无头浏览器做 ANSI/主题/无报错冒烟，PTY 字节链路沿用 0.0.28 的宿主 `forkpty` 验证。
+
+### 构建
+
+- `versionCode 29` / `versionName 0.0.29`。
+- 单元测试 130 个通过（本轮无新增 JVM 测试；新增 xterm 页面冒烟为构建外验证）。
+- release APK 31,725,827 B（约 30.3MiB），SHA-256 `e4ff73ea6bbeb011137f5627db12197a06cf7a0d0232fa4e535ccb9721d6640f`；debug APK 51,315,765 B（约 48.9MiB），SHA-256 `d10e6668497fbe9d68d87aa1849b307c3b867f319b59a70b0245821e5482534a`。
+- lint Release 38 个 issue（36 Warning + 2 Information），Fatal 0 / Error 0。
+- APK 内 `assets/terminal/` 含 `index.html`、`xterm.js`、`xterm.css`、`addon-fit.js`、`LICENSE-xterm.txt`；`lib/arm64-v8a/libptybridge.so`、`lib/x86_64/libptybridge.so` 仍在。
+
 ## [0.0.28] — 2026-11-24
 
 ### 新增

@@ -4,15 +4,15 @@
 
 ---
 
-## 已实现（v0.0.28 Python pdb 调试 + 真 PTY 后端）
+## 已实现（v0.0.29 ANSI 终端模拟器）
 
 - ✅ Python pdb 调试：第一行停顿、`b <行>` 断点、`n`/`s`/`c`、`p locals()`、`w` 调用栈、`q` 退出；输出面板快捷条
-- ✅ 真实 PTY 终端后端：`forkpty` + `/system/bin/sh -i`，`isatty` 为真，`vim`/`top` 可启动；行式 UI，不解释 ANSI 光标
+- ✅ 真实 PTY + ANSI 终端：`forkpty` + `/system/bin/sh -i`，原始字节交给本地 xterm.js 5.5.0；颜色、光标定位、备用屏、滚动回看可用，`vim`/`top`/`less` 正常显示；窗口尺寸经 `TIOCSWINSZ` 同步
 - ✅ 跨文件 Python 定义索引：`class` / `def` / 模块级变量，import 感知排序，文件/行号/签名可选
 - ✅ 命令面板「跳转到定义」，光标取词，结果多选不猜；索引上限 300 个 `.py` / 单文件 512KB
 - ✅ 正式 release 签名（独立 RSA-4096 证书，密钥不入库，构建可回退 debug）
 - ✅ x86_64 CPython 3.13 交叉编译、JNI 桥与 53 个 C 扩展，arm64 + x86_64 双 ABI
-- ✅ 编辑器终端面板：项目内 cwd、`cd`/`pwd`、超时与输出截断（默认非 PTY；0.0.28 可切真 PTY）
+- ✅ 编辑器终端面板：项目内 cwd、`cd`/`pwd`、超时与输出截断；非 PTY 轻量会话 + 0.0.29 xterm.js PTY 终端双模式
 - ✅ 只读子 Agent `delegate_task`：隔离上下文探索，不写文件/不执行命令
 - ✅ 离线 `semantic_search`：TF-IDF 语义索引，返回路径/行号/相关度
 
@@ -92,9 +92,8 @@
 
 ### 开发体验
 - ✅ Python pdb 调试（终端式；图形化变量树/DAP 仍在规划）
-- ✅ 真实 PTY 后端（行式输出；完整 ANSI 终端模拟器仍在规划）
+- ✅ 真实 PTY 后端 + 完整 ANSI 终端模拟器（xterm.js，0.0.29）
 - 📋 代码格式化（Black/ruff 风格）与 lint
-- 🔄 全屏 ANSI 终端模拟器（v0.0.28 已接真 PTY 后端；光标定位/颜色/重绘尚未解释）
 
 ### 生态与平台
 - ✅ MCP 工具 / 项目自定义命令 / Rhino 沙箱插件

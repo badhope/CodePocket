@@ -1,11 +1,10 @@
 package com.devterminal.engine
 
 /**
- * 真 PTY 后端。native 层用 forkpty 起 `/system/bin/sh -i`，字节流回调到
- * [Callback.onBytes]；Kotlin 侧负责 UTF-8 解码和行缓冲。
+ * 真 PTY 后端。native 层用 forkpty 起 `/system/bin/sh -i`，原始字节回调到
+ * [Callback.onBytes]；终端模拟由 UI 层的 xterm.js 负责。
  *
- * 这是终端后端，不是 ANSI 终端模拟器：`vim`/`top` 能启动、`isatty` 为真，
- * 但光标定位与全屏重绘不会被解释。
+ * `vim`/`top` 能启动、`isatty` 为真，ANSI 光标定位、颜色与全屏重绘由 xterm.js 解释。
  */
 class PtyBridge(private val callback: Callback) {
     interface Callback {

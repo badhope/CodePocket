@@ -73,10 +73,15 @@ import com.devterminal.settings.resolvesDark
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -84,8 +89,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.charset.CodingErrorAction
 
 enum class EnvState { PREPARING, READY, ERROR }
 
@@ -1047,33 +1050,39 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- 终端 ----------
     private var terminalSession: TerminalSession? = null
     private var ptyBridge: PtyBridge? = null
-    private val ptyDecoder = Charsets.UTF_8.newDecoder()
-        .onMalformedInput(CodingErrorAction.REPLACE)
-        .onUnmappableCharacter(CodingErrorAction.REPLACE)
-    private val ptyLineBuf = StringBuilder()
 
-    /** 剥掉 CSI/OSC 转义；PTY 后端真实，但 UI 不是终端模拟器，不解释光标定位。 */
-    private val ansiEscape = Regex("\u001B\\[[0-?]*[ -/]*[@-~]|\u001B\\][^\u0007]*\u0007")
-    private val ptyCallback = object : PtyBridge.Callback {
+    /**
+     * PTY 原始字节流。replay 缓存用于 WebView/xterm 尚未 ready 时补发启动 banner
+     * 与第一个 shell 提示符；UI 侧不做 UTF-8 解码，交给 xterm.js 处理完整字节流。
+     */
+    private val _ptyRaw = MutableSharedFlow<ByteArray>(
+        replay = 64,
+        extraBufferCapacity = 256,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val ptyRaw: SharedFlow<ByteArray> = _ptyRaw.asSharedFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun resetPtyReplay() {
+        runCatching { _ptyRaw.resetReplayCache() }
+    }
+
+    @Volatile
+    private var ptySessionToken = 0
+
+    /** 每次 start/stop 生成新 token；旧会话迟到的 onExit/onBytes 不再影响新会话。 */
+    private fun newPtyCallback(token: Int) = object : PtyBridge.Callback {
         override fun onBytes(bytes: ByteArray) {
-            val text = synchronized(ptyDecoder) {
-                ptyDecoder.decode(ByteBuffer.wrap(bytes)).toString()
-            }
-            if (text.isNotEmpty()) viewModelScope.launch { appendPtyText(text) }
+            if (ptySessionToken == token) _ptyRaw.tryEmit(bytes)
         }
 
         override fun onExit(code: Int) {
+            if (ptySessionToken != token) return
+            ptySessionToken = 0
+            _ptyRaw.tryEmit("\r\n[PTY 已退出，退出码 $code]\r\n".toByteArray(Charsets.UTF_8))
             viewModelScope.launch {
                 ptyBridge = null
-                ptyLineBuf.clear()
-                _ui.update {
-                    it.copy(
-                        terminalPtyRunning = false,
-                        terminalLines = (it.terminalLines + TerminalLine(
-                            "[PTY 已退出，退出码 $code]", false
-                        )).takeLast(MAX_TERMINAL_LINES),
-                    )
-                }
+                _ui.update { it.copy(terminalPtyRunning = false) }
             }
         }
     }
@@ -1096,7 +1105,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(terminalInput = text) }
     }
 
-    /** 切到真实 PTY：forkpty + /system/bin/sh -i，工作目录固定为项目根。 */
+    /** 切到真实 PTY：forkpty + /system/bin/sh -i；UI 由 xterm.js 渲染。 */
     fun toggleTerminalPty(enabled: Boolean) {
         if (enabled) startPty() else stopPty()
     }
@@ -1104,17 +1113,23 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private fun startPty() {
         val projectDir = currentProject ?: return
         if (ptyBridge != null) return
-        ptyLineBuf.clear()
-        synchronized(ptyDecoder) { ptyDecoder.reset() }
-        val bridge = runCatching { PtyBridge(ptyCallback) }.getOrElse { e ->
+        resetPtyReplay()
+        val token = ++ptySessionToken
+        _ptyRaw.tryEmit(
+            "CodePocket PTY · /system/bin/sh -i · 输入 exit 退出\r\n".toByteArray(Charsets.UTF_8)
+        )
+        val bridge = runCatching { PtyBridge(newPtyCallback(token)) }.getOrElse { e ->
             _ui.update { it.copy(message = "PTY 初始化失败：${e.message}", messageSeq = it.messageSeq + 1) }
             return
         }
+        ptyBridge = bridge
         val rc = runCatching { bridge.start(projectDir.absolutePath) }.getOrElse { e ->
+            ptyBridge = null
             _ui.update { it.copy(message = "PTY 启动异常：${e.message}", messageSeq = it.messageSeq + 1) }
             return
         }
         if (rc != 0) {
+            ptyBridge = null
             _ui.update {
                 it.copy(
                     message = "PTY 启动失败（errno $rc）；设备可能不支持 forkpty",
@@ -1123,75 +1138,54 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             }
             return
         }
-        ptyBridge = bridge
+        if (ptyBridge !== bridge) return // shell 启动即退出，onExit 已清理
         _ui.update {
             it.copy(
                 terminalPty = true,
                 terminalPtyRunning = true,
                 terminalCwd = "PTY · ${projectDir.name}",
-                terminalLines = (it.terminalLines + TerminalLine(
-                    "已进入 PTY 交互模式 · /system/bin/sh -i · 输入 exit 退出", false
-                )).takeLast(MAX_TERMINAL_LINES),
             )
         }
     }
 
     private fun stopPty() {
+        ptySessionToken += 1
         val bridge = ptyBridge
         ptyBridge = null
         runCatching { bridge?.stop() }
-        ptyLineBuf.clear()
-        synchronized(ptyDecoder) { ptyDecoder.reset() }
+        resetPtyReplay()
         _ui.update { it.copy(terminalPty = false, terminalPtyRunning = false) }
     }
 
-    private fun appendPtyText(raw: String) {
-        val text = ansiEscape.replace(raw, "")
-        ptyLineBuf.append(text)
-        val newLines = ArrayList<String>()
-        var start = 0
-        var idx: Int
-        while (ptyLineBuf.indexOf('\n', start).also { idx = it } >= 0) {
-            val line = ptyLineBuf.substring(start, idx).replace("\r", "")
-            if (line.isNotEmpty()) newLines.add(line)
-            start = idx + 1
-        }
-        if (start > 0) ptyLineBuf.delete(0, start)
-        // 终端常把提示符留在无换行前缀里；超过一屏仍未换行就截断，避免无限增长。
-        if (ptyLineBuf.length > 4096) {
-            newLines.add("… " + ptyLineBuf.takeLast(200))
-            ptyLineBuf.clear()
-        }
-        if (newLines.isEmpty()) return
-        _ui.update { st ->
-            st.copy(
-                terminalLines = (st.terminalLines + newLines.map { TerminalLine(it, false) })
-                    .takeLast(MAX_TERMINAL_LINES)
-            )
+    /** 把 xterm 的键盘数据写回 shell（xterm 会自动带上 \r、方向键转义等）。 */
+    fun writePtyData(data: String) {
+        if (!_ui.value.terminalPty) return
+        val bridge = ptyBridge ?: return
+        viewModelScope.launch {
+            val rc = withContext(Dispatchers.IO) { bridge.write(data) }
+            if (rc < 0) {
+                _ui.update { it.copy(message = "PTY 写入失败（errno $rc）", messageSeq = it.messageSeq + 1) }
+            }
         }
     }
+
+    fun resizePty(cols: Int, rows: Int) {
+        val bridge = ptyBridge ?: return
+        runCatching { bridge.resize(cols.coerceIn(20, 200), rows.coerceIn(5, 80)) }
+    }
+
+    /** 移动端补充键：Esc / Tab / Ctrl-C / 方向键等（xterm 软键盘没有这些键时用）。 */
+    fun sendPtyKey(key: String) = writePtyData(key)
 
     fun runTerminalCommand() {
         val command = _ui.value.terminalInput.trim()
         if (command.isEmpty()) return
 
-        // PTY 分支：不等待进程结束，直接把整行写进 master fd。
+        // PTY 分支：xterm 自己会回显，不在这里往 terminalLines 写命令。
         if (_ui.value.terminalPty) {
-            val bridge = ptyBridge ?: return
             if (!_ui.value.terminalPtyRunning) return
-            _ui.update {
-                it.copy(
-                    terminalInput = "",
-                    terminalLines = (it.terminalLines + TerminalLine("$ $command", true))
-                        .takeLast(MAX_TERMINAL_LINES),
-                )
-            }
-            viewModelScope.launch {
-                val rc = withContext(Dispatchers.IO) { bridge.write(command + "\n") }
-                if (rc < 0) {
-                    _ui.update { it.copy(message = "PTY 写入失败（errno $rc）", messageSeq = it.messageSeq + 1) }
-                }
-            }
+            _ui.update { it.copy(terminalInput = "") }
+            writePtyData(command + "\r")
             return
         }
 
@@ -1223,7 +1217,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun clearTerminal() {
-        _ui.update { it.copy(terminalLines = emptyList()) }
+        if (_ui.value.terminalPty) {
+            writePtyData("\u000c")
+        } else {
+            _ui.update { it.copy(terminalLines = emptyList()) }
+        }
     }
 
     fun closeTerminal() {

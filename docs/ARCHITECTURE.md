@@ -47,6 +47,7 @@
 | `NativeBridge.kt` | JNI 声明：`initialize` / `execFile` / `pushInputLine` / `pushEof` / `requestInterrupt` / `shutdown` |
 | `PdbRunner.kt` | pdb 包装器：compile 目标源码 → `pdb.run`，目标路径走 argv[1] |
 | `PtyBridge.kt` | 真 PTY 前端：`nativeStart` / `nativeWrite` / `nativeResize` / `nativeStop`，字节回调 → Kotlin |
+| `PtyTerminalView.kt` | 本地 WebView + xterm.js 终端：PTY 字节按 base64 写入、键盘回传、`FitAddon` resize、亮暗主题、离线限制 |
 | `EnvironmentInstaller.kt` | 环境自检与安装（引擎相关部分） |
 | `ExecutionService.kt` | 前台服务：运行期间保活（Android 12+） |
 | `GitManager.kt` | JGit 封装：init / commit / push / pull |
@@ -103,7 +104,7 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 
 ---
 
-## 4.1 调试与 PTY（v0.0.28）
+## 4.1 调试、PTY 与终端模拟（v0.0.29）
 
 ### Python pdb
 
@@ -116,9 +117,11 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 
 - `PtyBridge.kt` 加载独立的 `libptybridge.so`，调用 `forkpty()` 起 `/system/bin/sh -i`；
 - 原生读线程把 master fd 的字节通过 `onBytes([B)V` 回传；退出时 `waitpid` 后 `onExit(I)V`；
-- Kotlin 侧 `CharsetDecoder` 处理跨 chunk 的 UTF-8，按 `\n` 切行，剥离 CSI/OSC 转义，再进 `terminalLines`；
+- Kotlin 侧不做解码/切行/剥离转义：原始 `ByteArray` 进 `EditorViewModel.ptyRaw`（`MutableSharedFlow`，replay 64，供 WebView ready 前补发启动 banner 与首个提示符）；
+- `PtyTerminalView` 是本地 WebView，加载 `assets/terminal/index.html` 与 xterm.js 5.5.0；Kotlin → JS 用 base64 字节 + `term.write(Uint8Array)`，JS → Kotlin 用 `@JavascriptInterface` 回传 `onData` / `onResize` / `onReady`；
+- xterm `FitAddon` 按容器算行列，`onResize` 调 `PtyBridge.resize(cols, rows)`，原生 `ioctl(TIOCSWINSZ)` 同步 shell；
 - `nativeStop()` 关闭 master + SIGHUP/SIGTERM，读线程自然退出并回收 child；同一时间只允许一个 PTY；
-- UI 是行式终端，不解释光标定位/颜色/全屏重绘；`vim`/`top` 能启动但显示效果有限。
+- 终端页强制 `blockNetworkLoads`、拦截外部跳转，只加载 APK 内资源；亮暗主题由 `dark` query + `termSetTheme()` 切换。
 
 ---
 
@@ -136,7 +139,7 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 ```
 app/src/main/
 ├── AndroidManifest.xml
-├── assets/            # python-stdlib.zip、textmate 语法、模板等
+├── assets/            # python-stdlib.zip、textmate 语法、模板、terminal/（xterm.js）
 ├── cpp/pybridge.c     # Python JNI 桥
 ├── cpp/ptybridge.c    # 真 PTY JNI 桥（独立 libptybridge.so）
 ├── java/com/devterminal/

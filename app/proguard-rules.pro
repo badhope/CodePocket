@@ -32,3 +32,6 @@
 
 # llama.cpp JNI：LocalLlama 的 native 方法按名字查找，必须保留类名与方法名
 -keep class com.devterminal.model.LocalLlama { *; }
+
+# WebView JS 桥：xterm 页面按方法名调用 Android.onData/onResize/onReady
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }

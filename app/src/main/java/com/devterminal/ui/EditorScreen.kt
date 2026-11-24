@@ -993,6 +993,11 @@ fun EditorScreen(vm: EditorViewModel) {
             pty = ui.terminalPty,
             ptyRunning = ui.terminalPtyRunning,
             onTogglePty = vm::toggleTerminalPty,
+            ptyBytes = vm.ptyRaw,
+            onPtyData = vm::writePtyData,
+            onPtyResize = vm::resizePty,
+            onPtyKey = vm::sendPtyKey,
+            darkTheme = ui.settings.effectiveDarkTheme(),
         )
     }
 
