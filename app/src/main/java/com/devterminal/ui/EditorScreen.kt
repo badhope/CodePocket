@@ -787,6 +787,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "agent" -> overlay = Overlay.Agent
                     "gsearch" -> overlay = Overlay.GlobalSearch
                     "symbols" -> { vm.loadSymbols(); overlay = Overlay.Symbols }
+                    "definition" -> if (vm.findDefinition()) overlay = Overlay.Definitions
                     "models" -> { vm.refreshLocalModels(); overlay = Overlay.LocalModels }
                     "agentHistory" -> { vm.loadAgentSessions(); overlay = Overlay.AgentHistory }
                     "runconfig" -> overlay = Overlay.RunConfig
@@ -910,6 +911,19 @@ fun EditorScreen(vm: EditorViewModel) {
             symbols = ui.symbolOutline,
             loading = ui.symbolsLoading,
             onPick = { line -> vm.gotoLine(line); closeOverlay() },
+            onDismiss = ::closeOverlay,
+        )
+    }
+
+    if (overlay == Overlay.Definitions) {
+        DefinitionDialog(
+            query = ui.definitionQuery,
+            matches = ui.definitionMatches,
+            loading = ui.definitionLoading,
+            onPick = { definition ->
+                vm.openDefinition(definition)
+                closeOverlay()
+            },
             onDismiss = ::closeOverlay,
         )
     }
@@ -1336,6 +1350,8 @@ private fun buildCommands(
         Icons.Outlined.NavigateBefore) { onCommand("goto") })
     add(Command("symbols", "符号大纲", "当前文件的类 / 函数列表",
         Icons.Filled.AccountTree) { onCommand("symbols") })
+    add(Command("definition", "跳转到定义", "光标下的 Python 符号 / 跨文件",
+        Icons.Filled.Search) { onCommand("definition") })
     add(Command("models", "本地模型", "下载 MiniCPM5 / 离线 Agent",
         Icons.Filled.AutoAwesome) { onCommand("models") })
     add(Command("agentHistory", "Agent 历史会话", "回放之前的工具轨迹",

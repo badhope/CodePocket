@@ -2,6 +2,27 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.27] — 2026-11-24
+
+### 新增
+
+- **跨文件 Python 定义跳转**：命令面板新增「跳转到定义」，读取光标下的标识符，在项目内扫描 `.py` 文件的 `class` / `def` / 模块级变量定义，列出文件、行号与签名，点选后直接打开对应文件并定位到行。
+- **import 优先排序**：`from utils import helper` / `import pkg.utils` 会优先匹配对应模块文件；同名符号仍全部列出，不替用户猜。
+- **定义索引导航**：新增 `DefinitionDialog`，与符号大纲共用同一套离线、零进程的交互；索引上限 300 个 `.py`、单文件 512KB，避免手机端卡顿。
+
+### 边界
+
+- 这不是 LSP：不做类型推断、继承解析、跨文件引用重命名或后台语言服务器；只做稳定的文本级定义定位。
+- 当前只支持 Python。Kotlin / Java / JS / TS / Lua 仍使用原有当前文件符号大纲。
+
+### 构建
+
+- `versionCode 27` / `versionName 0.0.27`。
+- 单元测试 129 个通过（新增 5 个定义索引测试）。
+- release APK 约 31MB，SHA-256 `59053f190d5ddbca64e2770da44583bb69d155141a7c136c754348ec6bcc097e`；debug APK 约 49MB，SHA-256 `3e9a61ef7f158cb5de519240d5bd8d39d0ea905e194f88f0cf242a4c4978f31b`。
+- lint Release 38 个 issue（36 Warning + 2 Information），Fatal 0 / Error 0。
+- x86_64 模拟器未在本轮重跑；0.0.26 的安装、Python 运行、自检、终端结果仍有效。0.0.27 新增的是离线文本索引与 UI，不改变原生运行时。
+
 ## [0.0.26] — 2026-11-24
 
 ### 新增

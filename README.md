@@ -86,6 +86,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Multi-file tabs** · **file tree** (new / rename / delete, long-press actions)
 - **Sora Editor** code editor + 20-language TextMate syntax highlighting (3 runnable, 17 editable)
 - **Static completion**: per-language keyword/builtin profiles + symbols from the current file (zero process overhead)
+- **Python go-to-definition**: cursor symbol → project-wide `class` / `def` / module variable, with import-aware ranking (no LSP process)
 - **Find & replace** (count & jump) · **global search** (cross-file)
 - **26-key symbol bar** · **pinch-to-zoom font size** · auto bracket closing · soft wrap · line number toggle
 - **6 editor themes** (Darcula / Monokai / Tomorrow Night Blue / Solarized…)
@@ -98,6 +99,10 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Infinite-loop protection** (timeout interrupt) · foreground service keep-alive
 - **Friendly error translations** (Python / JavaScript / Lua)
 - Run configuration (command-line args) · standard Python script attributes like `__file__`
+
+### Code intelligence (0.0.27)
+- **Python go-to-definition**: cursor symbol → project-wide definitions, import-aware ranking, file/line/signature picker
+- **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
 ### Agent & terminal (0.0.26)
 - **Agent plan mode**: plan → approval → tool execution, with cross-turn context and token budgets

@@ -38,6 +38,9 @@ sealed interface Overlay {
     /** 当前文件符号大纲 */
     data object Symbols : Overlay
 
+    /** 跨文件定义候选（Python，v0.0.27） */
+    data object Definitions : Overlay
+
     /** 本地模型下载与管理 */
     data object LocalModels : Overlay
 

@@ -48,6 +48,7 @@ import com.devterminal.model.ModelMessage
 import com.devterminal.workspace.LocalWorkspace
 import com.devterminal.language.CodeSymbol
 import com.devterminal.language.LanguageService
+import com.devterminal.language.ProjectSymbolIndex
 import com.devterminal.engine.AiClient
 import com.devterminal.engine.AiHistoryStore
 import com.devterminal.engine.TerminalSession
@@ -175,6 +176,10 @@ data class UiState(
     // ---------- 符号大纲（v0.0.18） ----------
     val symbolOutline: List<CodeSymbol> = emptyList(),
     val symbolsLoading: Boolean = false,
+    // ---------- 跨文件定义（v0.0.27） ----------
+    val definitionQuery: String = "",
+    val definitionMatches: List<ProjectSymbolIndex.Definition> = emptyList(),
+    val definitionLoading: Boolean = false,
     // ---------- Agent 会话恢复（v0.0.21） ----------
     val agentRecovered: Boolean = false,
     val agentSessions: List<AgentSessionMeta> = emptyList(),
@@ -468,7 +473,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun openFile(file: File) {
+    fun openFile(file: File, targetLine: Int? = null) {
         if (file.isDirectory) return
         val st = _ui.value
         val previous = st.currentFile
@@ -483,18 +488,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         messageSeq = it.messageSeq + 1) }
                     return@launch
                 }
-                doOpenFile(file)
+                doOpenFile(file, targetLine = targetLine)
             }
         } else {
-            doOpenFile(file)
+            doOpenFile(file, targetLine = targetLine)
         }
     }
 
-    private fun doOpenFile(file: File, restore: Boolean = false) {
+    private fun doOpenFile(file: File, restore: Boolean = false, targetLine: Int? = null) {
         viewModelScope.launch {
             val content = withContext(Dispatchers.IO) { projects.read(file.absolutePath) }
             _ui.update { st ->
-                st.copy(
+                val next = st.copy(
                     currentFile = file,
                     editorText = content,
                     dirty = false,
@@ -505,6 +510,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     openTabs = st.openTabs.let { tabs ->
                         if (tabs.any { it.absolutePath == file.absolutePath }) tabs else tabs + file
                     }
+                )
+                if (targetLine == null) next else next.copy(
+                    gotoLineRequest = ScrollToLineRequest(
+                        line = (targetLine - 1).coerceAtLeast(0),
+                        seq = (st.gotoLineRequest?.seq ?: 0L) + 1L,
+                    )
                 )
             }
             if (!restore) saveSession()
@@ -2055,6 +2066,71 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             val seq = (it.gotoLineRequest?.seq ?: 0L) + 1
             it.copy(gotoLineRequest = ScrollToLineRequest((line - 1).coerceAtLeast(0), seq))
         }
+    }
+
+    /**
+     * 光标下的 Python 标识符 → 项目内定义。
+     *
+     * 这是“LSP-lite”而不是完整 LSP：不推断类型、不解析继承、不跑后台进程。
+     * 结果为空时给出明确原因，结果多于一条时交给用户选，不猜。
+     */
+    fun findDefinition(): Boolean {
+        val st = _ui.value
+        val file = st.currentFile ?: run {
+            _ui.update { it.copy(message = "先打开一个 Python 文件", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        if (file.extension.lowercase() != "py") {
+            _ui.update { it.copy(message = "当前仅支持 Python 跨文件定义", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        val root = currentProject ?: file.parentFile ?: return false
+        val name = ProjectSymbolIndex(LocalWorkspace(root)).wordAt(
+            st.editorText,
+            st.cursorLine,
+            st.cursorColumn,
+        ) ?: run {
+            _ui.update { it.copy(message = "光标不在标识符上", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        val relative = runCatching {
+            file.relativeTo(root).path.replace(File.separatorChar, '/')
+        }.getOrElse { file.name }
+
+        _ui.update {
+            it.copy(
+                definitionQuery = name,
+                definitionMatches = emptyList(),
+                definitionLoading = true,
+            )
+        }
+        viewModelScope.launch {
+            val defs = withContext(Dispatchers.IO) {
+                runCatching {
+                    ProjectSymbolIndex(LocalWorkspace(root)).find(name, relative)
+                }.getOrElse { emptyList() }
+            }
+            _ui.update {
+                it.copy(
+                    definitionLoading = false,
+                    definitionMatches = defs,
+                    message = if (defs.isEmpty()) "没有找到“$name”的定义" else null,
+                    messageSeq = if (defs.isEmpty()) it.messageSeq + 1 else it.messageSeq,
+                )
+            }
+        }
+        return true
+    }
+
+    /** 打开定义所在文件并定位到行（1 基）。 */
+    fun openDefinition(definition: ProjectSymbolIndex.Definition) {
+        val root = currentProject ?: _ui.value.currentFile?.parentFile ?: return
+        val file = File(root, definition.path)
+        if (!file.isFile) {
+            _ui.update { it.copy(message = "定义文件不存在：${definition.path}", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        openFile(file, targetLine = definition.line)
     }
 
     // ---------- 导入 / 导出（SAF） ----------
