@@ -124,7 +124,7 @@ fun PtyTerminalView(
 
 /** WebView JS 桥。方法名被 xterm 页面的 Android.onXxx 直接调用，R8 需保留。 */
 @Keep
-private class TerminalBridge(
+class TerminalBridge(
     private val dataCallback: (String) -> Unit,
     private val resizeCallback: (Int, Int) -> Unit,
     private val readyCallback: () -> Unit,

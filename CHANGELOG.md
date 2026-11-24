@@ -25,7 +25,7 @@
 
 - `versionCode 29` / `versionName 0.0.29`。
 - 单元测试 130 个通过（本轮无新增 JVM 测试；新增 xterm 页面冒烟为构建外验证）。
-- release APK 31,725,883 B（约 30.3MiB），SHA-256 `9e567d5ad737c266d136433f797dd5c0bfd2ce0d81cf9c52a52cbd5081388124`；debug APK 51,315,724 B（约 48.9MiB），SHA-256 `c5876e572773bec5674d4351d8854e4fffcd351f2fcd2e719a7aaaf4707f7cb0`。
+- release APK 31,725,827 B（约 30.3MiB），SHA-256 `e4ff73ea6bbeb011137f5627db12197a06cf7a0d0232fa4e535ccb9721d6640f`；debug APK 51,315,765 B（约 48.9MiB），SHA-256 `d10e6668497fbe9d68d87aa1849b307c3b867f319b59a70b0245821e5482534a`。
 - lint Release 38 个 issue（36 Warning + 2 Information），Fatal 0 / Error 0。
 - APK 内 `assets/terminal/` 含 `index.html`、`xterm.js`、`xterm.css`、`addon-fit.js`、`LICENSE-xterm.txt`；`lib/arm64-v8a/libptybridge.so`、`lib/x86_64/libptybridge.so` 仍在。
 
