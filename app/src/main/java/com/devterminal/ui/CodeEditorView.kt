@@ -5,7 +5,9 @@ import android.view.KeyEvent
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -255,17 +257,31 @@ fun CodeEditorView(
         // 待真机验证捏合/单指滚动竞争后再决定是否补嵌套滚动桥接。
         modifier = modifier
             .pointerInput(Unit) {
-            // 双指捏合调整字号：累积增量达到阈值才回调，避免字号抖动。
-            // 用 rememberUpdatedState + 固定 key，手势不会因重组被重启。
-            var pending = 0f
-            detectTransformGestures { _, _, zoom, _ ->
-                if (zoom != 1f) {
-                    pending += (zoom - 1f)
-                    if (pending > 0.14f) { zoomCallback.value?.invoke(1); pending = 0f }
-                    else if (pending < -0.14f) { zoomCallback.value?.invoke(-1); pending = 0f }
+                // 只拦截「两指及以上」的捏合。原实现用 detectTransformGestures，
+                // 单指拖动也会被它消费，SoraEditor 的滚动/光标拖动会被抢走。
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    var pending = 0f
+                    var pressed = true
+                    while (pressed) {
+                        val event = awaitPointerEvent()
+                        val active = event.changes.filter { it.pressed }
+                        if (active.size >= 2) {
+                            val zoom = event.calculateZoom()
+                            if (zoom != 1f) {
+                                pending += (zoom - 1f)
+                                if (pending > 0.14f) {
+                                    zoomCallback.value?.invoke(1); pending = 0f
+                                } else if (pending < -0.14f) {
+                                    zoomCallback.value?.invoke(-1); pending = 0f
+                                }
+                            }
+                            active.forEach { it.consume() }
+                        }
+                        pressed = event.changes.any { it.pressed }
+                    }
                 }
-            }
-        },
+            },
         factory = {
             editor.apply {
                 setText(text)

@@ -45,6 +45,8 @@ class AgentSessionStore(private val dir: File) {
         ensureDir()
         val file = File(dir, "$sessionId.jsonl")
         if (!file.isFile) return
+        // 单会话日志封顶，避免一个忘记结束的长任务把手机存储写满。
+        if (file.length() >= MAX_SESSION_BYTES) return
         file.appendText(AgentEventCodec.encode(event) + "\n")
     }
 
@@ -52,9 +54,12 @@ class AgentSessionStore(private val dir: File) {
         val file = File(dir, "$sessionId.jsonl")
         if (!file.isFile) return emptyList()
         return file.useLines { lines ->
-            lines.drop(1).mapNotNull { line ->
-                if (line.isBlank()) null else AgentEventCodec.decode(line)
-            }.toList()
+            lines.drop(1)
+                .take(MAX_REPLAY_EVENTS)
+                .mapNotNull { line ->
+                    if (line.isBlank()) null else AgentEventCodec.decode(line)
+                }
+                .toList()
         }
     }
 
@@ -74,7 +79,7 @@ class AgentSessionStore(private val dir: File) {
     fun delete(sessionId: String): Boolean = File(dir, "$sessionId.jsonl").delete()
 
     private fun metaOf(file: File): AgentSessionMeta? {
-        val lines = runCatching { file.readLines() }.getOrNull() ?: return null
+        val lines = runCatching { file.useLines { it.toList() } }.getOrNull() ?: return null
         val head = lines.firstOrNull() ?: return null
         val json = runCatching { JSONObject(head) }.getOrNull() ?: return null
         if (json.optString("type") != "session_meta") return null
@@ -92,14 +97,27 @@ class AgentSessionStore(private val dir: File) {
         )
     }
 
-    private fun prune(keep: Int = 30) {
+    private fun prune(keep: Int = 30, maxTotalBytes: Long = 128L * 1024 * 1024) {
         val files = dir.listFiles { file -> file.isFile && file.extension == "jsonl" }
             ?.sortedByDescending { it.lastModified() }
             ?: return
         files.drop(keep).forEach { it.delete() }
+        val kept = files.take(keep)
+        var total = kept.sumOf { it.length() }
+        // 即使份数没超，总占用也要设上限；从最旧的会话开始删。
+        kept.asReversed().forEach { file ->
+            if (total <= maxTotalBytes) return@forEach
+            total -= file.length()
+            file.delete()
+        }
     }
 
     private fun ensureDir() {
         if (!dir.isDirectory) dir.mkdirs()
+    }
+
+    private companion object {
+        const val MAX_SESSION_BYTES = 16L * 1024 * 1024
+        const val MAX_REPLAY_EVENTS = 2000
     }
 }

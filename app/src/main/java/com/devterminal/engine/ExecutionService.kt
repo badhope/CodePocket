@@ -8,10 +8,14 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.devterminal.MainActivity
 import com.devterminal.R
+import java.lang.ref.WeakReference
 
 /**
  * 前台服务：让 App 在后台运行代码时不被 Android 杀掉。
@@ -48,44 +52,52 @@ class ExecutionService : Service() {
             }
         }
 
+        /** 同进程内直接调用实例；没有实例时才退回 stopService，避免后台 startService 被系统拒绝。 */
+        private var instance: WeakReference<ExecutionService>? = null
+
         /** 停止指定 tag；只有没有其它任务时才真正撤掉通知。 */
         fun stop(context: Context, tag: String = DEFAULT_TAG) {
-            context.startService(
-                Intent(context, ExecutionService::class.java).apply {
-                    action = ACTION_STOP
-                    putExtra(EXTRA_TAG, tag)
-                }
-            )
+            val service = instance?.get()
+            if (service != null) {
+                Handler(Looper.getMainLooper()).post { service.stopTag(tag) }
+            } else {
+                context.stopService(Intent(context, ExecutionService::class.java))
+            }
         }
     }
 
     private val activeTitles = linkedMapOf<String, String>()
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        instance = WeakReference(this)
         createChannel()
+    }
+
+    private fun stopTag(tag: String) {
+        activeTitles.remove(tag)
+        if (activeTitles.isEmpty()) {
+            releaseWakeLock()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        } else {
+            activeTitles.values.lastOrNull()?.let {
+                startForeground(NOTIFICATION_ID, buildNotification(it))
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> {
-                val tag = intent?.getStringExtra(EXTRA_TAG) ?: "run"
-                activeTitles.remove(tag)
-                if (activeTitles.isEmpty()) {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
-                } else {
-                    activeTitles.values.lastOrNull()?.let {
-                        startForeground(NOTIFICATION_ID, buildNotification(it))
-                    }
-                }
-            }
+            ACTION_STOP -> stopTag(intent?.getStringExtra(EXTRA_TAG) ?: "run")
             else -> {
                 val tag = intent?.getStringExtra(EXTRA_TAG) ?: "run"
                 val title = intent?.getStringExtra(EXTRA_TITLE) ?: "代码运行中"
                 activeTitles[tag] = title
+                ensureWakeLock()
                 startForeground(NOTIFICATION_ID, buildNotification(title))
             }
         }
@@ -109,7 +121,24 @@ class ExecutionService : Service() {
 
     override fun onDestroy() {
         activeTitles.clear()
+        releaseWakeLock()
+        instance = null
         super.onDestroy()
+    }
+
+    /** 前台服务只保进程，不保证 CPU 不休眠；长脚本熄屏后仍需要 partial wakelock。 */
+    private fun ensureWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val pm = getSystemService(PowerManager::class.java) ?: return
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "CodePocket:execution").apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+    }
+
+    private fun releaseWakeLock() {
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
+        wakeLock = null
     }
 
     private fun buildNotification(title: String): Notification {

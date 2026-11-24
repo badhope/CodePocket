@@ -203,7 +203,13 @@ fun EditorScreen(vm: EditorViewModel) {
     var overlay by rememberSaveable(stateSaver = overlaySaver) {
         mutableStateOf<Overlay>(Overlay.None)
     }
-    fun closeOverlay() { overlay = Overlay.None }
+    fun closeOverlay() {
+        // 返回键关面板时，必须连同后台任务一起收掉；仅把 overlay 置 None 会留下
+        // 用户看不见的 PTY shell / Agent 循环，继续吃 CPU 和电量。
+        if (overlay == Overlay.Terminal) vm.closeTerminal()
+        if (overlay == Overlay.Agent && ui.agentBusy) vm.cancelAgent()
+        overlay = Overlay.None
+    }
 
     // 预览防抖：分屏打开期间，编辑文本停止变化 350ms 后才真正重渲染，
     // 敲每个字都重新生成 HTML 会又卡又闪。collectLatest 保证连续输入只落最后一次。
@@ -703,7 +709,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     onRequestInput = { vm.openInput() },
                     onShare = {
                         // 通过系统分享把运行结果发出去（聊天/笔记/Issue 都方便）
-                        val text = ui.output.joinToString("\n")
+                        val text = vm.outputTextForSharing()
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, text)
@@ -1117,6 +1123,15 @@ fun EditorScreen(vm: EditorViewModel) {
             onDismiss = ::closeOverlay
         )
     }
+
+    ui.pendingNavigation?.let { pending ->
+        UnsavedChangesDialog(
+            pending = pending,
+            onSave = { vm.resolvePendingNavigation(save = true) },
+            onDiscard = { vm.resolvePendingNavigation(save = false) },
+            onCancel = { vm.cancelPendingNavigation() },
+        )
+    }
 }
 
 /**
@@ -1362,7 +1377,8 @@ private fun buildCommands(
         Icons.Filled.Share) {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, ui.editorText)
+                // 超大文件直接塞 EXTRA_TEXT 会触发 Binder 限制；先截断再分享。
+                putExtra(Intent.EXTRA_TEXT, ui.editorText.take(200_000))
             }
             runCatching { context.startActivity(Intent.createChooser(intent, "分享代码")) }
         })

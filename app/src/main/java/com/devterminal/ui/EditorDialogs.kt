@@ -978,3 +978,40 @@ fun PackagesDialog(
     }
 }
 
+/** 关闭自动保存后，切文件/关 Tab/切项目前的显式确认。 */
+@Composable
+fun UnsavedChangesDialog(
+    pending: PendingNavigation,
+    onSave: () -> Unit,
+    onDiscard: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val action = when (pending) {
+        is PendingNavigation.OpenFile -> "打开「${pending.file.name}」"
+        is PendingNavigation.CloseTab -> "关闭「${pending.file.name}」"
+        is PendingNavigation.OpenProject -> "切换到项目「${pending.dir.name}」"
+    }
+    QuietDialog(
+        onDismiss = onCancel,
+        title = "有未保存的修改",
+        confirmLabel = "保存并继续",
+        onConfirm = onSave,
+        dismissLabel = "取消",
+    ) {
+        Text("当前文件有未保存的修改。", style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(Dimens.sm))
+        Text(
+            "继续$action 后，这些改动会丢失。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.muted,
+        )
+        Spacer(Modifier.height(Dimens.md))
+        TextButton(onClick = onDiscard) {
+            Text(
+                "不保存，直接继续",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}

@@ -77,6 +77,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -89,6 +90,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.UUID
 
 enum class EnvState { PREPARING, READY, ERROR }
 
@@ -101,6 +105,20 @@ private val WALK_EXCLUDED = setOf(".git", "build", "__pycache__", "node_modules"
 
 data class TerminalLine(val text: String, val command: Boolean)
 
+/** 关闭自动保存后，切文件/关 Tab/切项目前的显式选择，避免静默丢改动。 */
+sealed class PendingNavigation {
+    abstract val displayName: String
+    data class OpenFile(val file: File, val targetLine: Int? = null) : PendingNavigation() {
+        override val displayName: String get() = file.name
+    }
+    data class CloseTab(val file: File) : PendingNavigation() {
+        override val displayName: String get() = file.name
+    }
+    data class OpenProject(val dir: File) : PendingNavigation() {
+        override val displayName: String get() = dir.name
+    }
+}
+
 data class UiState(
     val envState: EnvState = EnvState.PREPARING,
     val envMessage: String = "正在准备离线运行环境…",
@@ -108,6 +126,8 @@ data class UiState(
     val currentFile: File? = null,
     val editorText: String = "",
     val dirty: Boolean = false,
+    /** 非空时显示「未保存修改」确认框，等待用户选择保存/放弃/取消 */
+    val pendingNavigation: PendingNavigation? = null,
     val output: List<String> = emptyList(),
     val running: Boolean = false,
     val exitCode: Int? = null,
@@ -419,6 +439,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- 项目 / 文件 ----------
 
     fun openProject(dir: File) {
+        val st = _ui.value
+        if (st.dirty && !st.settings.autoSave) {
+            _ui.update { it.copy(pendingNavigation = PendingNavigation.OpenProject(dir)) }
+            return
+        }
         viewModelScope.launch {
             // 切项目前先把当前脏文件落盘；失败就不切，绝不静默丢代码。
             if (!persistCurrentIfDirty()) return@launch
@@ -428,6 +453,35 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             }
             switchProject(dir)
         }
+    }
+
+    /** 用户在「有未保存修改」弹窗里做出选择。save=true 保存后继续，false 放弃改动继续。 */
+    fun resolvePendingNavigation(save: Boolean) {
+        val pending = _ui.value.pendingNavigation ?: return
+        viewModelScope.launch {
+            if (save) {
+                if (!persistCurrentIfDirty()) return@launch
+                if (_ui.value.dirty) {
+                    _ui.update {
+                        it.copy(message = "保存期间有新输入，操作已取消", messageSeq = it.messageSeq + 1)
+                    }
+                    return@launch
+                }
+            } else {
+                // 放弃修改：只清 UI 状态，不写盘。
+                _ui.update { it.copy(dirty = false) }
+            }
+            _ui.update { it.copy(pendingNavigation = null) }
+            when (pending) {
+                is PendingNavigation.OpenFile -> doOpenFile(pending.file, targetLine = pending.targetLine)
+                is PendingNavigation.CloseTab -> closeTabInternal(pending.file)
+                is PendingNavigation.OpenProject -> switchProject(pending.dir)
+            }
+        }
+    }
+
+    fun cancelPendingNavigation() {
+        _ui.update { it.copy(pendingNavigation = null) }
     }
 
     /** 实际的工程切换：只做状态清理，不负责保存。 */
@@ -489,8 +543,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (file.isDirectory) return
         val st = _ui.value
         val previous = st.currentFile
-        // 自动保存：切走前先落盘，避免改动丢失
-        if (st.settings.autoSave && st.dirty && previous != null) {
+        // 点当前文件只做跳转，不重新读盘，避免覆盖未保存内容
+        if (previous?.absolutePath == file.absolutePath) {
+            if (targetLine != null) {
+                _ui.update { cur ->
+                    cur.copy(
+                        gotoLineRequest = ScrollToLineRequest(
+                            line = (targetLine - 1).coerceAtLeast(0),
+                            seq = (cur.gotoLineRequest?.seq ?: 0L) + 1L,
+                        )
+                    )
+                }
+            }
+            return
+        }
+        // 自动保存：切走前先落盘；关闭自动保存时改为显式询问，绝不静默丢弃。
+        if (st.dirty && previous != null) {
+            if (!st.settings.autoSave) {
+                _ui.update { it.copy(pendingNavigation = PendingNavigation.OpenFile(file, targetLine)) }
+                return
+            }
             viewModelScope.launch {
                 val ok = runCatching {
                     withContext(Dispatchers.IO) { projects.write(previous.absolutePath, st.editorText) }
@@ -509,7 +581,19 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun doOpenFile(file: File, restore: Boolean = false, targetLine: Int? = null) {
         viewModelScope.launch {
-            val content = withContext(Dispatchers.IO) { projects.read(file.absolutePath) }
+            val contentResult = withContext(Dispatchers.IO) {
+                runCatching { projects.read(file.absolutePath) }
+            }
+            val content = contentResult.getOrElse { e ->
+                _ui.update {
+                    it.copy(
+                        message = "无法打开 ${file.name}：${e.message ?: "读取失败"}",
+                        messageSeq = it.messageSeq + 1,
+                        openTabs = it.openTabs.filterNot { t -> t.absolutePath == file.absolutePath },
+                    )
+                }
+                return@launch
+            }
             _ui.update { st ->
                 val next = st.copy(
                     currentFile = file,
@@ -540,6 +624,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val idx = st.openTabs.indexOfFirst { it.absolutePath == file.absolutePath }
         if (idx < 0) return
         val closingCurrent = st.currentFile?.absolutePath == file.absolutePath
+        if (closingCurrent && st.dirty && !st.settings.autoSave) {
+            _ui.update { it.copy(pendingNavigation = PendingNavigation.CloseTab(file)) }
+            return
+        }
         if (closingCurrent && st.dirty) {
             viewModelScope.launch {
                 if (!persistCurrentIfDirty()) return@launch
@@ -608,7 +696,19 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 切后台 / 系统回收前静默落盘（对标已发布编辑器的数据安全底线） */
     fun saveOnBackground() {
         val st = _ui.value
-        if (st.dirty && st.currentFile != null) save(saveMessage = false)
+        val file = st.currentFile ?: return
+        if (!st.dirty) return
+        // 不能只 launch 异步写：onStop 返回后进程随时会被系统杀，写协程可能来不及跑。
+        // 这里同步写（文件已限制 5MB），写成功后再按快照比对清 dirty。
+        val snapshot = st.editorText
+        val ok = runCatching { projects.write(file.absolutePath, snapshot) }.isSuccess
+        if (ok) {
+            _ui.update { cur ->
+                if (cur.currentFile?.absolutePath == file.absolutePath && cur.editorText == snapshot) {
+                    cur.copy(dirty = false)
+                } else cur
+            }
+        }
     }
 
     // ---------- 运行 ----------
@@ -645,7 +745,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 运行前自动保存，保证跑的是最新代码
         if (st.dirty) {
             viewModelScope.launch {
-                withContext(Dispatchers.IO) { projects.write(file.absolutePath, st.editorText) }
+                val ok = runCatching {
+                    withContext(Dispatchers.IO) { projects.write(file.absolutePath, st.editorText) }
+                }.isSuccess
+                if (!ok) {
+                    _ui.update {
+                        it.copy(
+                            message = "保存失败，未运行：${file.name}",
+                            messageSeq = it.messageSeq + 1,
+                        )
+                    }
+                    return@launch
+                }
                 _ui.update { it.copy(dirty = false) }
                 launchRun(file, spec, engine, debug)
             }
@@ -776,7 +887,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 追加输出行并守住行数上限，避免死循环输出把内存打满 */
     private fun appendLines(current: List<String>, vararg lines: String): List<String> {
-        val merged = current + lines
+        val sanitized = lines.map { line ->
+            if (line.length <= MAX_OUTPUT_LINE_CHARS) line
+            else line.take(MAX_OUTPUT_LINE_CHARS) + "…[单行过长已截断]"
+        }
+        val merged = current + sanitized
         if (merged.size <= MAX_OUTPUT_LINES) return merged
         // 超限时保留最后 N 行，并在最前面插一条 muted 截断提示，让用户知道丢了一段
         val tail = merged.takeLast(MAX_OUTPUT_LINES)
@@ -918,7 +1033,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(message = "保存期间有新输入，已取消新建", messageSeq = it.messageSeq + 1) }
                 return@launch
             }
-            val dir = withContext(Dispatchers.IO) { projects.createFromTemplate(tpl) }
+            val dir = withContext(Dispatchers.IO) {
+                runCatching { projects.createFromTemplate(tpl) }
+            }.getOrElse { e ->
+                _ui.update {
+                    it.copy(message = "新建项目失败：${e.message}", messageSeq = it.messageSeq + 1)
+                }
+                return@launch
+            }
             switchProject(dir)
             _ui.update {
                 it.copy(message = "已创建项目 ${dir.name}", messageSeq = it.messageSeq + 1)
@@ -934,7 +1056,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun newFile(fileName: String) {
         val dir = currentProject ?: return
         viewModelScope.launch {
-            val f = withContext(Dispatchers.IO) { projects.createFile(dir.absolutePath, fileName) }
+            val f = withContext(Dispatchers.IO) {
+                runCatching { projects.createFile(dir.absolutePath, fileName) }
+            }.getOrElse { e ->
+                _ui.update {
+                    it.copy(message = "新建文件失败：${e.message}", messageSeq = it.messageSeq + 1)
+                }
+                return@launch
+            }
             refreshTree()
             openFile(f)
         }
@@ -942,13 +1071,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteFile(file: File) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { projects.delete(file) }
+            val ok = runCatching {
+                withContext(Dispatchers.IO) { projects.delete(file) }
+            }.getOrDefault(false)
+            if (!ok) {
+                _ui.update { it.copy(message = "删除失败：${file.name}", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
+            val prefix = file.absolutePath + File.separator
             _ui.update { st ->
+                val currentDeleted = st.currentFile?.let {
+                    it.path == file.path || it.path.startsWith(prefix)
+                } == true
                 st.copy(
-                    currentFile = st.currentFile?.takeUnless { it.path == file.path },
-                    editorText = if (st.currentFile?.path == file.path) "" else st.editorText,
-                    // 从 Tab 条同步移除
-                    openTabs = st.openTabs.filterNot { it.absolutePath == file.absolutePath },
+                    currentFile = if (currentDeleted) null else st.currentFile,
+                    editorText = if (currentDeleted) "" else st.editorText,
+                    dirty = if (currentDeleted) false else st.dirty,
+                    // 删除目录时，其下所有已打开 Tab 一并移除
+                    openTabs = st.openTabs.filterNot {
+                        it.path == file.path || it.path.startsWith(prefix)
+                    },
                     message = "已删除 ${file.name}",
                     messageSeq = st.messageSeq + 1
                 )
@@ -960,8 +1102,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun renameFile(file: File, newName: String) {
         viewModelScope.launch {
-            // 重命名的是当前脏文件时，先把内容落盘；否则后面 doOpenFile 会读到旧内容。
-            if (_ui.value.currentFile?.absolutePath == file.absolutePath && _ui.value.dirty) {
+            val prefix = file.absolutePath + File.separator
+            val currentAffected = _ui.value.currentFile?.let {
+                it.path == file.path || it.path.startsWith(prefix)
+            } == true
+            // 重命名当前文件或当前文件所在目录时，先把脏内容落盘。
+            if (currentAffected && _ui.value.dirty) {
                 if (!persistCurrentIfDirty()) return@launch
                 if (_ui.value.dirty) {
                     _ui.update { it.copy(message = "保存期间有新输入，请再重命名", messageSeq = it.messageSeq + 1) }
@@ -972,18 +1118,31 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             if (renamed == null) {
                 _ui.update { it.copy(message = "重命名失败：名称已存在或非法", messageSeq = it.messageSeq + 1) }
             } else {
-                val st = _ui.value
-                if (st.currentFile?.path == file.path) {
-                    doOpenFile(renamed)
-                }
-                // 同步 Tab 列表里的旧路径
-                _ui.update {
-                    it.copy(
-                        openTabs = it.openTabs.map { t ->
-                            if (t.absolutePath == file.absolutePath) renamed else t
+                val oldPrefix = file.absolutePath + File.separator
+                val newPrefix = renamed.absolutePath + File.separator
+                _ui.update { st ->
+                    val newCurrent = st.currentFile?.let { cur ->
+                        when {
+                            cur.path == file.path -> renamed
+                            cur.path.startsWith(oldPrefix) -> File(newPrefix + cur.path.removePrefix(oldPrefix))
+                            else -> cur
+                        }
+                    }
+                    st.copy(
+                        currentFile = newCurrent,
+                        // 目录重命名时，其下所有 Tab 的绝对路径同步迁移，否则后续保存会指向旧路径。
+                        openTabs = st.openTabs.map { tab ->
+                            when {
+                                tab.path == file.path -> renamed
+                                tab.path.startsWith(oldPrefix) ->
+                                    File(newPrefix + tab.path.removePrefix(oldPrefix))
+                                else -> tab
+                            }
                         },
+                        languageLabel = newCurrent?.let { LanguageRegistry.labelOf(it) }
+                            ?: st.languageLabel,
                         message = "已重命名为 ${renamed.name}",
-                        messageSeq = it.messageSeq + 1
+                        messageSeq = st.messageSeq + 1
                     )
                 }
                 refreshTree()
@@ -1050,6 +1209,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- 终端 ----------
     private var terminalSession: TerminalSession? = null
     private var ptyBridge: PtyBridge? = null
+    /**
+     * xterm 的 onData 是逐键回调；如果每个回调都 launch 一个 IO 协程，
+     * 调度顺序不保证，快速输入会乱序。用单消费者队列保证严格 FIFO。
+     */
+    private var ptyInputQueue = Channel<String>(Channel.UNLIMITED)
+    private var ptyWriterJob: Job? = null
 
     /**
      * PTY 原始字节流。replay 缓存用于 WebView/xterm 尚未 ready 时补发启动 banner
@@ -1079,6 +1244,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         override fun onExit(code: Int) {
             if (ptySessionToken != token) return
             ptySessionToken = 0
+            ptyInputQueue.close()
             _ptyRaw.tryEmit("\r\n[PTY 已退出，退出码 $code]\r\n".toByteArray(Charsets.UTF_8))
             viewModelScope.launch {
                 ptyBridge = null
@@ -1113,6 +1279,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private fun startPty() {
         val projectDir = currentProject ?: return
         if (ptyBridge != null) return
+        // 新会话前丢弃旧队列；旧 writer 在 stop 时已取消。
+        ptyInputQueue.close()
+        ptyInputQueue = Channel(Channel.UNLIMITED)
         resetPtyReplay()
         val token = ++ptySessionToken
         _ptyRaw.tryEmit(
@@ -1130,6 +1299,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (rc != 0) {
             ptyBridge = null
+            ptyInputQueue.close()
             _ui.update {
                 it.copy(
                     message = "PTY 启动失败（errno $rc）；设备可能不支持 forkpty",
@@ -1139,6 +1309,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (ptyBridge !== bridge) return // shell 启动即退出，onExit 已清理
+        val queue = ptyInputQueue
+        ptyWriterJob = viewModelScope.launch(Dispatchers.IO) {
+            for (chunk in queue) {
+                val rc = runCatching { bridge.write(chunk) }.getOrElse { -1 }
+                if (rc < 0) {
+                    _ui.update {
+                        it.copy(message = "PTY 写入失败（errno $rc）", messageSeq = it.messageSeq + 1)
+                    }
+                    break
+                }
+            }
+        }
         _ui.update {
             it.copy(
                 terminalPty = true,
@@ -1150,6 +1332,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun stopPty() {
         ptySessionToken += 1
+        ptyInputQueue.close()
+        ptyWriterJob?.cancel()
+        ptyWriterJob = null
         val bridge = ptyBridge
         ptyBridge = null
         runCatching { bridge?.stop() }
@@ -1160,13 +1345,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 把 xterm 的键盘数据写回 shell（xterm 会自动带上 \r、方向键转义等）。 */
     fun writePtyData(data: String) {
         if (!_ui.value.terminalPty) return
-        val bridge = ptyBridge ?: return
-        viewModelScope.launch {
-            val rc = withContext(Dispatchers.IO) { bridge.write(data) }
-            if (rc < 0) {
-                _ui.update { it.copy(message = "PTY 写入失败（errno $rc）", messageSeq = it.messageSeq + 1) }
-            }
-        }
+        if (ptyBridge == null) return
+        ptyInputQueue.trySend(data)
     }
 
     fun resizePty(cols: Int, rows: Int) {
@@ -1626,6 +1806,15 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val events = st.agentCheckpoints.ifEmpty { listOfNotNull(st.lastAgentCheckpoint) }
         if (events.isEmpty() || store == null || projectDir == null) {
             _ui.update { it.copy(message = "没有可恢复的 Agent 检查点", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        if (st.dirty) {
+            _ui.update {
+                it.copy(
+                    message = "当前文件有未保存修改，先保存或关闭文件再撤销 Agent 修改",
+                    messageSeq = it.messageSeq + 1,
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -2119,11 +2308,27 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             }.getOrNull()
             if (relative != null && relative in paths) {
                 viewModelScope.launch {
+                    if (_ui.value.currentFile?.absolutePath != file.absolutePath) return@launch
+                    // Agent 运行期间用户可能已经重新编辑同一文件；不能拿磁盘内容静默覆盖。
+                    if (_ui.value.dirty) {
+                        _ui.update {
+                            it.copy(
+                                message = "${file.name} 有未保存修改，Agent 的新内容未自动覆盖，请先保存/对比",
+                                messageSeq = it.messageSeq + 1,
+                            )
+                        }
+                        refreshTree()
+                        return@launch
+                    }
                     val text = withContext(Dispatchers.IO) {
-                        runCatching { file.readText() }.getOrNull()
+                        runCatching { projects.read(file.absolutePath) }.getOrNull()
                     }
                     if (text != null) {
-                        _ui.update { it.copy(editorText = text, dirty = false) }
+                        _ui.update { cur ->
+                            if (cur.currentFile?.absolutePath == file.absolutePath && !cur.dirty) {
+                                cur.copy(editorText = text, dirty = false)
+                            } else cur
+                        }
                     }
                     refreshTree()
                 }
@@ -2182,8 +2387,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 删除项目（当前项目不可删，由 UI 层拦截） */
     fun deleteProject(dir: File) {
         viewModelScope.launch(Dispatchers.IO) {
-            projects.deleteProject(dir)
-            _ui.update { it.copy(message = "已删除项目 ${dir.name}", messageSeq = it.messageSeq + 1) }
+            val ok = runCatching { projects.deleteProject(dir) }.isSuccess
+            _ui.update {
+                if (ok) it.copy(message = "已删除项目 ${dir.name}", messageSeq = it.messageSeq + 1)
+                else it.copy(message = "删除项目失败：${dir.name}", messageSeq = it.messageSeq + 1)
+            }
         }
     }
 
@@ -2191,7 +2399,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun newFileInCurrentDir(name: String) {
         val dir = currentProject ?: return
         viewModelScope.launch {
-            val f = withContext(Dispatchers.IO) { projects.createFile(dir.absolutePath, name) }
+            val f = withContext(Dispatchers.IO) {
+                runCatching { projects.createFile(dir.absolutePath, name) }
+            }.getOrElse { e ->
+                _ui.update {
+                    it.copy(message = "新建文件失败：${e.message}", messageSeq = it.messageSeq + 1)
+                }
+                return@launch
+            }
             refreshTree()
             openFile(f)
         }
@@ -2201,19 +2416,48 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun newFolderInCurrentDir(name: String) {
         val dir = currentProject ?: return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { projects.createDirectory(dir.absolutePath, name) }
+            val ok = runCatching {
+                withContext(Dispatchers.IO) { projects.createDirectory(dir.absolutePath, name) }
+            }.isSuccess
+            if (!ok) {
+                _ui.update {
+                    it.copy(message = "新建文件夹失败：$name", messageSeq = it.messageSeq + 1)
+                }
+                return@launch
+            }
             refreshTree()
             _ui.update { it.copy(message = "已创建文件夹 $name", messageSeq = it.messageSeq + 1) }
         }
     }
 
+    /** 输出可能很长；分享/剪贴板都过 Binder，超过上限会 TransactionTooLarge。 */
+    fun outputTextForSharing(): String {
+        // 不要先 join 再截断：3000 行 × 单行上限仍可能先拼出十几 MB 的临时字符串。
+        val sb = StringBuilder()
+        for (line in _ui.value.output) {
+            if (sb.length + line.length + 1 > MAX_SHARE_CHARS) {
+                sb.append("\n[输出过长，已截断]")
+                break
+            }
+            if (sb.isNotEmpty()) sb.append('\n')
+            sb.append(line)
+        }
+        return sb.toString()
+    }
+
     /** 把输出面板全部内容复制到剪贴板 */
     fun copyOutput() {
-        val text = _ui.value.output.joinToString("\n")
+        val text = outputTextForSharing()
         val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                 as android.content.ClipboardManager
         cm.setPrimaryClip(android.content.ClipData.newPlainText("output", text))
-        _ui.update { it.copy(message = "已复制输出", messageSeq = it.messageSeq + 1) }
+        _ui.update {
+            it.copy(
+                message = if (text.length >= MAX_SHARE_CHARS) "输出过长，已复制前 ${MAX_SHARE_CHARS / 1000}KB"
+                else "已复制输出",
+                messageSeq = it.messageSeq + 1,
+            )
+        }
     }
 
     /** 读取当前文件的符号大纲；只扫当前文件，避免点一下命令就全项目 IO。 */
@@ -2341,9 +2585,29 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     require(target.canonicalFile.parentFile == dir.canonicalFile) {
                         "导入目标越界"
                     }
-                    resolver.openInputStream(uri)?.use { input ->
-                        target.outputStream().use { output -> input.copyTo(output) }
-                    } ?: throw IllegalStateException("无法读取所选文件")
+                    // 先写隐藏临时文件，完整后再 rename；中途失败不会留下半截目标文件。
+                    val temp = File(dir, ".$safeName.import-${UUID.randomUUID()}")
+                    try {
+                        var total = 0L
+                        resolver.openInputStream(uri)?.use { input ->
+                            FileOutputStream(temp).use { output ->
+                                val buffer = ByteArray(8192)
+                                while (true) {
+                                    val n = input.read(buffer)
+                                    if (n < 0) break
+                                    total += n
+                                    require(total <= MAX_IMPORT_BYTES) {
+                                        "文件超过 ${MAX_IMPORT_BYTES / 1024 / 1024}MB，无法导入"
+                                    }
+                                    output.write(buffer, 0, n)
+                                }
+                                output.fd.sync()
+                            }
+                        } ?: throw IllegalStateException("无法读取所选文件")
+                        if (!temp.renameTo(target)) throw IOException("无法写入目标文件")
+                    } finally {
+                        if (temp.exists()) temp.delete()
+                    }
                     target.name
                 }.getOrElse { e ->
                     _ui.update { it.copy(message = "导入失败：${e.message}", messageSeq = it.messageSeq + 1) }
@@ -2425,5 +2689,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         val SEARCHABLE_EXT = LanguageRegistry.searchableExtensions
+        /** SAF 单文件导入上限；防止误选视频/压缩包把手机存储和内存吃满 */
+        const val MAX_IMPORT_BYTES = 32L * 1024 * 1024
+        /** 分享/剪贴板文本上限，避免超过 Binder 事务限制 */
+        const val MAX_SHARE_CHARS = 200_000
+        /** 单行输出上限，防止程序打印一个超大字符串打爆内存 */
+        const val MAX_OUTPUT_LINE_CHARS = 4000
     }
 }

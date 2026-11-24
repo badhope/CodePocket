@@ -96,7 +96,7 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
                     BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8))
                 else
                     BufferedReader(InputStreamReader(conn.errorStream ?: conn.inputStream, Charsets.UTF_8))
-                val resp = reader.use { it.readText() }
+                val resp = reader.use { readCapped(it) }
 
                 if (code !in 200..299) {
                     if (isRetryable(code) && attempt < MAX_ATTEMPTS) {
@@ -213,6 +213,22 @@ class AiClient(private val settings: com.devterminal.settings.AppSettings) {
             worker.interrupt()
             conn?.disconnect()
         }
+    }
+
+    /** 限制单次响应体积；BYOK 端点异常返回超大内容时不能把手机内存打爆。 */
+    private fun readCapped(reader: BufferedReader, maxChars: Int = 2_000_000): String {
+        val sb = StringBuilder()
+        val buffer = CharArray(8192)
+        while (true) {
+            val n = reader.read(buffer)
+            if (n < 0) break
+            if (sb.length + n > maxChars) {
+                sb.append(buffer, 0, (maxChars - sb.length).coerceAtLeast(0))
+                break
+            }
+            sb.append(buffer, 0, n)
+        }
+        return sb.toString()
     }
 
     private fun parseChoices(raw: String): String = runCatching {

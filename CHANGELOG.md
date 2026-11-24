@@ -2,6 +2,39 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.31] — 2026-11-25
+
+### 修复
+
+- **关闭自动保存后不再静默丢改动**：切文件、关 Tab、切项目前弹出「保存并继续 / 不保存直接继续 / 取消」；`autoSave=false` 的脏文本不会被新文件覆盖。
+- **写入改为原子落盘**：`ProjectManager.write`、`LocalWorkspace.writeBytes`、`CheckpointStore.writeAtomic` 统一临时文件 + fsync + rename；崩溃/断电最多保留旧版本，不再留下半个文件。
+- **切后台保存改为同步**：`onStop` 不再只 launch 异步写，进程在写盘前被杀也不会丢掉当前快照。
+- **文件打开护栏**：编辑器单文件上限 5MB，二进制文件拒绝按文本打开；超大文件/读失败给出提示，不再闪退。
+- **Agent 检查点回收**：快照单文件 8MB 上限，保留最近 20 份清单并删除无引用 blob；反复修改/撤销不再无限吃存储。
+- **Agent 会话日志封顶**：单会话 16MB、回放 2000 条、总量 128MB；长任务不会把手机写满。
+- **PTY 输入严格 FIFO**：xterm 逐键回调改单消费者队列，快速输入不再乱序；返回键关终端会真正停止 PTY，关闭 Agent 面板会取消后台 Agent。
+- **Agent 覆盖保护**：Agent 改完文件后，当前编辑器有未保存修改时不自动用磁盘内容覆盖；撤销检查点也先要求保存/关闭。
+- **目录重命名/删除的 Tab 生命周期**：目录下已打开 Tab 会随路径迁移；删除目录会清空其下当前文件和 Tab，`dirty` 复位。
+- **文件树节点上限**：单次构建最多 10,000 节点，避免超大项目把 UI 卡死（截断暂不在界面提示，已记录）。
+- **后台执行更稳**：`ExecutionService.stop` 改为同进程直接停实例，避开 Android O+ 后台 `startService` 限制；运行时申请 partial wakelock，熄屏长脚本不被挂起。
+- **JNI 异常清理**：PTY 字节回调抛异常后立即 `ExceptionClear`，避免后续 JNI 调用连锁失败。
+- **分享/输出上限**：分享与剪贴板 200KB 截断，输出单行 4000 字符截断，避免 Binder 事务超限与超大单行 OOM。
+- **编辑器手势**：双指捏合只在两指及以上消费事件，单指滚动/光标拖动不再被手势层抢走。
+- **状态栏图标跟随主题**：App 内切深色/浅色后同步状态栏与导航栏图标明暗。
+- **AI 响应上限**：非流式响应最多读 2MB 字符，异常端点不会把内存打爆。
+- **运行命令超时**：`RunCommandTool` 超时强杀并关闭输出流；Android 无 `ProcessHandle`，子进程树彻底回收仍待下一批。
+
+### 边界
+
+- 本轮仍无 Android 真机/模拟器交互验收；x86_64 TCG 继续卡在 `emulator-5556 offline`，PTY、WebView、IME 和 16KB 页需要 ARM64 真机确认。
+- 未处理项：不响应中断的 Python 脚本仍可能让引擎 `busy` 卡死、`forkpty` 子进程 `setenv` 的 async-signal 风险、项目 zip 导入/导出、UI 截图回归、字体 200% 可访问性。完整清单见 `docs/RISK_REGISTER_0.0.31.md` 与交付报告。
+
+### 构建
+
+- `versionCode 31` / `versionName 0.0.31`。
+- JVM 单测 **137 个通过**（新增 1 个检查点 blob 回收测试）。
+- lint Release **0 Error / 37 Warning**，无 Fatal。
+
 ## [0.0.30] — 2026-11-24
 
 ### 新增
