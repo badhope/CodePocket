@@ -2,6 +2,36 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.30] — 2026-11-24
+
+### 新增
+
+- **手机端遮挡治理**：统一所有面板为 edge-to-edge `Dialog`，外层一次性吃掉状态栏、导航栏与软键盘 inset；卡片最大高度等于键盘上方可用高度。标题、footer 输入框和底部按钮固定，只有正文滚动，长设置/长对话不再把输入框或按钮顶出屏幕。
+- **终端全屏自适应**：终端面板从固定 330dp 对话框改为全屏可伸缩布局。PTY 主体用 `weight(1f)` 吃掉键盘上方空间，Esc/Tab/Ctrl/方向键条固定贴在键盘上方；非 PTY 的输入框固定在底部，长输出不会把它滚走。
+- **键盘不再误触发布局切换**：横竖屏判断从「内容区宽高比」改为系统 `Configuration.orientation`。软键盘把可用高度压矮时，竖屏手机不会突然变成左右分栏，避免界面重排造成遮挡。
+- **输出面板高度分离偏好与可见值**：用户拖出的高度（preferred）与当前键盘/横屏下的可见高度（visible）分开计算；键盘弹起只临时夹取 visible，不写回设置，键盘收起后编辑器恢复原高度。展开 stdin 输入行时通常保留 220dp；极矮屏自动降到 150dp，优先保证输入框和编辑器都在屏内，并收起 40dp 的大运行按钮。
+- **底部状态栏归位**：状态栏移入 `Scaffold.bottomBar`，Snackbar 自动落在它上方，不再盖住行号/保存状态或终端按键条。
+
+### 改变
+
+- **对话框**：`QuietDialog` 改为自定义 edge-to-edge `Dialog`，手机宽度占满左右 16dp，平板最大 560dp；正文滚动、footer 与按钮固定。AI 助手和 Agent 的输入框移入 footer，键盘弹起时始终可见。
+- **命令面板**：列表高度改为自适应，最大 380dp；键盘弹起时整体留在键盘上方，不越过屏幕。
+- **小屏细节**：顶栏文件名/语言标签改为单行省略；状态栏左侧信息可横向滚动、「已保存」固定贴右；输出头状态单行省略；Tab 名最大 180dp；AI 快捷动作与输出方向键改为横向滚动；编辑器在 IME inset 变化时重新把光标滚回可视区。
+
+### 边界
+
+- 本轮未取得 Android 真机/模拟器交互验收：x86_64 TCG 在单核模式下仍停在 `emulator-5556 offline`，未完成开机；没有伪造运行截图。布局与 inset 逻辑通过 Kotlin 编译、136 个 JVM 单测和 lint 验证，Android WebView/IME 的最终触感仍需真机确认。
+- edge-to-edge Dialog 依赖 Android 的 WindowInsets 分发；极老机型或自定义 ROM 若不上报 IME inset，仍可能出现键盘覆盖，需要在设置里手动收起键盘作为兜底。
+
+### 构建
+
+- `versionCode 30` / `versionName 0.0.30`。
+- 单元测试 **136 个通过**（新增 6 个 `LayoutMetrics` 测试），0 failures / 0 errors。
+- release APK **31,722,051 B（约 30.3MiB）**，SHA-256 `de3d41a6419a2820c30ab2ec6892da3280797097b9b6a41aa50f56184dec16dc`；debug APK **51,337,601 B（约 49.0MiB）**，SHA-256 `de5220970bc299324f9ebdcb88bb60924c1c023b4a30f096079c4a6d1df9a508`。
+- lint Release **36 Warning + 2 Information**，Fatal 0 / Error 0。
+- 签名证书不变：`CN=CodePocket`，SHA-256 `1b02135746d1426d7beda47e706fdb2c77a7145ea41e0f7e14addb191b87fac5`。
+- APK 仍包含 `assets/terminal/` 的 xterm.js 5.5.0 与双 ABI `libptybridge.so`。
+
 ## [0.0.29] — 2026-11-24
 
 ### 新增

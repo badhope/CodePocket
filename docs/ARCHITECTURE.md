@@ -123,6 +123,17 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 - `nativeStop()` 关闭 master + SIGHUP/SIGTERM，读线程自然退出并回收 child；同一时间只允许一个 PTY；
 - 终端页强制 `blockNetworkLoads`、拦截外部跳转，只加载 APK 内资源；亮暗主题由 `dark` query + `termSetTheme()` 切换。
 
+## 4.2 移动端布局、IME 与遮挡治理（v0.0.30）
+
+- `MainActivity` 用 `enableEdgeToEdge()` 后，根 `Surface` 统一加 `safeDrawingPadding()`；状态栏/导航栏/IME 只在这里消费一次，避免子层重复加 padding。
+- `Scaffold.bottomBar` 承载底部 `StatusBar`，Snackbar 自动排到它上方，不再覆盖行号/保存状态；顶栏标题与状态栏文字都限制单行省略。
+- `EdgeToEdgeDialog`：`DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)` + `safeDrawingPadding()`；卡片宽度手机上占满左右 16dp、平板 `widthIn(max = 560.dp)`，高度上限是 `BoxWithConstraints.maxHeight`。
+- `QuietDialog` 的标题、footer（AI/Agent 输入框）和按钮固定，只有正文 `verticalScroll`；这样软键盘弹起后，输入框和确认按钮仍在键盘上方。
+- `TerminalDialog` 改成全屏 `EdgeToEdgeDialog`：活跃内容用 `weight(1f)` 吃掉剩余高度；PTY 按键条、非 PTY 输入框固定底部。WebView 尺寸变化由 xterm `FitAddon` 的 `ResizeObserver` 重新计算 `TIOCSWINSZ`。
+- 横竖屏用 `LocalConfiguration.orientation` 判断，而不是 `maxWidth > maxHeight`：IME 弹起会改变内容区高度，后者会把竖屏误判成横屏并触发左右分栏。
+- 输出面板的持久偏好（`preferredHeight`）与当前渲染高度（`visibleHeight`）分离：`LayoutMetrics.visibleOutputHeight()` 按 `availableHeight - 120dp 编辑器 - 14dp 把手` 临时夹取；键盘/横屏变化不写回 `SettingsStore`。
+- `CodeEditorView` 监听 `WindowInsetsCompat.Type.ime()`，在键盘弹起/切换输入法后再次 `ensureSelectionVisible()`，避免 SoraEditor 的光标被推出可视区。
+
 ---
 
 ## 5. 标准库与 C 扩展的打包

@@ -2,6 +2,8 @@ package com.devterminal.ui
 
 import android.util.TypedValue
 import android.view.KeyEvent
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -125,8 +127,28 @@ fun CodeEditorView(
     // 避免光标被顶起的 IME 或自身滚动条压在屏幕外。
     LaunchedEffect(Unit) {
         editor.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) editor.post { runCatching { editor.ensureSelectionVisible() } }
+            if (hasFocus) {
+                editor.postDelayed(
+                    { runCatching { editor.ensureSelectionVisible() } },
+                    60,
+                )
+            }
         }
+    }
+
+    // 键盘尺寸变化（弹出、收起、切换输入法）时，SoraEditor 的 View 高度会变，
+    // 但焦点没有重新变化；这里监听 IME inset，再主动把光标滚回可视区。
+    DisposableEffect(editor) {
+        ViewCompat.setOnApplyWindowInsetsListener(editor) { _, insets ->
+            if (insets.isVisible(WindowInsetsCompat.Type.ime())) {
+                editor.postDelayed(
+                    { runCatching { editor.ensureSelectionVisible() } },
+                    80,
+                )
+            }
+            insets
+        }
+        onDispose { ViewCompat.setOnApplyWindowInsetsListener(editor, null) }
     }
 
     // 语法/主题注册表全局只需初始化一次；读 assets 是 IO，放到后台线程

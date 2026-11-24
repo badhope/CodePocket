@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -65,6 +66,7 @@ fun FileTabs(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     MonoText(
                         tab.name,
+                        modifier = Modifier.widthIn(max = 180.dp),
                         color = if (active) cs.onSurface else cs.muted,
                         fontSize = 12,
                         fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,

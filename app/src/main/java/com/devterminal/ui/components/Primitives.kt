@@ -2,7 +2,10 @@ package com.devterminal.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,16 +13,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,6 +49,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.devterminal.ui.theme.Dimens
 import com.devterminal.ui.theme.MonoFamily
 import com.devterminal.ui.theme.faint
@@ -260,10 +267,51 @@ fun QuietCard(
 }
 
 /**
+ * Edge-to-edge 对话框窗口。
+ *
+ * Android 的普通 Dialog 窗口默认会自己收缩/平移，和 Compose 的 IME inset 叠加后
+ * 经常出现「键盘挡住了输入框」或「弹窗被顶出屏幕」。这里统一关掉平台默认宽度，
+ * 让内容占满窗口，再用 safeDrawingPadding 一次性吃掉状态栏、导航栏和 IME：
+ *  - 对话框卡片始终在键盘上方；
+ *  - 横竖屏切换时重新按可用区域布局；
+ *  - 所有面板共用同一套规则，不再各自写 inset。
+ */
+@Composable
+fun EdgeToEdgeDialog(
+    onDismiss: () -> Unit,
+    contentAlignment: Alignment = Alignment.Center,
+    content: @Composable BoxWithConstraintsScope.() -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = Dimens.gutter, vertical = Dimens.md),
+            contentAlignment = contentAlignment,
+            content = content,
+        )
+    }
+}
+
+/**
  * 全应用统一的对话框外观。
  *
  * 标题左对齐、正文留足呼吸、按钮右对齐且不带多余强调，
  * 目的是让用户「读完就关」，而不是被一堆彩色按钮牵着走。
+ *
+ * 布局规则：
+ *  - 卡片宽度上限 560dp，手机上占满左右边距；
+ *  - 卡片高度上限 = 键盘上方的可用高度；
+ *  - 只有正文滚动，标题、footer（输入框）和底部按钮永远固定可见。
  */
 @Composable
 fun QuietDialog(
@@ -272,46 +320,71 @@ fun QuietDialog(
     confirmLabel: String? = null,
     onConfirm: (() -> Unit)? = null,
     dismissLabel: String = "关闭",
+    footer: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(26.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        // 正文必须可滚动：SettingsDialog 等长面板内容远超一屏，
-        // 裸 Column 会把底部按钮和最后一行内容直接切出屏幕。
-        // imePadding 让弹出软键盘时整个正文随之上推，输入框不被遮挡。
-        text = {
+    EdgeToEdgeDialog(onDismiss = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .widthIn(max = 560.dp)
+                .fillMaxWidth()
+                .heightIn(max = maxHeight),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 8.dp,
+        ) {
             Column(
-                Modifier
-                    .verticalScroll(rememberScrollState())
-                    .imePadding()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
             ) {
-                content()
-            }
-        },
-        confirmButton = {
-            if (confirmLabel != null && onConfirm != null) {
-                TextButton(onClick = onConfirm) {
-                    Text(confirmLabel, style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(Dimens.md))
+
+                // 正文可以滚动；权重让长内容吃掉剩余高度，短内容仍保持紧凑卡片。
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    content()
+                }
+
+                footer?.let {
+                    Spacer(Modifier.height(Dimens.sm))
+                    Column(Modifier.fillMaxWidth()) { it() }
+                }
+
+                Spacer(Modifier.height(Dimens.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (confirmLabel != null && onConfirm != null) {
+                        TextButton(onClick = onConfirm) {
+                            Text(
+                                confirmLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            dismissLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.muted,
+                        )
+                    }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(dismissLabel, style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.muted)
-            }
         }
-    )
+    }
 }
 
 /** 一行「标签 + 说明 + 开关」的设置项 */

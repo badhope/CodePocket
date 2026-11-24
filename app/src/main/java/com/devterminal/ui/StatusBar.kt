@@ -1,6 +1,8 @@
 package com.devterminal.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -9,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import com.devterminal.ui.components.MonoText
 import com.devterminal.ui.components.StatusDot
 import com.devterminal.ui.theme.faint
@@ -31,29 +34,42 @@ fun StatusBar(
     modifier: Modifier = Modifier
 ) {
     val cs = MaterialTheme.colorScheme
-    // 去掉 horizontalScroll：横滚 Row 给 weight 分配的是「无限宽」，Spacer(weight 1f)
-    // 永远拿不到剩余空间，右侧「已保存」无法贴边。状态栏内容很短，直接恢复 weight 布局。
+    // 左侧信息可能比屏幕宽（长语言名 / 大字符数）。给左侧一个可滚动区，
+    // 右侧「已保存」永远固定贴边，不被挤掉。
     Row(
         modifier = modifier
             .background(cs.surface)
             .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MonoText("Ln $line, Col $column", color = cs.muted, fontSize = 10)
-        Separator()
-        MonoText(language, color = cs.muted, fontSize = 10)
-        Separator()
-        MonoText("$charCount 字符", color = cs.muted, fontSize = 10)
-        Spacer(Modifier.weight(1f))
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            MonoText("Ln $line, Col $column", color = cs.muted, fontSize = 10, maxLines = 1)
+            Separator()
+            MonoText(
+                language,
+                color = cs.muted,
+                fontSize = 10,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Separator()
+            MonoText("$charCount 字符", color = cs.muted, fontSize = 10, maxLines = 1)
+        }
         if (dirty) {
             StatusDot(cs.secondary)
             MonoText(
                 " 未保存",
                 color = cs.secondary,
-                fontSize = 10
+                fontSize = 10,
+                maxLines = 1
             )
         } else {
-            MonoText("已保存", color = cs.faint, fontSize = 10)
+            MonoText("已保存", color = cs.faint, fontSize = 10, maxLines = 1)
         }
     }
 }

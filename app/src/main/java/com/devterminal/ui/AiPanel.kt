@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -73,7 +75,20 @@ fun AiPanelDialog(
         onDismiss = onDismiss,
         title = "AI 助手",
         confirmLabel = "发送",
-        onConfirm = if (configured && inputDraft.isNotBlank() && !busy) onSend else null
+        onConfirm = if (configured && inputDraft.isNotBlank() && !busy) onSend else null,
+        // 输入框固定在底部，不跟正文一起滚动；键盘弹出时始终可见。
+        footer = {
+            QuietTextField(
+                value = inputDraft,
+                onValueChange = onInputChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = if (configured) "问点什么…" else "先在上方完成 AI 配置",
+                mono = false,
+                enabled = configured && !busy,
+                imeAction = ImeAction.Send,
+                onImeAction = { if (inputDraft.isNotBlank() && !busy) onSend() }
+            )
+        },
     ) {
         if (!configured) {
             QuietHint(
@@ -113,16 +128,16 @@ fun AiPanelDialog(
                 }
             }
             Spacer(Modifier.height(Dimens.sm))
-            // 快捷动作：等宽细条，横排等分
+            // 快捷动作：横向滚动，不强行四等分。
+            // 320-360dp 手机四等分后每个按钮约 70dp，中文标签会被挤到换行或裁切。
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(Dimens.xs)
             ) {
                 QUICK_ACTIONS.forEach { label ->
                     TextButton(
                         onClick = { onQuick(label) },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f)
+                        enabled = !busy
                     ) {
                         Text(
                             label,
@@ -154,17 +169,6 @@ fun AiPanelDialog(
                 }
             }
         }
-        Spacer(Modifier.height(Dimens.sm))
-        QuietTextField(
-            value = inputDraft,
-            onValueChange = onInputChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = if (configured) "问点什么…" else "先在上方完成 AI 配置",
-            mono = false,
-            enabled = configured && !busy,
-            imeAction = ImeAction.Send,
-            onImeAction = { if (inputDraft.isNotBlank() && !busy) onSend() }
-        )
     }
 }
 

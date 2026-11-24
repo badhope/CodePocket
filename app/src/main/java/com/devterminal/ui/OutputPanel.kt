@@ -54,6 +54,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.coroutines.launch
 import com.devterminal.ui.components.MonoText
 import com.devterminal.ui.components.QuietHint
@@ -175,6 +176,9 @@ fun OutputPanel(
 
     Column(modifier = modifier.background(cs.background)) {
         // ---------- 主操作 pill（拇指区主操作：运行 / 停止） ----------
+        // 输入行展开时先收起 40dp 大按钮：头部仍有「重新运行」图标，
+        // 这样 220dp 的最小面板仍能同时容纳输出、输入框和方向键。
+        if (!inputVisible) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -216,6 +220,7 @@ fun OutputPanel(
                 }
             }
         }
+        }
 
         // ---------- pdb 调试快捷条 ----------
         if (debugging && running && onDebugCommand != null) {
@@ -244,17 +249,27 @@ fun OutputPanel(
                 .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (running || exitCode != null) {
-                val (dot, label) = when {
-                    running -> cs.secondary to "运行中"
-                    // 成功用语义 success 色（teal），而非 indigo 强调色，避免和「主操作」混淆
-                    exitCode == 0 -> cs.success to "已完成"
-                    else -> cs.error to "退出码 $exitCode"
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (running || exitCode != null) {
+                    val (dot, label) = when {
+                        running -> cs.secondary to "运行中"
+                        // 成功用语义 success 色（teal），而非 indigo 强调色，避免和「主操作」混淆
+                        exitCode == 0 -> cs.success to "已完成"
+                        else -> cs.error to "退出码 $exitCode"
+                    }
+                    StatusDot(dot)
+                    MonoText(
+                        "  $label",
+                        color = cs.muted,
+                        fontSize = 10,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                StatusDot(dot)
-                MonoText("  $label", color = cs.muted, fontSize = 10)
             }
-            Box(Modifier.weight(1f))
             if (onShare != null && output.isNotEmpty()) {
                 QuietIconButton(Icons.Filled.Share, "分享输出", onShare, size = 18.dp)
             }
@@ -379,6 +394,7 @@ fun OutputPanel(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
                         .padding(horizontal = Dimens.gutter),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
