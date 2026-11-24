@@ -1,11 +1,12 @@
 #!/bin/bash
 # 打包原生 CPython 运行产物到 dev-terminal APK 结构
-# 用法：bash scripts/package_native.sh <cpython-cross-dir>
+# 用法：ABI=x86_64 bash scripts/package_native.sh <cpython-cross-dir>
 #
 # 依赖环境变量（都可选）：
 #   CPYTHON_CROSS_DIR  CPython 交叉编译产物目录（等价于第一个参数）
 #   ANDROID_NDK_HOME   指定 NDK；未设置时自动探测 $ANDROID_HOME/ndk 下最新版本
 #   APP_DIR            目标 app 模块目录，默认 <仓库根>/app
+#   ABI                目标 ABI：arm64-v8a（默认）或 x86_64
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,6 +19,12 @@ if [ -z "$SRC" ] || [ ! -d "$SRC" ]; then
 fi
 PREFIX="$SRC/prefix"
 APP="${APP_DIR:-$ROOT/app}"
+ABI="${ABI:-arm64-v8a}"
+case "$ABI" in
+  arm64-v8a) HOST_TRIPLE="aarch64-linux-android" ;;
+  x86_64)    HOST_TRIPLE="x86_64-linux-android" ;;
+  *) echo "不支持的 ABI: $ABI（只支持 arm64-v8a / x86_64）" >&2; exit 2 ;;
+esac
 
 NDK="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
 if [ -z "$NDK" ]; then
@@ -29,7 +36,7 @@ if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
   exit 2
 fi
 TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
-JDIR="$APP/src/main/jniLibs/arm64-v8a"
+JDIR="$APP/src/main/jniLibs/$ABI"
 
 echo "== 1. 拷贝 libpython3.13.so 到 jniLibs =="
 mkdir -p "$JDIR"
@@ -37,7 +44,7 @@ ls -la "$PREFIX/lib/libpython3.13.so"
 cp "$PREFIX/lib/libpython3.13.so" "$JDIR/"
 
 echo "== 2. 拷贝 C 扩展（lib-dynload）与依赖库到 jniLibs =="
-# C 扩展（math.cpython-...so 等）放进 jniLibs/arm64-v8a；
+# C 扩展（math.cpython-...so 等）放进 jniLibs/$ABI；
 # 但 Android PackageManager 只解压 lib<name>.so，非 lib 前缀的扩展不会出现在
 # nativeLibraryDir。NativeEngine 首启会从 APK 把它们抽到
 # files/python-stdlib/lib/python3.13/lib-dynload，再交给 CPython 加载。
@@ -57,9 +64,15 @@ cp "$PREFIX/lib/libssl_python.so"      "$JDIR/"
 cp "$PREFIX/lib/libcrypto_python.so"   "$JDIR/"
 cp "$PREFIX/lib/libsqlite3_python.so"  "$JDIR/"
 
+# 去掉调试符号，体积约降 80%；动态符号表保留，CPython C API 仍可导出
+STRIP="$TC/bin/llvm-strip"
+if [ -x "$STRIP" ]; then
+  "$STRIP" --strip-unneeded "$JDIR/libpython3.13.so" 2>/dev/null || true
+fi
+
 echo "== 3. 编译 libpybridge.so（JNI 桥） =="
 ls "$PREFIX/include/python3.13/Python.h" >/dev/null
-"$TC/bin/aarch64-linux-android21-clang" \
+"$TC/bin/${HOST_TRIPLE}21-clang" \
   -I"$PREFIX/include/python3.13" \
   -shared -fPIC -O2 \
   -o "$JDIR/libpybridge.so" \
@@ -67,6 +80,9 @@ ls "$PREFIX/include/python3.13/Python.h" >/dev/null
   -L"$JDIR" -lpython3.13 \
   -lm -ldl -llog -Wl,--no-undefined \
   -Wl,-z,max-page-size=16384
+if [ -x "$STRIP" ]; then
+  "$STRIP" --strip-unneeded "$JDIR/libpybridge.so" 2>/dev/null || true
+fi
 ls -la "$JDIR/libpybridge.so"
 
 echo "== 4. 打包纯 .py 标准库到 assets/python-stdlib.zip =="

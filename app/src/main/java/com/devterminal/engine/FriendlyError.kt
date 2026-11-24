@@ -50,7 +50,7 @@ object FriendlyError {
                     if (mod != null) append("「$mod」") else append("")
                     append("。\n")
                     append("离线环境只带 Python 标准库（原生 CPython 3.13.9）。要用第三方库，\n")
-                    append("需将对应 ABI（arm64-v8a）的 wheel 放入项目目录或安装到 site-packages。")
+                    append("需将对应 ABI 的 wheel 放入项目目录或安装到 site-packages。")
                 }
             }
 

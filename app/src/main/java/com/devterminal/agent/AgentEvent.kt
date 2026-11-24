@@ -28,6 +28,8 @@ sealed interface AgentEvent {
         val mappedFiles: Int,
         val totalFiles: Int,
         val chars: Int,
+        /** 系统提示词的粗略 token 估算；0 表示旧版会话未记录。 */
+        val tokens: Int = 0,
         override val id: String = newEventId(),
         override val at: Long = now(),
     ) : AgentEvent

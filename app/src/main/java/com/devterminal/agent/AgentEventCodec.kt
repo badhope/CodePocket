@@ -20,6 +20,7 @@ object AgentEventCodec {
             .put("mapped_files", event.mappedFiles)
             .put("total_files", event.totalFiles)
             .put("chars", event.chars)
+            .put("tokens", event.tokens)
         is AgentEvent.Plan -> base("plan", event)
             .put("steps", JSONArray(event.steps))
         is AgentEvent.ToolCall -> base("tool_call", event)
@@ -68,6 +69,7 @@ object AgentEventCodec {
                 mappedFiles = json.optInt("mapped_files"),
                 totalFiles = json.optInt("total_files"),
                 chars = json.optInt("chars"),
+                tokens = json.optInt("tokens"),
                 id = id, at = at,
             )
             "plan" -> AgentEvent.Plan(

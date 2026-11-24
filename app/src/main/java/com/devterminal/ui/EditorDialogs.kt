@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.devterminal.BuildConfig
 import com.devterminal.project.Templates
+import com.devterminal.model.ProviderPresets
 import com.devterminal.settings.AppSettings
 import com.devterminal.settings.ThemeModes
 import com.devterminal.engine.CrashLogger
@@ -93,6 +94,7 @@ fun SettingsDialog(
     onAiConfigChange: (url: String, key: String, model: String) -> Unit,
     onMcpConfigChange: (enabled: Boolean, endpoint: String) -> Unit,
     onPluginsEnabledChange: (Boolean) -> Unit,
+    onAgentPlanFirstChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onOpenLocalModels: () -> Unit = {},
 ) {
@@ -257,6 +259,36 @@ fun SettingsDialog(
             color = cs.muted
         )
         Spacer(Modifier.height(Dimens.sm))
+        Text(
+            "常用预设（只带端点和模型名，密钥仍需自己填）",
+            style = MaterialTheme.typography.labelSmall,
+            color = cs.muted,
+        )
+        ProviderPresets.all.chunked(3).forEach { rowPresets ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.xs),
+            ) {
+                rowPresets.forEach { preset ->
+                    TextButton(
+                        onClick = {
+                            aiUrl = preset.baseUrl
+                            aiModel = preset.model
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            preset.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            color = cs.primary,
+                        )
+                    }
+                }
+                repeat(3 - rowPresets.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+        Spacer(Modifier.height(Dimens.sm))
         QuietTextField(
             value = aiUrl,
             onValueChange = { aiUrl = it },
@@ -296,6 +328,13 @@ fun SettingsDialog(
             Text("保存 AI 配置", style = MaterialTheme.typography.labelLarge,
                 color = if (aiUrl.isNotBlank()) cs.primary else cs.faint)
         }
+        Spacer(Modifier.height(Dimens.sm))
+        QuietSwitchRow(
+            label = "Agent 先计划后执行",
+            hint = "开启后先列出步骤，等你批准再改文件；对标 Cursor / Claude Code 的 Plan 模式",
+            checked = settings.agentPlanFirst,
+            onChange = onAgentPlanFirstChange,
+        )
         Spacer(Modifier.height(Dimens.xl))
         SectionLabel("本地模型")
         Spacer(Modifier.height(6.dp))

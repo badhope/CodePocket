@@ -47,6 +47,32 @@ class ContextBuilderTest {
     }
 
     @Test
+    fun `token estimator separates cjk and ascii`() {
+        val builder = ContextBuilder()
+        assertEquals(4, builder.estimateTokens("测试程序"))
+        assertEquals(1, builder.estimateTokens("abcd"))
+        assertTrue(builder.estimateTokens("中文 mixed 代码") > 2)
+    }
+
+    @Test
+    fun `token budget keeps first task and newest messages`() {
+        val builder = ContextBuilder(
+            maxHistoryChars = 20_000,
+            maxMessageChars = 10_000,
+            maxPromptTokens = 500,
+        )
+        val system = "系统提示".repeat(20)
+        val history = listOf(ModelMessage("user", "初始目标")) +
+            (1..30).map { ModelMessage("assistant", "很长的观察结果".repeat(80)) }
+
+        val compact = builder.compactHistoryFor(history, system)
+        assertEquals("初始目标", compact.first().content)
+        assertTrue(compact.size < history.size)
+        assertTrue(compact.last().content.contains("很长的观察结果"))
+        assertTrue(builder.promptTokens(system, compact) <= 500 + 20)
+    }
+
+    @Test
     fun `empty history stays empty`() {
         assertTrue(compactHistory(ContextBuilder(), emptyList()).isEmpty())
     }

@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * 运行引擎的统一抽象：UI 层只依赖本接口，不关心底层实现。
  *
- * 当前唯一实现为 [NativeEngine]（原生 CPython 3.13.9，arm64-v8a）。
+ * 当前唯一实现为 [NativeEngine]（原生 CPython 3.13.9，arm64-v8a / x86_64）。
  */
 interface RunEngine {
 

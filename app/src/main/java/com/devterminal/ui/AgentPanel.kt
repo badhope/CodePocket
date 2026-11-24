@@ -47,6 +47,8 @@ fun AgentPanelDialog(
     configured: Boolean,
     inputDraft: String,
     pendingProposal: AgentEvent.PatchProposed?,
+    pendingPlan: AgentEvent.Plan?,
+    planFirst: Boolean,
     lastCheckpoint: AgentEvent.Checkpoint?,
     checkpointCount: Int,
     recovered: Boolean,
@@ -56,12 +58,16 @@ fun AgentPanelDialog(
     onReject: () -> Unit,
     onRestoreCheckpoint: () -> Unit,
     onOpenHistory: () -> Unit,
+    onNewSession: () -> Unit,
+    onPlanToggle: (Boolean) -> Unit,
+    onApprovePlan: () -> Unit,
+    onRejectPlan: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val listState = rememberLazyListState()
     var confirmRestore by remember { mutableStateOf(false) }
-    LaunchedEffect(events.size, pendingProposal, busy) {
+    LaunchedEffect(events.size, pendingProposal, pendingPlan, busy) {
         if (events.isNotEmpty()) {
             runCatching { listState.animateScrollToItem(events.size - 1) }
         }
@@ -82,7 +88,7 @@ fun AgentPanelDialog(
         }
 
         if (recovered) {
-            QuietHint("这是上次退出前的 Agent 会话记录；发送新任务会开始新会话。")
+            QuietHint("这是上次保存的 Agent 会话记录；点「新会话」可从空上下文重开。")
             Spacer(Modifier.height(Dimens.sm))
         }
 
@@ -108,7 +114,11 @@ fun AgentPanelDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             MonoText(
-                                if (pendingProposal == null) "Agent 工作中…" else "等待批准…",
+                                when {
+                                    pendingPlan != null -> "等待批准计划…"
+                                    pendingProposal == null -> "Agent 工作中…"
+                                    else -> "等待批准…"
+                                },
                                 fontSize = 11,
                                 color = MaterialTheme.colorScheme.muted,
                                 modifier = Modifier.weight(1f),
@@ -118,6 +128,11 @@ fun AgentPanelDialog(
                     }
                 }
             }
+        }
+
+        if (pendingPlan != null) {
+            Spacer(Modifier.height(Dimens.sm))
+            PlanCard(plan = pendingPlan, onApprove = onApprovePlan, onReject = onRejectPlan)
         }
 
         if (pendingProposal != null) {
@@ -133,6 +148,20 @@ fun AgentPanelDialog(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
         ) {
+            TextButton(onClick = onNewSession, enabled = !busy) {
+                Text(
+                    "新会话",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.muted,
+                )
+            }
+            TextButton(onClick = { onPlanToggle(!planFirst) }, enabled = !busy) {
+                Text(
+                    if (planFirst) "先计划：开" else "先计划：关",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (planFirst) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.muted,
+                )
+            }
             TextButton(onClick = onOpenHistory, enabled = !busy) {
                 Text(
                     "历史会话",
@@ -194,6 +223,38 @@ fun AgentPanelDialog(
 }
 
 @Composable
+private fun PlanCard(
+    plan: AgentEvent.Plan,
+    onApprove: () -> Unit,
+    onReject: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(Dimens.sm)) {
+            Text(
+                "待批准的计划",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(4.dp))
+            plan.steps.forEachIndexed { index, step ->
+                Text("${index + 1}. $step", style = MaterialTheme.typography.bodySmall)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onReject) { Text("重写计划") }
+                TextButton(onClick = onApprove) { Text("批准执行") }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ApprovalCard(
     proposal: AgentEvent.PatchProposed,
     onApprove: () -> Unit,
@@ -251,7 +312,7 @@ private fun AgentEventRow(event: AgentEvent) {
         }
 
         is AgentEvent.ContextBuilt -> QuietHint(
-            "项目地图：挑选 ${event.mappedFiles}/${event.totalFiles} 个文件（${event.chars} 字符）",
+            "项目地图：挑选 ${event.mappedFiles}/${event.totalFiles} 个文件（${event.chars} 字符 · 约 ${event.tokens} tokens）",
         )
         is AgentEvent.Plan -> Column {
             Text("计划", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.muted)

@@ -25,8 +25,15 @@ import com.devterminal.agent.tools.ReadFileTool
 import com.devterminal.agent.tools.SearchTextTool
 import com.devterminal.agent.tools.RunFileTool
 import com.devterminal.agent.tools.RunTestsTool
+import com.devterminal.agent.tools.RunCommandTool
+import com.devterminal.agent.tools.SubAgentTool
+import com.devterminal.agent.tools.SemanticSearchTool
 import com.devterminal.agent.tools.JsPluginTool
 import com.devterminal.agent.tools.McpTool
+import com.devterminal.agent.tools.McpResourceListTool
+import com.devterminal.agent.tools.McpResourceReadTool
+import com.devterminal.agent.tools.McpPromptListTool
+import com.devterminal.agent.tools.McpPromptGetTool
 import com.devterminal.agent.mcp.McpClient
 import com.devterminal.model.OpenAiCompatibleProvider
 import com.devterminal.model.LocalLlamaProvider
@@ -37,10 +44,14 @@ import com.devterminal.model.ModelCatalog
 import com.devterminal.model.ModelDownloadManager
 import com.devterminal.model.ModelRepository
 import com.devterminal.model.ProviderRegistry
+import com.devterminal.model.ModelMessage
 import com.devterminal.workspace.LocalWorkspace
 import com.devterminal.language.CodeSymbol
 import com.devterminal.language.LanguageService
+import com.devterminal.language.ProjectSymbolIndex
 import com.devterminal.engine.AiClient
+import com.devterminal.engine.AiHistoryStore
+import com.devterminal.engine.TerminalSession
 import com.devterminal.engine.EngineCommandRunner
 import com.devterminal.engine.EnvironmentInstaller
 import com.devterminal.engine.ExecutionService
@@ -80,6 +91,8 @@ private const val MAX_OUTPUT_LINES = 3000
 
 /** 遍历项目时要跳过的噪音目录（既无意义又拖慢速度） */
 private val WALK_EXCLUDED = setOf(".git", "build", "__pycache__", "node_modules", ".gradle", ".idea")
+
+data class TerminalLine(val text: String, val command: Boolean)
 
 data class UiState(
     val envState: EnvState = EnvState.PREPARING,
@@ -128,6 +141,12 @@ data class UiState(
     val findIndex: Int = 0,
     /** 跳转请求序号，每次自增触发编辑器执行 */
     val findRequestId: Long = 0,
+    // ---------- 终端 ----------
+    val terminalLines: List<TerminalLine> = emptyList(),
+    val terminalCwd: String = "",
+    val terminalBusy: Boolean = false,
+    val terminalInput: String = "",
+
     // ---------- 状态栏 ----------
     val cursorLine: Int = 1,
     val cursorColumn: Int = 1,
@@ -151,11 +170,16 @@ data class UiState(
     val agentInputDraft: String = "",
     val agentPendingCall: ToolCall? = null,
     val agentPendingProposal: AgentEvent.PatchProposed? = null,
+    val agentPendingPlan: AgentEvent.Plan? = null,
     val lastAgentCheckpoint: AgentEvent.Checkpoint? = null,
     val agentCheckpoints: List<AgentEvent.Checkpoint> = emptyList(),
     // ---------- 符号大纲（v0.0.18） ----------
     val symbolOutline: List<CodeSymbol> = emptyList(),
     val symbolsLoading: Boolean = false,
+    // ---------- 跨文件定义（v0.0.27） ----------
+    val definitionQuery: String = "",
+    val definitionMatches: List<ProjectSymbolIndex.Definition> = emptyList(),
+    val definitionLoading: Boolean = false,
     // ---------- Agent 会话恢复（v0.0.21） ----------
     val agentRecovered: Boolean = false,
     val agentSessions: List<AgentSessionMeta> = emptyList(),
@@ -206,11 +230,15 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var aiCancelRequested = false
     private var agentJob: Job? = null
     private var agentApproval: CompletableDeferred<Boolean>? = null
+    private var agentPlanApproval: CompletableDeferred<Boolean>? = null
+    /** 跨轮对话历史：上一轮的用户目标与最终答复会带进下一轮，避免每次从零开始。 */
+    private var agentPriorMessages: List<ModelMessage> = emptyList()
     private var activeCheckpointStore: CheckpointStore? = null
     /** 当前这次运行使用的引擎，stop/sendInput 必须打到同一个实例 */
     private var activeEngine: RunEngine? = null
     private val projects = ProjectManager(installer)
     private val settingsStore = com.devterminal.settings.SettingsStore(context)
+    private val aiHistoryStore = AiHistoryStore(File(context.filesDir, "ai-chat.json"))
     private val agentSessions = AgentSessionStore(File(context.filesDir, "agent-sessions"))
     private var agentSessionId: String? = null
     private val modelRepository = ModelRepository(
@@ -233,6 +261,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var cursorSaveJob: kotlinx.coroutines.Job? = null
 
     init {
+        _ui.update { it.copy(aiMessages = aiHistoryStore.load()) }
         prepareEnvironment()
         restoreLastAgentSession()
         refreshLocalModels()
@@ -444,7 +473,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun openFile(file: File) {
+    fun openFile(file: File, targetLine: Int? = null) {
         if (file.isDirectory) return
         val st = _ui.value
         val previous = st.currentFile
@@ -459,18 +488,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         messageSeq = it.messageSeq + 1) }
                     return@launch
                 }
-                doOpenFile(file)
+                doOpenFile(file, targetLine = targetLine)
             }
         } else {
-            doOpenFile(file)
+            doOpenFile(file, targetLine = targetLine)
         }
     }
 
-    private fun doOpenFile(file: File, restore: Boolean = false) {
+    private fun doOpenFile(file: File, restore: Boolean = false, targetLine: Int? = null) {
         viewModelScope.launch {
             val content = withContext(Dispatchers.IO) { projects.read(file.absolutePath) }
             _ui.update { st ->
-                st.copy(
+                val next = st.copy(
                     currentFile = file,
                     editorText = content,
                     dirty = false,
@@ -481,6 +510,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     openTabs = st.openTabs.let { tabs ->
                         if (tabs.any { it.absolutePath == file.absolutePath }) tabs else tabs + file
                     }
+                )
+                if (targetLine == null) next else next.copy(
+                    gotoLineRequest = ScrollToLineRequest(
+                        line = (targetLine - 1).coerceAtLeast(0),
+                        seq = (st.gotoLineRequest?.seq ?: 0L) + 1L,
+                    )
                 )
             }
             if (!restore) saveSession()
@@ -960,6 +995,65 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (s.outputHeightDp != dp) updateSettings(s.copy(outputHeightDp = dp))
     }
 
+    // ---------- 终端 ----------
+    private var terminalSession: TerminalSession? = null
+
+    fun openTerminal() {
+        val projectDir = currentProject ?: return
+        if (terminalSession == null) {
+            terminalSession = TerminalSession(projectDir).also {
+                _ui.update { st ->
+                    st.copy(
+                        terminalCwd = it.prompt().trimEnd(),
+                        terminalLines = listOf(TerminalLine("CodePocket 终端 · ${projectDir.name}", false)),
+                    )
+                }
+            }
+        }
+    }
+
+    fun onTerminalInputChanged(text: String) {
+        _ui.update { it.copy(terminalInput = text) }
+    }
+
+    fun runTerminalCommand() {
+        val command = _ui.value.terminalInput.trim()
+        if (command.isEmpty() || _ui.value.terminalBusy) return
+        val session = terminalSession ?: currentProject?.let { dir ->
+            TerminalSession(dir).also { terminalSession = it }
+        } ?: return
+        _ui.update {
+            it.copy(
+                terminalInput = "",
+                terminalBusy = true,
+                terminalLines = (it.terminalLines + TerminalLine("${'$'} ${it.terminalCwd} $command", true)).takeLast(200),
+            )
+        }
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { session.execute(command) }
+            _ui.update { st ->
+                val out = buildString {
+                    if (result.output.isNotBlank()) append(result.output).append('\n')
+                    if (result.timedOut) append("[超时]")
+                }.trimEnd()
+                st.copy(
+                    terminalBusy = false,
+                    terminalCwd = session.prompt().trimEnd(),
+                    terminalLines = (st.terminalLines + TerminalLine(out.ifBlank { "（无输出）" }, false)).takeLast(200),
+                )
+            }
+        }
+    }
+
+    fun clearTerminal() {
+        _ui.update { it.copy(terminalLines = emptyList()) }
+    }
+
+    fun closeTerminal() {
+        terminalSession = null
+        _ui.update { it.copy(terminalLines = emptyList(), terminalBusy = false, terminalInput = "") }
+    }
+
     // ---------- 状态栏 ----------
 
     /** 编辑器光标变化（行、列，从 0 计） */
@@ -1203,9 +1297,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val fileContext = if (st.currentFile != null)
             "【当前文件 ${st.currentFile.name}】\n${st.editorText.take(3500)}\n\n【用户请求】\n$prompt"
         else prompt
-        _ui.update {
-            it.copy(aiBusy = true, aiMessages = history + AiClient.ChatMessage("user", prompt))
-        }
+        val pendingMessages = history + AiClient.ChatMessage("user", prompt)
+        _ui.update { it.copy(aiBusy = true, aiMessages = pendingMessages) }
+        aiHistoryStore.save(pendingMessages)
         aiJob = viewModelScope.launch {
             // P2-2：改流式输出——先放一个空 assistant 气泡，逐段 append，不再阻塞等整段返回。
             _ui.update { it.copy(aiMessages = it.aiMessages + AiClient.ChatMessage("assistant", "")) }
@@ -1240,6 +1334,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     aiMessages = st.aiMessages.withLast(AiClient.ChatMessage("assistant", finalText))
                 )
             }
+            aiHistoryStore.save(_ui.value.aiMessages)
             aiJob = null
         }
     }
@@ -1248,6 +1343,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun cancelAi() {
         aiCancelRequested = true
         aiJob?.cancel()
+    }
+
+    /** 清空 AI 助手当前对话，并删除本地历史文件。 */
+    fun startNewAiChat() {
+        if (_ui.value.aiBusy) return
+        aiHistoryStore.clear()
+        _ui.update { it.copy(aiMessages = emptyList(), aiInputDraft = "") }
     }
 
     /** 替换 aiMessages 列表的最后一条（流式追加用）；空列表原样返回 */
@@ -1273,6 +1375,29 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 结束当前对话：下一轮从空上下文重新开始，不删除已保存的历史会话。 */
+    fun startNewAgentSession() {
+        if (_ui.value.agentBusy) return
+        agentPriorMessages = emptyList()
+        agentSessionId = null
+        _ui.update {
+            it.copy(
+                agentEvents = emptyList(),
+                agentPendingCall = null,
+                agentPendingProposal = null,
+                agentPendingPlan = null,
+                lastAgentCheckpoint = null,
+                agentCheckpoints = emptyList(),
+                agentRecovered = false,
+                agentInputDraft = "",
+            )
+        }
+    }
+
+    fun setAgentPlanFirst(enabled: Boolean) {
+        updateSettings(_ui.value.settings.copy(agentPlanFirst = enabled))
+    }
+
     fun approveAgentPatch() {
         agentApproval?.complete(true)
         _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
@@ -1283,9 +1408,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(agentPendingCall = null, agentPendingProposal = null) }
     }
 
+    fun approveAgentPlan() {
+        agentPlanApproval?.complete(true)
+        _ui.update { it.copy(agentPendingPlan = null) }
+    }
+
+    fun rejectAgentPlan() {
+        agentPlanApproval?.complete(false)
+        agentPlanApproval = null
+        _ui.update { it.copy(agentPendingPlan = null) }
+    }
+
     fun cancelAgent() {
         agentApproval?.complete(false)
         agentApproval = null
+        agentPlanApproval?.complete(false)
+        agentPlanApproval = null
         agentJob?.cancel()
         agentJob = null
         _ui.update {
@@ -1293,6 +1431,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 agentBusy = false,
                 agentPendingCall = null,
                 agentPendingProposal = null,
+                agentPendingPlan = null,
             )
         }
     }
@@ -1357,6 +1496,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             if (events.isEmpty()) return@launch
             if (_ui.value.agentBusy || _ui.value.agentEvents.isNotEmpty()) return@launch
             agentSessionId = meta.id
+            agentPriorMessages = emptyList()
             _ui.update {
                 it.copy(
                     agentEvents = events.takeLast(200),
@@ -1387,12 +1527,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             agentSessionId = id
+            agentPriorMessages = emptyList()
             _ui.update {
                 it.copy(
                     agentEvents = events.takeLast(200),
                     agentRecovered = true,
                     agentPendingCall = null,
                     agentPendingProposal = null,
+                    agentPendingPlan = null,
                     lastAgentCheckpoint = null,
                     agentCheckpoints = emptyList(),
                 )
@@ -1404,7 +1546,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (_ui.value.agentBusy) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { agentSessions.delete(id) }
-            if (agentSessionId == id) agentSessionId = null
+            if (agentSessionId == id) {
+                agentSessionId = null
+                agentPriorMessages = emptyList()
+            }
             loadAgentSessions()
         }
     }
@@ -1570,10 +1715,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         workspace: LocalWorkspace,
         runner: EngineCommandRunner?,
         settings: com.devterminal.settings.AppSettings,
+        provider: com.devterminal.model.ModelProvider,
     ): Pair<ToolRegistry, String?> {
         val tools = mutableListOf<Tool>(
             ReadFileTool(), ListFilesTool(), SearchTextTool(), ApplyPatchTool(),
-            RunFileTool(runner), RunTestsTool(runner),
+            RunFileTool(runner), RunTestsTool(runner), RunCommandTool(),
+            SemanticSearchTool(), SubAgentTool(provider),
         )
         val warnings = mutableListOf<String>()
         if (settings.pluginsEnabled) {
@@ -1592,7 +1739,16 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     val client = McpClient(endpoint)
                     val defs = client.listTools()
                     tools += defs.map { McpTool(client, it) }
+                    tools += McpResourceListTool(client)
+                    tools += McpResourceReadTool(client)
+                    tools += McpPromptListTool(client)
+                    tools += McpPromptGetTool(client)
                     if (defs.isNotEmpty()) warnings += "已加载 ${defs.size} 个 MCP 工具"
+                    val resourceCount = runCatching { client.listResources().size }.getOrDefault(0)
+                    val promptCount = runCatching { client.listPrompts().size }.getOrDefault(0)
+                    if (resourceCount + promptCount > 0) {
+                        warnings += "MCP resources $resourceCount · prompts $promptCount"
+                    }
                 }.onFailure { e ->
                     warnings += "MCP 连接失败，本次只使用内置工具：${e.message ?: "未知错误"}"
                 }
@@ -1643,25 +1799,30 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val provider = ready.provider
         val runner = runtimes?.let { EngineCommandRunner(context, it, projectDir) }
         activeCheckpointStore = checkpoints
+        // 已有会话就续写同一条时间线；只有新会话才清空事件与上下文。
+        val continuing = agentSessionId != null && st.agentEvents.isNotEmpty()
         _ui.update {
             it.copy(
                 agentBusy = true,
-                agentEvents = emptyList(),
+                agentEvents = if (continuing) it.agentEvents else emptyList(),
                 agentPendingCall = null,
                 agentPendingProposal = null,
+                agentPendingPlan = null,
                 lastAgentCheckpoint = null,
-                agentCheckpoints = emptyList(),
+                agentCheckpoints = if (continuing) it.agentCheckpoints else emptyList(),
                 agentRecovered = false,
             )
         }
         agentJob = viewModelScope.launch {
             try {
-                val (tools, toolWarning) = buildAgentTools(workspace, runner, st.settings)
+                val (tools, toolWarning) = buildAgentTools(workspace, runner, st.settings, provider)
                 if (toolWarning != null) {
                     _ui.update { it.copy(message = toolWarning, messageSeq = it.messageSeq + 1) }
                 }
                 // 会话只在确定要启动后创建，避免路径/模型错误留下空会话文件。
-                agentSessionId = runCatching { agentSessions.create(projectDir.absolutePath, task) }.getOrNull()
+                if (!continuing) {
+                    agentSessionId = runCatching { agentSessions.create(projectDir.absolutePath, task) }.getOrNull()
+                }
                 val loop = AgentLoop(
                     workspace = workspace,
                     tools = tools,
@@ -1671,7 +1832,15 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         maxSystemChars = 2400,
                         maxHistoryChars = 1800,
                         maxMessageChars = 1000,
+                        maxPromptTokens = 2048,
                     ) else ContextBuilder(),
+                    planFirst = st.settings.agentPlanFirst,
+                    approvePlan = { plan ->
+                        val deferred = CompletableDeferred<Boolean>()
+                        agentPlanApproval = deferred
+                        _ui.update { it.copy(agentPendingPlan = plan) }
+                        deferred.await()
+                    },
                     approve = ApprovalHandler { call ->
                         val deferred = CompletableDeferred<Boolean>()
                         agentApproval = deferred
@@ -1679,7 +1848,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         deferred.await()
                     },
                 )
-                loop.run(task) { event ->
+                loop.run(task, agentPriorMessages) { event ->
                     agentSessionId?.let { sessionId ->
                         withContext(Dispatchers.IO) {
                             runCatching { agentSessions.append(sessionId, event) }
@@ -1687,6 +1856,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     if (event is AgentEvent.PatchProposed) {
                         _ui.update { it.copy(agentPendingProposal = event) }
+                    }
+                    if (event is AgentEvent.Plan) {
+                        _ui.update { it.copy(agentPendingPlan = event) }
+                    }
+                    if (event is AgentEvent.SessionFinished) {
+                        agentPriorMessages = (agentPriorMessages +
+                            ModelMessage("user", task) +
+                            ModelMessage("assistant", event.summary)).takeLast(12)
                     }
                     if (event is AgentEvent.Checkpoint) {
                         _ui.update {
@@ -1701,7 +1878,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     when (event) {
                         is AgentEvent.Approval -> _ui.update {
-                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                            it.copy(
+                                agentPendingCall = null,
+                                agentPendingProposal = null,
+                                agentPendingPlan = null,
+                            )
                         }
                         is AgentEvent.PatchApplied -> {
                             _ui.update {
@@ -1710,7 +1891,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             reloadAfterAgent(event.paths, projectDir)
                         }
                         is AgentEvent.SessionFinished, is AgentEvent.Failure -> _ui.update {
-                            it.copy(agentPendingCall = null, agentPendingProposal = null)
+                            it.copy(
+                                agentPendingCall = null,
+                                agentPendingProposal = null,
+                                agentPendingPlan = null,
+                            )
                         }
                         else -> Unit
                     }
@@ -1728,11 +1913,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 localProvider?.close()
                 agentApproval?.complete(false)
                 agentApproval = null
+                agentPlanApproval?.complete(false)
+                agentPlanApproval = null
                 _ui.update {
                     it.copy(
                         agentBusy = false,
                         agentPendingCall = null,
                         agentPendingProposal = null,
+                        agentPendingPlan = null,
                     )
                 }
                 agentJob = null
@@ -1878,6 +2066,71 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             val seq = (it.gotoLineRequest?.seq ?: 0L) + 1
             it.copy(gotoLineRequest = ScrollToLineRequest((line - 1).coerceAtLeast(0), seq))
         }
+    }
+
+    /**
+     * 光标下的 Python 标识符 → 项目内定义。
+     *
+     * 这是“LSP-lite”而不是完整 LSP：不推断类型、不解析继承、不跑后台进程。
+     * 结果为空时给出明确原因，结果多于一条时交给用户选，不猜。
+     */
+    fun findDefinition(): Boolean {
+        val st = _ui.value
+        val file = st.currentFile ?: run {
+            _ui.update { it.copy(message = "先打开一个 Python 文件", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        if (file.extension.lowercase() != "py") {
+            _ui.update { it.copy(message = "当前仅支持 Python 跨文件定义", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        val root = currentProject ?: file.parentFile ?: return false
+        val name = ProjectSymbolIndex(LocalWorkspace(root)).wordAt(
+            st.editorText,
+            st.cursorLine,
+            st.cursorColumn,
+        ) ?: run {
+            _ui.update { it.copy(message = "光标不在标识符上", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        val relative = runCatching {
+            file.relativeTo(root).path.replace(File.separatorChar, '/')
+        }.getOrElse { file.name }
+
+        _ui.update {
+            it.copy(
+                definitionQuery = name,
+                definitionMatches = emptyList(),
+                definitionLoading = true,
+            )
+        }
+        viewModelScope.launch {
+            val defs = withContext(Dispatchers.IO) {
+                runCatching {
+                    ProjectSymbolIndex(LocalWorkspace(root)).find(name, relative)
+                }.getOrElse { emptyList() }
+            }
+            _ui.update {
+                it.copy(
+                    definitionLoading = false,
+                    definitionMatches = defs,
+                    message = if (defs.isEmpty()) "没有找到“$name”的定义" else null,
+                    messageSeq = if (defs.isEmpty()) it.messageSeq + 1 else it.messageSeq,
+                )
+            }
+        }
+        return true
+    }
+
+    /** 打开定义所在文件并定位到行（1 基）。 */
+    fun openDefinition(definition: ProjectSymbolIndex.Definition) {
+        val root = currentProject ?: _ui.value.currentFile?.parentFile ?: return
+        val file = File(root, definition.path)
+        if (!file.isFile) {
+            _ui.update { it.copy(message = "定义文件不存在：${definition.path}", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        openFile(file, targetLine = definition.line)
     }
 
     // ---------- 导入 / 导出（SAF） ----------

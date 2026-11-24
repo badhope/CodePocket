@@ -4,7 +4,17 @@
 
 ---
 
-## 已实现（v0.0.24 稳定性 + 新手引导）
+## 已实现（v0.0.27 跨文件定义 + v0.0.26 双 ABI 终端）
+
+- ✅ 跨文件 Python 定义索引：`class` / `def` / 模块级变量，import 感知排序，文件/行号/签名可选
+- ✅ 命令面板「跳转到定义」，光标取词，结果多选不猜；索引上限 300 个 `.py` / 单文件 512KB
+- ✅ 正式 release 签名（独立 RSA-4096 证书，密钥不入库，构建可回退 debug）
+- ✅ x86_64 CPython 3.13 交叉编译、JNI 桥与 53 个 C 扩展，arm64 + x86_64 双 ABI
+- ✅ 编辑器终端面板：项目内 cwd、`cd`/`pwd`、超时与输出截断（非 PTY）
+- ✅ 只读子 Agent `delegate_task`：隔离上下文探索，不写文件/不执行命令
+- ✅ 离线 `semantic_search`：TF-IDF 语义索引，返回路径/行号/相关度
+
+## 已实现（v0.0.25 Agent 工作流）
 
 - ✅ Agent 事件流：`SessionStarted / UserMessage / ToolCall / ToolResult / PatchProposed / Approval / PatchApplied / Checkpoint / Failure / SessionFinished`
 - ✅ `LocalWorkspace` 路径监狱、行窗口读取、目录列表、文本搜索、按行替换
@@ -17,7 +27,13 @@
 - ✅ Agent 面板「撤销本次 Agent 修改」：确认后按逆序恢复整轮全部检查点
 - ✅ `RepoMapBuilder`：任务关键词排序、符号提取、2200 字符预算、大文件与二进制跳过
 - ✅ `ContextBuilder`：系统提示词预算、RepoMap 裁剪、历史消息按字符预算压缩
-- ✅ 项目规则：自动读取 `AGENTS.md` / `.codepocket/rules.md`，注入 Agent 提示词
+- ✅ 项目规则：兼容 `AGENTS.md` / `CLAUDE.md` / `.cursorrules` / `.windsurfrules` / `.github/copilot-instructions.md` / `.codepocket/rules.md`，注入 Agent 提示词
+- ✅ Agent 计划模式：先 `Plan`、再审批、后执行，面板/设置双入口
+- ✅ Agent 跨轮上下文：同一会话携带上一轮目标与结论，支持新会话
+- ✅ 上下文 token 估算与双预算裁剪，面板显示上下文规模
+- ✅ 多 Provider 预设（DeepSeek / 硅基流动 / 智谱 / 月之暗面 / Ollama）
+- ✅ AI 助手会话持久化（最近 40 条）与 429/5xx 退避重试
+- ✅ MCP resources / prompts 桥接；Agent 终端命令工具
 - ✅ Agent 文件 IO 全部切到 `Dispatchers.IO`，扫描项目不再阻塞主线程
 - ✅ `LanguageService`：Python / Kotlin / Java / JS / TS / Lua 文件符号大纲，行号可跳转
 - ✅ 命令面板新增「符号大纲」，当前文件函数/类一屏看完，点击直达
@@ -70,18 +86,18 @@
 ### 运行时
 - 📋 Java 运行时集成（JVM/ART 直跑或 openjdk 精简运行时）——解除"Java 仅编辑"的边界
 - 📋 JavaScript/TypeScript 运行时（QuickJS 或类似，轻量随包）
-- 📋 多架构支持：x86_64 模拟器包（当前仅 arm64）
+- ✅ 多架构支持：x86_64 模拟器包（v0.0.26 完成）
 
 ### 开发体验
 - 📋 调试器（断点/单步/变量查看）
 - 📋 代码格式化（Black/ruff 风格）与 lint
-- 📋 终端面板（真实 PTY 风格，可跑交互命令）
+- 🔄 真实 PTY 终端（v0.0.26 已有非交互式终端面板与命令会话；全屏 TUI 仍未支持）
 
 ### 生态与平台
 - ✅ MCP 工具 / 项目自定义命令 / Rhino 沙箱插件
 - 📋 应用商店上架（GitCode Releases / 第三方商店）
 - 📋 模板市场：社区贡献项目模板
-- 📋 插件机制（语言服务器协议 LSP 支持）
+- 📋 插件机制（语言服务器协议 LSP 支持；当前只有符号大纲，不是 LSP）
 - 📋 CI 流水线：GitHub Actions 自动构建 + 冒烟测试
 - 📋 真机测试矩阵（不同厂商 Android 版本）
 

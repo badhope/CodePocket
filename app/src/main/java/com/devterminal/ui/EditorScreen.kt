@@ -144,6 +144,7 @@ private val overlaySaver = run {
         Named("symbols", Overlay.Symbols),
         Named("localModels", Overlay.LocalModels),
         Named("agentHistory", Overlay.AgentHistory),
+        Named("terminal", Overlay.Terminal),
         Named("diagnostics", Overlay.Diagnostics),
         Named("runConfig", Overlay.RunConfig),
         Named("settings", Overlay.Settings),
@@ -775,6 +776,7 @@ fun EditorScreen(vm: EditorViewModel) {
         CommandPalette(
             commands = buildCommands(vm, ui, context,
                 onCommand = { cmd -> when (cmd) {
+                    "terminal" -> { vm.openTerminal(); overlay = Overlay.Terminal }
                     "diag" -> overlay = Overlay.Diagnostics
                     "settings" -> overlay = Overlay.Settings
                     "about" -> overlay = Overlay.About
@@ -785,6 +787,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "agent" -> overlay = Overlay.Agent
                     "gsearch" -> overlay = Overlay.GlobalSearch
                     "symbols" -> { vm.loadSymbols(); overlay = Overlay.Symbols }
+                    "definition" -> if (vm.findDefinition()) overlay = Overlay.Definitions
                     "models" -> { vm.refreshLocalModels(); overlay = Overlay.LocalModels }
                     "agentHistory" -> { vm.loadAgentSessions(); overlay = Overlay.AgentHistory }
                     "runconfig" -> overlay = Overlay.RunConfig
@@ -839,6 +842,7 @@ fun EditorScreen(vm: EditorViewModel) {
                 closeOverlay()
             },
             onOpenAgent = { overlay = Overlay.Agent },
+            onNewChat = vm::startNewAiChat,
             onDismiss = { vm.cancelAi(); closeOverlay() }
         )
     }
@@ -853,6 +857,8 @@ fun EditorScreen(vm: EditorViewModel) {
                 }),
             inputDraft = ui.agentInputDraft,
             pendingProposal = ui.agentPendingProposal,
+            pendingPlan = ui.agentPendingPlan,
+            planFirst = ui.settings.agentPlanFirst,
             lastCheckpoint = ui.lastAgentCheckpoint,
             checkpointCount = ui.agentCheckpoints.size,
             recovered = ui.agentRecovered,
@@ -862,6 +868,10 @@ fun EditorScreen(vm: EditorViewModel) {
             onReject = vm::rejectAgentPatch,
             onRestoreCheckpoint = vm::restoreAgentCheckpoint,
             onOpenHistory = { vm.loadAgentSessions(); overlay = Overlay.AgentHistory },
+            onNewSession = vm::startNewAgentSession,
+            onPlanToggle = vm::setAgentPlanFirst,
+            onApprovePlan = vm::approveAgentPlan,
+            onRejectPlan = vm::rejectAgentPlan,
             onCancel = vm::cancelAgent,
             onDismiss = { vm.cancelAgent(); closeOverlay() }
         )
@@ -905,6 +915,19 @@ fun EditorScreen(vm: EditorViewModel) {
         )
     }
 
+    if (overlay == Overlay.Definitions) {
+        DefinitionDialog(
+            query = ui.definitionQuery,
+            matches = ui.definitionMatches,
+            loading = ui.definitionLoading,
+            onPick = { definition ->
+                vm.openDefinition(definition)
+                closeOverlay()
+            },
+            onDismiss = ::closeOverlay,
+        )
+    }
+
     if (overlay == Overlay.GlobalSearch) {
         GlobalSearchDialog(
             query = gsearchQuery,
@@ -944,6 +967,19 @@ fun EditorScreen(vm: EditorViewModel) {
         )
     }
 
+    if (overlay == Overlay.Terminal) {
+        TerminalDialog(
+            lines = ui.terminalLines,
+            cwd = ui.terminalCwd,
+            busy = ui.terminalBusy,
+            input = ui.terminalInput,
+            onInputChange = vm::onTerminalInputChanged,
+            onRun = vm::runTerminalCommand,
+            onClear = vm::clearTerminal,
+            onDismiss = { vm.closeTerminal(); closeOverlay() },
+        )
+    }
+
     if (overlay == Overlay.Settings) {
         SettingsDialog(
             settings = ui.settings,
@@ -971,6 +1007,7 @@ fun EditorScreen(vm: EditorViewModel) {
             onMcpConfigChange = { enabled, endpoint ->
                 vm.updateSettings(ui.settings.copy(mcpEnabled = enabled, mcpEndpoint = endpoint))
             },
+            onAgentPlanFirstChange = vm::setAgentPlanFirst,
             onPluginsEnabledChange = { enabled ->
                 vm.updateSettings(ui.settings.copy(pluginsEnabled = enabled))
             },
@@ -1299,6 +1336,8 @@ private fun buildCommands(
         Icons.Filled.AutoAwesome) { onCommand("ai") })
     add(Command("agent", "Agent 模式", "读项目 / 搜索 / 按行改文件 / 批准",
         Icons.Filled.AutoAwesome) { onCommand("agent") })
+    add(Command("terminal", "终端", "在项目根执行 sh 命令",
+        Icons.Outlined.Terminal) { onCommand("terminal") })
     add(Command("runconfig", "运行配置", "命令行参数",
         Icons.Outlined.Terminal) { onCommand("runconfig") })
     add(Command("preview", "实时预览", "Markdown / HTML 分屏渲染",
@@ -1311,6 +1350,8 @@ private fun buildCommands(
         Icons.Outlined.NavigateBefore) { onCommand("goto") })
     add(Command("symbols", "符号大纲", "当前文件的类 / 函数列表",
         Icons.Filled.AccountTree) { onCommand("symbols") })
+    add(Command("definition", "跳转到定义", "光标下的 Python 符号 / 跨文件",
+        Icons.Filled.Search) { onCommand("definition") })
     add(Command("models", "本地模型", "下载 MiniCPM5 / 离线 Agent",
         Icons.Filled.AutoAwesome) { onCommand("models") })
     add(Command("agentHistory", "Agent 历史会话", "回放之前的工具轨迹",

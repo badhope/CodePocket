@@ -33,3 +33,7 @@ dist/
 site/_shots/
 site/_backup/
 .kotlin/
+
+# 本地签名配置（绝不入库）
+keystore.properties
+*.jks

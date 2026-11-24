@@ -28,7 +28,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 | Modern IDE UI | ❌ terminal only | ⚠️ dated | ✅ | ✅ | ✅ |
 | Multi-file tabs / find & replace | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Offline Git | ✅ | ❌ | ✅ | ✅ | ✅ **JGit** |
-| Native performance | ✅ | ✅ | — | — | ✅ **native ARM64 + pure-Java runtimes** |
+| Native performance | ✅ | ✅ | — | — | ✅ **native ARM64/x86_64 + pure-Java runtimes** |
 | AI assistant (BYOK) | ❌ | ❌ | ✅ cloud | ✅ cloud | ✅ **custom endpoint** |
 | Open source & ad-free | ✅ GPL | ❌ paid | ⚠️ ads | ⚠️ IAP | ✅ **Apache-2.0** |
 
@@ -70,13 +70,13 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 └──────────────────┬──────────────────────────┘
                    │ dlopen + sys.path
 ┌──────────────────▼──────────────────────────┐
-│  jniLibs/arm64-v8a (bundled in APK)         │
+│  jniLibs/<abi> (arm64-v8a / x86_64)         │
 │  libpython3.13.so · libpybridge.so · C ext   │
 │  assets/python-stdlib.zip (pure-Python std)  │
 └─────────────────────────────────────────────┘
 ```
 
-**Core trade-off**: no custom terminal emulator, no external native toolchain dependency. CPython 3.13 is cross-compiled with the NDK into a native arm64 library; JavaScript and Lua use pure-Java Rhino/LuaJ, so they also work on non-arm64 devices. Java/Kotlin/TypeScript and 14 other languages are editing-only.
+**Core trade-off**: no external native toolchain dependency, no cloud requirement. CPython 3.13 is cross-compiled with the NDK for both `arm64-v8a` and `x86_64`; JavaScript and Lua use pure-Java Rhino/LuaJ. The terminal is a lightweight command session (not a full PTY), and Java/Kotlin/TypeScript plus 14 other languages are editing-only.
 
 ---
 
@@ -86,18 +86,31 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Multi-file tabs** · **file tree** (new / rename / delete, long-press actions)
 - **Sora Editor** code editor + 20-language TextMate syntax highlighting (3 runnable, 17 editable)
 - **Static completion**: per-language keyword/builtin profiles + symbols from the current file (zero process overhead)
+- **Python go-to-definition**: cursor symbol → project-wide `class` / `def` / module variable, with import-aware ranking (no LSP process)
 - **Find & replace** (count & jump) · **global search** (cross-file)
 - **26-key symbol bar** · **pinch-to-zoom font size** · auto bracket closing · soft wrap · line number toggle
 - **6 editor themes** (Darcula / Monokai / Tomorrow Night Blue / Solarized…)
 
 ### Run code
-- **Python**: native CPython 3.13 (arm64), full stdlib (pure-Python part + C extensions)
+- **Python**: native CPython 3.13 (arm64 + x86_64), full stdlib (pure-Python part + C extensions)
 - **JavaScript**: Rhino 1.7.15, pure Java, `console.log` / `input`
 - **Lua**: LuaJ 3.0.1, pure Java, `print` / `input`
 - **Streaming output** · **`input()` interaction** · arrow-key / Tab soft keyboard
 - **Infinite-loop protection** (timeout interrupt) · foreground service keep-alive
 - **Friendly error translations** (Python / JavaScript / Lua)
 - Run configuration (command-line args) · standard Python script attributes like `__file__`
+
+### Code intelligence (0.0.27)
+- **Python go-to-definition**: cursor symbol → project-wide definitions, import-aware ranking, file/line/signature picker
+- **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
+
+### Agent & terminal (0.0.26)
+- **Agent plan mode**: plan → approval → tool execution, with cross-turn context and token budgets
+- **Project rules**: reads `AGENTS.md` / `CLAUDE.md` / `.cursorrules` / `.windsurfrules` / Copilot instructions
+- **Read-only sub-agent**: `delegate_task` explores multiple files in an isolated context
+- **Offline semantic search**: TF-IDF index with file/line hits, no embedding download
+- **Command terminal panel**: persistent cwd, `cd`/`pwd`, timeout and output caps (not a PTY)
+- **MCP tools/resources/prompts**, retrying providers, persisted AI history
 
 ### Manage projects
 - **Multi-project switching** (long-press to delete) · **4 Python templates**
@@ -143,7 +156,7 @@ The native runtime (`libpython3.13.so` + C extensions + pure-Python stdlib zip, 
 ## 📦 Bundled Runtime
 
 - **Pure-Python stdlib**: `assets/python-stdlib.zip` (extracted to the app's private dir, then added to `sys.path`)
-- **C extension modules**: math, json, _random, _datetime, _socket, _ssl, _sqlite3, _ctypes, zlib, binascii etc. (`jniLibs/arm64-v8a`)
+- **C extension modules**: math, json, _random, _datetime, _socket, _ssl, _sqlite3, _ctypes, zlib, binascii etc. (`jniLibs/arm64-v8a` / `x86_64`)
 - **numpy / pandas / matplotlib / pillow are NOT preinstalled** — `import numpy` shows a missing-module hint. Offline installation of third-party wheels is planned for a later release.
 
 ---
@@ -169,7 +182,7 @@ The native runtime (`libpython3.13.so` + C extensions + pure-Python stdlib zip, 
 
 | Capability | Status |
 |---|---|
-| Python runtime | ✅ Full (native CPython 3.13, arm64) |
+| Python runtime | ✅ Full (native CPython 3.13, arm64 + x86_64) |
 | Java runtime | ❌ JVM not yet integrated (editing/highlighting only) |
 | Performance | ✅ Native execution, no WASM sandbox overhead |
 | Sci-stack libraries | ⚠️ numpy/pandas/matplotlib not preinstalled; offline import planned |

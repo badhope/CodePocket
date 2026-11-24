@@ -58,6 +58,7 @@ fun AiPanelDialog(
     onCancel: () -> Unit,
     onInsertCode: (String) -> Unit,
     onOpenAgent: () -> Unit,
+    onNewChat: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -137,6 +138,13 @@ fun AiPanelDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                TextButton(onClick = onNewChat, enabled = !busy && messages.isNotEmpty()) {
+                    Text(
+                        "新对话",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.muted
+                    )
+                }
                 TextButton(onClick = onOpenAgent, enabled = !busy) {
                     Text(
                         "Agent 模式：让 AI 读项目、改文件",
