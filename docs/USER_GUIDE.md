@@ -1,6 +1,6 @@
 # CodePocket「口袋码」用户手册
 
-> 版本：v0.0.28 · 适用：Android 8.0+（Python 支持 ARM64 / x86_64；JavaScript/Lua 任意 ABI）
+> 版本：v0.0.29 · 适用：Android 8.0+（Python 支持 ARM64 / x86_64；JavaScript/Lua 任意 ABI）
 
 ---
 
@@ -110,12 +110,12 @@ Agent 面板底部有「历史会话」。点开后列出最近 20 次任务的�
 
 命令面板搜「终端」打开终端面板。默认是轻量命令会话：每条命令独立执行，保留项目内 cwd，20 秒超时；适合 `ls`、`python -m pytest`、`git status`。
 
-打开「PTY 交互模式（vim / top）」后切到原生 `forkpty` 后端：
+打开「PTY 交互模式（vim / top）」后切到原生 `forkpty` 后端，输出交给本地 xterm.js 终端模拟器：
 
-- `isatty` 为真，`vim`、`top`、`less` 等依赖 tty 的程序可以启动；
-- 输入行按回车即发送到 shell，不再等命令结束；
-- 它是真实 PTY 后端，但不是 ANSI 终端模拟器：颜色/光标转义会被剥掉，全屏程序按行显示，不适合长时间使用 `vim`/`top`；
-- 关掉开关或关闭面板会结束 shell 会话。
+- `isatty` 为真，`vim`、`top`、`less` 等依赖 tty 的程序可以正常显示颜色、光标与全屏界面；
+- 点击终端区域唤起软键盘，输入直接进 shell；下方补充键提供 Esc / Tab / Ctrl-C / Ctrl-D / 方向键；
+- 终端行列会随面板尺寸变化，自动通过 `TIOCSWINSZ` 同步给 shell；
+- 关掉开关或关闭面板会结束 shell 会话；终端页离线加载，不访问网络。
 
 ---
 

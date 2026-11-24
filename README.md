@@ -107,13 +107,13 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
-### Agent & terminal (0.0.28)
+### Agent & terminal (0.0.29)
 - **Agent plan mode**: plan → approval → tool execution, with cross-turn context and token budgets
 - **Project rules**: reads `AGENTS.md` / `CLAUDE.md` / `.cursorrules` / `.windsurfrules` / Copilot instructions
 - **Read-only sub-agent**: `delegate_task` explores multiple files in an isolated context
 - **Offline semantic search**: TF-IDF index with file/line hits, no embedding download
-- **Command terminal panel**: persistent cwd, `cd`/`pwd`, timeout and output caps
-- **Real PTY mode**: `forkpty` + `/system/bin/sh -i` for `vim` / `top`; line-oriented UI, ANSI cursor control is stripped rather than emulated
+- **Command terminal panel**: persistent cwd, `cd`/`pwd`, timeout and output caps; PTY mode switches to xterm with mobile Esc/Tab/Ctrl/arrow keys and light/dark themes
+- **Real ANSI terminal**: `forkpty` + `/system/bin/sh -i` feeding a local xterm.js 5.5.0 screen; cursor addressing, 256-color SGR, alternate screen and scrollback work, with `vim` / `top` / `less`; resize is wired to `TIOCSWINSZ`
 - **MCP tools/resources/prompts**, retrying providers, persisted AI history
 
 ### Manage projects

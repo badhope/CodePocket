@@ -63,6 +63,14 @@
 - 许可证：Apache-2.0
 - 通过 Maven Central 分发的官方 Android 组件。
 
+## 9. xterm.js（终端模拟器）
+
+- 项目地址：https://github.com/xtermjs/xterm.js
+- 许可证：**MIT**
+- 使用方式：`xterm.js 5.5.0` 与 `@xterm/addon-fit 0.10.0` 以静态文件形式随 APK
+  打包在 `app/src/main/assets/terminal/`，由本地 WebView 加载；不访问网络。
+- 许可证原文：`app/src/main/assets/terminal/LICENSE-xterm.txt`。
+
 ---
 
 本项目自身代码以 Apache License 2.0 发布，详见 [LICENSE](LICENSE)。
