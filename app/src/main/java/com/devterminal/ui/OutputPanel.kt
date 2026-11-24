@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -127,6 +129,10 @@ fun OutputPanel(
      * 原先报错行只是只读文本，用户得自己数行号再滚过去。
      */
     onJumpToLine: ((Int) -> Unit)? = null,
+    /** pdb 调试中：显示快捷命令条 */
+    debugging: Boolean = false,
+    onDebugCommand: ((String) -> Unit)? = null,
+    onDebugBreak: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val cs = MaterialTheme.colorScheme
@@ -208,6 +214,26 @@ fun OutputPanel(
                     Text("运行", color = cs.onPrimary,
                         style = MaterialTheme.typography.labelLarge)
                 }
+            }
+        }
+
+        // ---------- pdb 调试快捷条 ----------
+        if (debugging && running && onDebugCommand != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DebugChip("继续", onDebugCommand, "c")
+                DebugChip("下一步", onDebugCommand, "n")
+                DebugChip("进入", onDebugCommand, "s")
+                DebugChip("变量", onDebugCommand, "p locals()")
+                DebugChip("栈", onDebugCommand, "w")
+                if (onDebugBreak != null) DebugChip("断点", onDebugBreak)
+                DebugChip("退出", onDebugCommand, "q")
             }
         }
 
@@ -337,7 +363,7 @@ fun OutputPanel(
                     modifier = Modifier
                         .weight(1f)
                         .focusRequester(inputFocus),
-                    placeholder = "输入后回车发送给程序…",
+                    placeholder = if (debugging) "输入 pdb 命令，如 n / b 12 / p x" else "输入后回车发送给程序…",
                     imeAction = ImeAction.Send,
                     onImeAction = onInputSend,
                     trailing = {
@@ -369,5 +395,43 @@ fun OutputPanel(
                 }
             }
         }
+    }
+}
+
+/** pdb 快捷命令按钮：小、可横向滚动，不抢输出区空间。 */
+@Composable
+private fun DebugChip(
+    label: String,
+    onCommand: (String) -> Unit,
+    command: String,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(cs.primary.copy(alpha = 0.08f))
+            .clickable { onCommand(command) }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MonoText(label, color = cs.primary, fontSize = 11)
+    }
+}
+
+@Composable
+private fun DebugChip(
+    label: String,
+    onAction: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(cs.secondary.copy(alpha = 0.10f))
+            .clickable(onClick = onAction)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MonoText(label, color = cs.secondary, fontSize = 11)
     }
 }

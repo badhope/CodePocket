@@ -66,17 +66,19 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 │  RuntimeRegistry                            │
 │  Python: NativeEngine + pybridge.c (JNI)     │
 │  JavaScript: Rhino · Lua: LuaJ              │
-│  streaming stdout/stderr · timeout · stdin   │
+│  pdb debugger · streaming stdout/stderr      │
+│  timeout · stdin · real PTY (forkpty)        │
 └──────────────────┬──────────────────────────┘
                    │ dlopen + sys.path
 ┌──────────────────▼──────────────────────────┐
 │  jniLibs/<abi> (arm64-v8a / x86_64)         │
-│  libpython3.13.so · libpybridge.so · C ext   │
+│  libpython3.13.so · libpybridge.so           │
+│  libptybridge.so · C extensions              │
 │  assets/python-stdlib.zip (pure-Python std)  │
 └─────────────────────────────────────────────┘
 ```
 
-**Core trade-off**: no external native toolchain dependency, no cloud requirement. CPython 3.13 is cross-compiled with the NDK for both `arm64-v8a` and `x86_64`; JavaScript and Lua use pure-Java Rhino/LuaJ. The terminal is a lightweight command session (not a full PTY), and Java/Kotlin/TypeScript plus 14 other languages are editing-only.
+**Core trade-off**: no external native toolchain dependency, no cloud requirement. CPython 3.13 is cross-compiled with the NDK for both `arm64-v8a` and `x86_64`; JavaScript and Lua use pure-Java Rhino/LuaJ. The terminal now has a real `forkpty` backend, but its UI is line-oriented (not an ANSI terminal emulator); Java/Kotlin/TypeScript plus 14 other languages are editing-only.
 
 ---
 
@@ -100,16 +102,18 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Friendly error translations** (Python / JavaScript / Lua)
 - Run configuration (command-line args) · standard Python script attributes like `__file__`
 
-### Code intelligence (0.0.27)
+### Code intelligence & debugging (0.0.28)
 - **Python go-to-definition**: cursor symbol → project-wide definitions, import-aware ranking, file/line/signature picker
+- **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
-### Agent & terminal (0.0.26)
+### Agent & terminal (0.0.28)
 - **Agent plan mode**: plan → approval → tool execution, with cross-turn context and token budgets
 - **Project rules**: reads `AGENTS.md` / `CLAUDE.md` / `.cursorrules` / `.windsurfrules` / Copilot instructions
 - **Read-only sub-agent**: `delegate_task` explores multiple files in an isolated context
 - **Offline semantic search**: TF-IDF index with file/line hits, no embedding download
-- **Command terminal panel**: persistent cwd, `cd`/`pwd`, timeout and output caps (not a PTY)
+- **Command terminal panel**: persistent cwd, `cd`/`pwd`, timeout and output caps
+- **Real PTY mode**: `forkpty` + `/system/bin/sh -i` for `vim` / `top`; line-oriented UI, ANSI cursor control is stripped rather than emulated
 - **MCP tools/resources/prompts**, retrying providers, persisted AI history
 
 ### Manage projects

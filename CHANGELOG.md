@@ -2,6 +2,28 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.28] — 2026-11-24
+
+### 新增
+
+- **Python pdb 调试**：顶栏新增调试图标，命令面板新增「调试当前文件」。用原生 CPython 标准库 `pdb` 启动：第一行即停，支持 `b <行号>` 断点、`n` 下一步、`s` 进入、`c` 继续、`p locals()` 看变量、`w` 看调用栈、`q` 退出。输出面板提供「继续 / 下一步 / 进入 / 变量 / 栈 / 断点 / 退出」快捷条，命令走同一个 stdin。
+- **真实 PTY 终端**：新增 `libptybridge.so`（arm64-v8a / x86_64），用 `forkpty` + `/system/bin/sh -i` 起交互式 shell。终端面板新增「PTY 交互模式（vim / top）」开关；`isatty` 为真，`vim`、`top` 等依赖 tty 的程序可以启动。
+- **输入提示即时刷新**：`NativeBridge.onInputLine()` 在阻塞等待输入前 flush 未完结输出，修复 pdb/交互程序 `write("(Pdb) ")` 后提示符不显示、用户面对空白等待的问题。
+
+### 边界
+
+- pdb 是终端式调试，不是图形化 DAP：没有变量树/断点列表/图形调用栈；调试期间目标程序自身的 `input()` 与 pdb 命令共用 stdin，交互式输入程序不建议调试。
+- PTY 是真实终端后端，UI 不是 ANSI 终端模拟器：输出会剥离 CSI/OSC 转义并按行显示，全屏程序的光标定位、颜色与重绘不会解释。
+- PTY 在宿主 `forkpty` 冒烟测试通过；Android 端本轮未取得真机/模拟器交互验收（0.0.27 的 x86 TCG 首次启动仍受 System UI ANR 影响）。
+
+### 构建
+
+- `versionCode 28` / `versionName 0.0.28`。
+- 单元测试 130 个通过（新增 1 个 pdb 包装器测试）。
+- release APK 约 31MB，SHA-256 `7f3b77a9c5afa0398161a883705873d8cf99c6d0f30859c2ab39fe243236d35e`；debug APK 约 49MB，SHA-256 `21682e8adcc9b5bd72b7c8d66676c88f0daa06b623aa86634f1a4fe0a9e6deca`。
+- lint Release 38 个 issue（36 Warning + 2 Information），Fatal 0 / Error 0。
+- APK 内含 `lib/arm64-v8a/libptybridge.so`、`lib/x86_64/libptybridge.so`，与 `libpybridge.so` 并列。
+
 ## [0.0.27] — 2026-11-24
 
 ### 新增

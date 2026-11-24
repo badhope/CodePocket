@@ -5,7 +5,9 @@ data class RunRequest(
     val scriptPath: String,
     val workingDir: String,
     val args: List<String> = emptyList(),
-    val languageId: String = LanguageRegistry.PYTHON.id
+    val languageId: String = LanguageRegistry.PYTHON.id,
+    /** Python 专用：用标准库 pdb 启动交互式调试，命令走 stdin，输出走 stdout。 */
+    val debug: Boolean = false
 )
 
 /** 运行过程中流出的事件（用于实时刷新 UI） */

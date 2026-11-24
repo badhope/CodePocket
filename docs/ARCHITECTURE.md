@@ -19,9 +19,10 @@
 └──────────────────┬────────────────────────────┘
                    │ JNI
 ┌──────────────────▼────────────────────────────┐
-│  pybridge.c（JNI 桥，约 350 行 C）              │
+│  pybridge.c（JNI 桥）                          │
 │  Py_Initialize · PyRun_FileExFlags · GIL 管理  │
 │  stdin/stdout/stderr 桥接 · Py_AddPendingCall  │
+│  ptybridge.c（forkpty 真终端，独立 .so）        │
 └──────────────────┬────────────────────────────┘
                    │ dlopen + sys.path
 ┌──────────────────▼────────────────────────────┐
@@ -44,6 +45,8 @@
 | `JavaScriptEngine.kt` | Rhino 运行时：ES6、console/input、超时中断 |
 | `LuaEngine.kt` | LuaJ 运行时：Lua 5.2、print/input、DebugLib 超时 |
 | `NativeBridge.kt` | JNI 声明：`initialize` / `execFile` / `pushInputLine` / `pushEof` / `requestInterrupt` / `shutdown` |
+| `PdbRunner.kt` | pdb 包装器：compile 目标源码 → `pdb.run`，目标路径走 argv[1] |
+| `PtyBridge.kt` | 真 PTY 前端：`nativeStart` / `nativeWrite` / `nativeResize` / `nativeStop`，字节回调 → Kotlin |
 | `EnvironmentInstaller.kt` | 环境自检与安装（引擎相关部分） |
 | `ExecutionService.kt` | 前台服务：运行期间保活（Android 12+） |
 | `GitManager.kt` | JGit 封装：init / commit / push / pull |
@@ -100,6 +103,25 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 
 ---
 
+## 4.1 调试与 PTY（v0.0.28）
+
+### Python pdb
+
+- `NativeEngine` 不把目标文件直接交给 `PyRun_FileExFlags`；`debug=true` 时把 `PdbRunner.SCRIPT` 写到 `cacheDir/cp-pdb-runner.py`，执行 `pdb.run(compile(target))`；
+- 目标路径通过 `argv[1]` 传入，`__name__="__main__"`、`__file__` 指向真实文件，保留 `if __name__` 与 traceback 行号；
+- pdb 命令走既有 stdin 队列，输出走既有 stdout 桥；`NativeBridge.onInputLine()` 在阻塞等待输入前 `flushBuffers()`，否则 `(Pdb) ` 这种无换行提示会卡在缓冲区；
+- 没有独立调试协议/图形变量树；`EditorViewModel.sendDebugCommand()` 只是往 stdin 写 pdb 命令。
+
+### 真 PTY
+
+- `PtyBridge.kt` 加载独立的 `libptybridge.so`，调用 `forkpty()` 起 `/system/bin/sh -i`；
+- 原生读线程把 master fd 的字节通过 `onBytes([B)V` 回传；退出时 `waitpid` 后 `onExit(I)V`；
+- Kotlin 侧 `CharsetDecoder` 处理跨 chunk 的 UTF-8，按 `\n` 切行，剥离 CSI/OSC 转义，再进 `terminalLines`；
+- `nativeStop()` 关闭 master + SIGHUP/SIGTERM，读线程自然退出并回收 child；同一时间只允许一个 PTY；
+- UI 是行式终端，不解释光标定位/颜色/全屏重绘；`vim`/`top` 能启动但显示效果有限。
+
+---
+
 ## 5. 标准库与 C 扩展的打包
 
 - **纯 Python 标准库**：`assets/python-stdlib.zip`（约 60MB，`noCompress` 保证 AAPT 不压缩），首次运行解压到 `files/python-stdlib`，校验标记 `.unpacked_ok`；
@@ -115,14 +137,15 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 app/src/main/
 ├── AndroidManifest.xml
 ├── assets/            # python-stdlib.zip、textmate 语法、模板等
-├── cpp/pybridge.c     # JNI 桥
+├── cpp/pybridge.c     # Python JNI 桥
+├── cpp/ptybridge.c    # 真 PTY JNI 桥（独立 libptybridge.so）
 ├── java/com/devterminal/
 │   ├── MainActivity.kt
 │   ├── engine/        # 运行引擎全家桶
 │   ├── project/       # ProjectManager、Templates、GitManager
 │   ├── settings/      # SettingsStore（加密偏好）
 │   └── ui/            # Compose 界面（EditorScreen 等）
-└── jniLibs/<abi>/     # libpython3.13.so、libpybridge.so、C 扩展（arm64-v8a / x86_64）
+└── jniLibs/<abi>/     # libpython3.13.so、libpybridge.so、libptybridge.so、C 扩展
 scripts/               # build_apk.sh、package_native.sh
 tools/                 # selfcheck.py、test_suite.py（Web 原型测试）
 ```
