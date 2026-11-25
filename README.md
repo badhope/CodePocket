@@ -106,6 +106,12 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
+### Mobile layout pass (0.1.1)
+- **Compact toolbar**: below 480dp or at 1.3× font scale, the top bar keeps only menu, save and run/stop; preview, command palette and debug move into a **更多** menu so 44dp touch targets stop squeezing the filename
+- **Width-based two-pane**: 600dp tablets and short landscape phones (≥520dp wide) place output beside the editor; normal portrait phones keep the vertical stack so code height is not sacrificed
+- **Adaptive drawer**: sidebar width is clamped to 200–272dp by screen width; quick actions switch from four to three columns on narrow screens or large fonts
+- **Tests**: `EditorLayoutPolicyTest` for breakpoints, `EditorTopBarTest` for compact/wide Compose behavior; 179 JVM/Robolectric tests all green
+
 ### Trusted mobile IDE foundation (0.1.0)
 - **Python engine isolation**: Python runs in `android:process=":engine"`; the main process holds only a Messenger proxy. The output panel's **重启引擎** action kills and rebinds only the engine process, preserving unsaved editor buffers, Git and terminal state
 - **Git review loop**: per-file stage / unstage, stage-all, commit-staged-only, and a diff dialog (working tree vs index, untracked files as all-added); 200KB output cap with bounded streaming so a 100MB log does not OOM
