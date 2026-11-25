@@ -4,6 +4,8 @@
 范围：0.0.30 发布后对 `EditorViewModel`、`ProjectManager`、`LocalWorkspace`、`CheckpointStore`、`AgentSessionStore`、`ExecutionService`、`PtyBridge`/`ptybridge.c`、`NativeEngine`、`EditorScreen`、`CodeEditorView` 的逐项审计。  
 原则：只列会造成**数据丢失、文件损坏、进程/电量泄漏、OOM/ANR、发布事故或明显交互失效**的问题；不把风格偏好当 bug。
 
+说明：本文保留 0.0.31 时点的原始记录；0.0.33/0.0.34 的处理结果见文末「五、后续版本处理结果」。
+
 ## 一、本轮已修复（0.0.31）
 
 ### P0 数据安全 / 文件损坏
@@ -177,3 +179,29 @@
 - JVM 单测：**137 个通过**（新增 1 个检查点 GC 测试），0 failures。
 - lint Release：**0 Error / 37 Warning**（新增 1 条 WakeLock 无超时警告；无 Fatal）。
 - 未取得 Android 真机/模拟器截图；本轮不伪造运行图。
+
+## 五、后续版本处理结果
+
+### 0.0.33 已处理
+
+- 29 删除项目返回值：`ProjectManager.deleteProject` 已返回 Boolean。
+- 31 会话日志读取：`AgentSessionStore.metaOf` 已改单遍流式读取。
+- 35 PTY 粘贴无上限：输入队列 256、单次 64KB 上限。
+- 36 onCleared 未释放 PTY/引擎：`EditorViewModel.onCleared()` 已统一取消 Job、停 PTY、释放引擎。
+
+### 0.0.34 已处理
+
+- 27 forkpty `setenv`：`ptybridge.c` 已改为 fork 前构造 `argv`/`envp`，子进程只 `chdir` + `execve`。
+- 28 命令子进程树：新增 `ProcessGroup`，`/system/bin/setsid` + 负 PID `SIGTERM`/`SIGKILL`；setsid 缺失时退化为直接子进程，已接入 `RunCommandTool` 与 `TerminalSession`。
+- 37 项目整体迁移：新增 `ProjectArchive` zip 导入/导出，带 Zip Slip、绝对路径、盘符与体积/条目上限。
+- 38 没有 Git clone：`GitManager.cloneInto` 支持 HTTPS clone，token 走 JGit 凭据提供器，不写 `.git/config`。
+- 26 NativeEngine 无法复位：**仅部分处理**。新增 `engineStuck` 检测与输出面板「重启应用」入口，保存当前文件后重拉进程；没有实现解释器进程隔离，卡在不可中断 C 调用时仍只能重启应用。
+
+### 仍未处理
+
+- 30 文件树截断 UI 提示。
+- 32 `SettingsStore.save` 主线程同步写盘。
+- 33 9sp/10sp 可访问性与 fontScale 2.0。
+- 34 大 Markdown/HTML 预览内存上限。
+- 39 instrumentation/UI 测试与截图回归。
+- 40 ARM64 真机验收：0.0.34 的 clone/zip UI、`ProcessGroup`、`restartApp`、PTY execve 仍无 Android 运行验收。

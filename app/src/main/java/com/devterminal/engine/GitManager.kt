@@ -83,6 +83,33 @@ class GitManager {
             }
         }
 
+    /**
+     * 把远程仓库克隆到 targetDir。
+     *
+     * targetDir 必须不存在或为空；调用方负责分配不冲突的目录。克隆全程走 JGit，
+     * 不启动系统 git，也不把带 token 的 URL 写进 `.git/config`。
+     */
+    fun cloneInto(targetDir: File, remoteUrl: String): String {
+        if (remoteUrl.isBlank()) return "远程地址不能为空"
+        if (targetDir.exists() && (targetDir.isDirectory && targetDir.listFiles()?.isNotEmpty() == true ||
+                targetDir.isFile)
+        ) {
+            return "目标目录不是空目录：${targetDir.name}"
+        }
+        targetDir.parentFile?.mkdirs()
+        return guarded("克隆") {
+            val cmd = Git.cloneRepository()
+                .setURI(tokenlessUrl(remoteUrl))
+                .setDirectory(targetDir)
+                .setCloneAllBranches(true)
+            credentials(remoteUrl)?.let { cmd.setCredentialsProvider(it) }
+            cmd.call().use { g ->
+                val branch = runCatching { g.repository.branch }.getOrNull() ?: "HEAD"
+                "已克隆 ${hostOf(remoteUrl)} · 分支 $branch"
+            }
+        }
+    }
+
     /** 暂存全部变更并提交（含删除） */
     fun commitAll(dir: File, message: String, userName: String, userEmail: String): String {
         if (message.isBlank()) return "提交信息不能为空"

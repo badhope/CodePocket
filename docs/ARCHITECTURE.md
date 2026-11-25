@@ -50,7 +50,8 @@
 | `PtyTerminalView.kt` | 本地 WebView + xterm.js 终端：PTY 字节按 base64 写入、键盘回传、`FitAddon` resize、亮暗主题、离线限制 |
 | `EnvironmentInstaller.kt` | 环境自检与安装（引擎相关部分） |
 | `ExecutionService.kt` | 前台服务：运行期间保活（Android 12+） |
-| `GitManager.kt` | JGit 封装：init / commit / push / pull |
+| `ProcessGroup.kt` | 命令进程组：pidfile + `/system/bin/setsid` + 负 PID 信号；setsid 缺失时退化 |
+| `GitManager.kt` | JGit 封装：init / commit / push / pull / clone（HTTPS） |
 | `FriendlyError.kt` | Python / JavaScript / Lua 高频错误的"人话"翻译 |
 | `CompletionProvider.kt` | 静态补全：按 `CompletionProfile` 的关键字 / 内置函数 / 文件符号 |
 
@@ -138,13 +139,21 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 
 - **未保存修改不再静默丢弃**：`UiState.pendingNavigation` 记录待执行的 OpenFile / CloseTab / OpenProject；只有用户在 `UnsavedChangesDialog` 选择「保存并继续」或「不保存直接继续」后才继续。`autoSave=true` 仍走原自动保存路径。
 - **原子写**：`ProjectManager.write`、`LocalWorkspace.writeBytes`、`CheckpointStore.writeAtomic` 均为「同目录临时文件 → `fd.sync()` → `rename`」；`ProjectManager.read` 在 5MB / 二进制探测前拦截。
-- **PTY 输入 FIFO**：`EditorViewModel` 用 `Channel<String>(UNLIMITED)` + 单消费者协程串行写 `PtyBridge.write`；`xterm onData` 不再为每个按键 `launch`，避免快速输入乱序。终端关闭/退出时关闭队列并取消 writer。
+- **PTY 输入 FIFO（v0.0.33 有界）**：`EditorViewModel` 用 `Channel<String>(256)` + 单消费者协程串行写 `PtyBridge.write`；`xterm onData` 不再为每个按键 `launch`，避免快速输入乱序；单次写入超过 64KB 截断并提示。终端关闭/退出时关闭队列并取消 writer。
 - **Agent 覆盖护栏**：`reloadAfterAgent` 发现当前文件 `dirty` 时只提示不写 `editorText`；`restoreAgentCheckpoint` 直接拒绝；检查点 `snapshot` 单文件 8MB，`gc()` 保留最近 20 份并删除无引用 blob。
 - **会话日志上限**：`AgentSessionStore` 单会话 16MB、回放 2000 条、总量 128MB；`prune()` 在 `create()` 时执行。
 - **前台执行**：`ExecutionService` 同进程弱引用直接 `stopTag`，避免 Android O+ 后台 `startService` 限制；启动时持有 `PARTIAL_WAKE_LOCK`，最后一个 tag 停止时释放。
 - **输出边界**：共享/剪贴板 200KB、单行 4000 字符；`AiClient` 非流式响应 2MB 字符。
 - **手势与系统栏**：`CodeEditorView` 的捏合只在两指及以上消费事件；`MainActivity` 按 `themeMode.resolvesDark()` 同步状态栏/导航栏图标明暗。
 - **销毁收尾（v0.0.33）**：`EditorViewModel.onCleared()` 取消 AI/Agent/下载/光标 Job，停止 PTY，释放 NativeEngine 与 RuntimeRegistry；`AgentSessionStore.metaOf` 单遍流式读 JSONL；PTY 输入队列 256 容量、单次 64KB 上限。
+
+## 4.4 项目迁移与进程收尾（v0.0.34）
+
+- **项目 zip**：`ProjectArchive.export` 用 `walkTopDown` 流式写 zip，跳过 `.git`、`build`、`dist`、`node_modules`、`__pycache__`、`.gradle`、`.idea` 和符号链接，上限 256MB；`import` 先解压到 `projectsRoot/.import-<UUID>`，逐条校验 canonical path，拒绝绝对路径、`..`、盘符与空路径，限制 10,000 条 / 单文件 48MB / 总解压 256MB，成功后 rename 到项目目录；单顶层目录自动提升，重名自动 `-1`/`-2`。
+- **Git clone**：`GitManager.cloneInto` 只接受不存在或空的目标目录；`https://user:token@host/repo.git` 中的凭据拆到 `UsernamePasswordCredentialsProvider`，克隆 URL 不含 token，避免写入 `.git/config`；失败删除半成品目录。
+- **forkpty 子进程**：`ptybridge.c` 在 fork 前构造 `argv` 与 `envp`（过滤旧 `TERM`/`PS1`，追加 `TERM=xterm-256color`、`PS1=\w $ `），子进程只做 `chdir` + `execve`，不再在 `pid==0` 分支调用 `setenv`/`malloc` 系函数。
+- **命令进程组**：`ProcessGroup` 用 `sh -c 'echo $$ > pidfile; shift; exec /system/bin/setsid "$@"'` 把 shell 放进新会话，Kotlin 对负 PID 发 `SIGTERM`，300ms 后 `SIGKILL`；`/system/bin/setsid` 不存在时退回 `exec "$@"`，行为与旧版一致。`RunCommandTool` 与 `TerminalSession` 已接入。
+- **引擎卡死兜底**：`NativeEngine.isBusy` 暴露 `busy`；`stopRun()` 8 秒后仍占用则 UI 置 `engineStuck`，输出面板显示「重启应用」；`restartApp()` 同步保存当前文件，用 `AlarmManager` 约 900ms 后重新拉起入口，再 `killProcess`。**这不是解释器进程隔离**：卡在不可中断 C 调用时 `busy` 仍不会复位，只能重启应用。
 
 ---
 
@@ -168,7 +177,7 @@ app/src/main/
 ├── java/com/devterminal/
 │   ├── MainActivity.kt
 │   ├── engine/        # 运行引擎全家桶
-│   ├── project/       # ProjectManager、Templates、GitManager
+│   ├── project/       # ProjectManager、ProjectArchive、Templates、GitManager
 │   ├── settings/      # SettingsStore（加密偏好）
 │   └── ui/            # Compose 界面（EditorScreen 等）
 └── jniLibs/<abi>/     # libpython3.13.so、libpybridge.so、libptybridge.so、C 扩展

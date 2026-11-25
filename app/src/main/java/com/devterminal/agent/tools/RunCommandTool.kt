@@ -1,10 +1,10 @@
 package com.devterminal.agent.tools
 
-import android.os.Build
 import com.devterminal.agent.Tool
 import com.devterminal.agent.ToolCall
 import com.devterminal.agent.ToolResult
 import com.devterminal.agent.ToolSpec
+import com.devterminal.engine.ProcessGroup
 import com.devterminal.workspace.Workspace
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -34,14 +34,12 @@ class RunCommandTool : Tool {
             ?: return ToolResult.failure(call.id, "设备没有可用的 sh")
 
         val output = StringBuilder()
-        val process = runCatching {
-            ProcessBuilder(shell, "-c", command)
-                .directory(workspace.root)
-                .redirectErrorStream(true)
-                .start()
+        val handle = runCatching {
+            ProcessGroup.start(shell, command, workspace.root, redirectErrorStream = true)
         }.getOrElse { e ->
             return ToolResult.failure(call.id, "启动命令失败：${e.message}")
         }
+        val process = handle.process
 
         val reader = Thread {
             runCatching {
@@ -62,7 +60,7 @@ class RunCommandTool : Tool {
         }
         if (isProcessAlive(process)) {
             timedOut = true
-            destroyTree(process)
+            ProcessGroup.destroy(handle)
             runCatching { process.inputStream.close() }
         }
         reader.join(1500)
@@ -80,15 +78,7 @@ class RunCommandTool : Tool {
         }
     }
 
-    /** Android 的 Process 没有 ProcessHandle；至少强杀 sh 并关闭输出流，避免 reader 挂死。 */
-    private fun destroyTree(process: Process) {
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) process.destroyForcibly()
-            else process.destroy()
-        }
-        runCatching { process.inputStream.close() }
-    }
-
+    /** 判断直接子进程是否还活着；进程组清理见 [ProcessGroup.destroy]。 */
     private fun isProcessAlive(process: Process): Boolean = runCatching {
         process.exitValue()
         false

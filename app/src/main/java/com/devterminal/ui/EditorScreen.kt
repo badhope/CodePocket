@@ -238,6 +238,16 @@ fun EditorScreen(vm: EditorViewModel) {
         ActivityResultContracts.CreateDocument("text/plain")
     ) { uri -> uri?.let { vm.exportCurrentFile(it) } }
 
+    // SAF：项目 zip 导入 / 导出（整项目迁移）
+    val zipImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { vm.importProjectZip(it) }
+    }
+    val zipExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri -> uri?.let { vm.exportProjectZip(it) } }
+
     // Android 13+ 通知权限：先给一句说明（Snackbar +「允许」），用户点允许才弹系统权限框。
     // 用独立 SharedPreferences 记「已问过」，不与加密改造中的 SettingsStore 冲突。
     val notifLauncher = rememberLauncherForActivityResult(
@@ -727,6 +737,8 @@ fun EditorScreen(vm: EditorViewModel) {
                     debugging = ui.debugging,
                     onDebugCommand = vm::sendDebugCommand,
                     onDebugBreak = vm::debugBreakHere,
+                    engineStuck = ui.engineStuck,
+                    onRestartApp = vm::restartApp,
                     modifier = mod
                 )
             }
@@ -817,6 +829,9 @@ fun EditorScreen(vm: EditorViewModel) {
                     "about" -> overlay = Overlay.About
                     "guide" -> overlay = Overlay.Onboarding
                     "newproj" -> overlay = Overlay.NewProject
+                    "clone" -> overlay = Overlay.CloneProject
+                    "importzip" -> zipImportLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+                    "exportzip" -> zipExportLauncher.launch(vm.suggestedProjectZipName())
                     "git" -> { overlay = Overlay.Git; vm.refreshGitStatus() }
                     "ai" -> overlay = Overlay.Ai
                     "agent" -> overlay = Overlay.Agent
@@ -1102,8 +1117,18 @@ fun EditorScreen(vm: EditorViewModel) {
             currentPath = ui.tree?.path,
             onSelect = { dir -> vm.openProject(dir); closeOverlay() },
             onNewProject = { closeOverlay(); overlay = Overlay.NewProject },
+            onCloneProject = { closeOverlay(); overlay = Overlay.CloneProject },
+            onImportZip = { closeOverlay(); zipImportLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
+            onExportZip = { closeOverlay(); zipExportLauncher.launch(vm.suggestedProjectZipName()) },
             onDelete = { dir -> vm.deleteProject(dir) },
             onDismiss = ::closeOverlay
+        )
+    }
+
+    if (overlay == Overlay.CloneProject) {
+        CloneProjectDialog(
+            onDismiss = ::closeOverlay,
+            onClone = { url, name -> vm.cloneProject(url, name); closeOverlay() }
         )
     }
 
@@ -1400,6 +1425,12 @@ private fun buildCommands(
         Icons.Outlined.Preview) { onCommand("preview") })
     add(Command("newproj", "新建项目", "${Templates.all.size} 个模板",
         Icons.Filled.Add) { onCommand("newproj") })
+    add(Command("clone", "从 Git 克隆", "https 远程仓库 → 新项目",
+        Icons.Filled.Add) { onCommand("clone") })
+    add(Command("importzip", "导入项目 ZIP", "从手机文件恢复整个项目",
+        Icons.Filled.NoteAdd) { onCommand("importzip") })
+    add(Command("exportzip", "导出项目 ZIP", "打包当前项目源码",
+        Icons.Filled.FileUpload) { onCommand("exportzip") })
     add(Command("export", "导出当前文件", "通过 SAF 写到手机任意位置",
         Icons.Filled.FileUpload) { onCommand("export") })
     add(Command("goto", "跳转到行", "输入行号直达",

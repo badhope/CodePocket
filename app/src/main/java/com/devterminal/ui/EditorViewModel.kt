@@ -131,6 +131,11 @@ data class UiState(
     val output: List<String> = emptyList(),
     val running: Boolean = false,
     val exitCode: Int? = null,
+    /**
+     * 停止 8 秒后引擎仍被占着（Python 卡在不可中断原生调用）。
+     * 这时 UI 已复位，但再点运行必然提示“已有程序在运行中”，需要重启应用。
+     */
+    val engineStuck: Boolean = false,
     /** Python pdb 交互式调试中；running 仍表示进程活着 */
     val debugging: Boolean = false,
     val message: String? = null,
@@ -748,6 +753,15 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val st = _ui.value
         // 防止重复点击导致多个进程并发、输出互相穿插
         if (st.running) return
+        if (st.engineStuck) {
+            _ui.update {
+                it.copy(
+                    message = "引擎仍被卡死的 Python 调用占用，请先点输出栏「重启应用」",
+                    messageSeq = it.messageSeq + 1
+                )
+            }
+            return
+        }
         if (st.agentBusy) {
             _ui.update { it.copy(message = "Agent 正在执行，先停止 Agent 再运行", messageSeq = it.messageSeq + 1) }
             return
@@ -804,6 +818,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val projectDir = currentProject ?: file.parentFile ?: file
         _ui.update { it.copy(
             running = true, output = emptyList(), exitCode = null, debugging = debug,
+            engineStuck = false,
             // 普通运行不弹键盘；调试模式必须直接展开 stdin，pdb 命令就在这里输入。
             inputVisible = debug, inputDraft = "", friendlyHint = null,
             message = if (debug) "调试 ${file.name}（pdb）…" else "运行 ${file.name} …",
@@ -859,6 +874,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                                 debugging = false,
                                 exitCode = event.exitCode,
                                 inputVisible = false,
+                                engineStuck = false,
                                 friendlyHint = hint,
                                 output = appendLines(
                                     st.output,
@@ -878,6 +894,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                                 running = false,
                                 debugging = false,
                                 inputVisible = false,
+                                engineStuck = false,
                                 output = appendLines(
                                     st.output, "[启动失败] ${event.message}",
                                     *(hint?.let { arrayOf("", "💡 $it") } ?: emptyArray())
@@ -992,15 +1009,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             // 用户点「运行」时得到"已有程序在运行中"。
             kotlinx.coroutines.delay(8_000L)
             if (_ui.value.running) {
+                val stuck = engine.isBusy
                 _ui.update {
                     it.copy(
                         running = false,
                         inputVisible = false,
                         exitCode = it.exitCode ?: -1,
+                        engineStuck = stuck,
                         output = appendLines(
                             it.output,
-                            "[CodePocket] 引擎未响应停止，界面已强制复位。" +
-                                "若再次运行提示\"已有程序在运行中\"，说明旧进程仍在收尾，请稍候重试。"
+                            if (stuck) {
+                                "[CodePocket] 引擎未响应停止：Python 执行线程卡在不可中断的原生调用。" +
+                                    "点输出栏「重启应用」可恢复；当前文件会先保存。"
+                            } else {
+                                "[CodePocket] 引擎未响应停止，界面已强制复位。若再次运行提示" +
+                                    "\"已有程序在运行中\"，说明旧进程仍在收尾，请稍候重试。"
+                            }
                         )
                     )
                 }
@@ -1011,6 +1035,48 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onInputDraftChanged(text: String) {
         _ui.update { it.copy(inputDraft = text) }
+    }
+
+    /**
+     * 引擎被不可中断的原生调用占死时的最后手段。
+     *
+     * 不尝试在同一个进程里重建 CPython：GIL 仍被旧线程攥着，`Py_Finalize` 只会
+     * 卡住或崩溃。这里先同步保存当前文件，再用 AlarmManager 预约一次启动，
+     * 然后杀掉本进程；系统会在 1 秒左右把 App 拉回来，恢复到上次会话。
+     * setExact 只在有 exact-alarm 权限时调用，失败退回 set；lint 抑制是因为
+     * 权限检查已由 canScheduleExactAlarms 完成。
+     */
+    @SuppressLint("MissingPermission")
+    fun restartApp() {
+        saveOnBackground()
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        if (launch == null) {
+            _ui.update { it.copy(message = "无法重启：找不到启动入口", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        launch.addFlags(
+            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+        )
+        val flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+            android.app.PendingIntent.FLAG_IMMUTABLE
+        val pending = android.app.PendingIntent.getActivity(context, 340, launch, flags)
+        val alarm = context.getSystemService(android.app.AlarmManager::class.java)
+        val at = System.currentTimeMillis() + 900L
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+                !alarm.canScheduleExactAlarms()
+            ) {
+                alarm.set(android.app.AlarmManager.RTC, at, pending)
+            } else {
+                alarm.setExact(android.app.AlarmManager.RTC, at, pending)
+            }
+        }.onFailure {
+            // 没有 exact-alarm 权限或厂商限制时退回非精确闹钟；晚几秒启动也好过不启动。
+            runCatching { alarm.set(android.app.AlarmManager.RTC, at, pending) }
+        }
+        runCatching { ExecutionService.stop(context) }
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     /** 运行中由用户手动展开 stdin 输入行（猜数字等交互程序用） */
@@ -1072,6 +1138,122 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             if (main != null) doOpenFile(main)
         }
     }
+
+    /**
+     * 从远程地址克隆一个新项目并切过去。
+     *
+     * 克隆前先保存当前脏文件；克隆失败时清理半成品目录，不把坏仓库留在项目列表里。
+     * URL 允许内嵌 https token，token 只进 JGit CredentialsProvider，不写 `.git/config`。
+     */
+    fun cloneProject(remoteUrl: String, projectName: String) {
+        val url = remoteUrl.trim()
+        if (url.isBlank()) {
+            _ui.update { it.copy(message = "远程地址不能为空", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        val name = projectName.trim().ifBlank { suggestedCloneName(url) }
+        viewModelScope.launch {
+            if (!persistCurrentIfDirty()) return@launch
+            if (_ui.value.dirty) {
+                _ui.update { it.copy(message = "保存期间有新输入，已取消克隆", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
+            val target = withContext(Dispatchers.IO) { projects.allocateProjectDir(name) }
+            _ui.update { it.copy(message = "正在克隆 ${hostOf(url)} …", messageSeq = it.messageSeq + 1) }
+            val result = withContext(Dispatchers.IO) { git.cloneInto(target, url) }
+            // cloneInto 用中文结果返回失败；用 .git 是否存在判断真实成功，避免把失败文案当成功。
+            if (!File(target, ".git").isDirectory) {
+                withContext(Dispatchers.IO) { target.deleteRecursively() }
+                _ui.update { it.copy(message = result, messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
+            switchProject(target)
+            _ui.update { it.copy(message = result, messageSeq = it.messageSeq + 1) }
+            openMainFile(target)
+        }
+    }
+
+    /** 从 SAF 选中的 zip 导入为一个新项目并切过去。 */
+    fun importProjectZip(uri: android.net.Uri) {
+        viewModelScope.launch {
+            if (!persistCurrentIfDirty()) return@launch
+            if (_ui.value.dirty) {
+                _ui.update { it.copy(message = "保存期间有新输入，已取消导入", messageSeq = it.messageSeq + 1) }
+                return@launch
+            }
+            val displayName = withContext(Dispatchers.IO) {
+                queryDisplayName(uri)?.removeSuffix(".zip")?.removeSuffix(".ZIP")
+            }
+            _ui.update { it.copy(message = "正在导入项目 zip …", messageSeq = it.messageSeq + 1) }
+            val dir = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        com.devterminal.project.ProjectArchive.import(input, projects.root, displayName)
+                    } ?: throw java.io.IOException("无法读取所选压缩包")
+                }
+            }.getOrElse { e ->
+                _ui.update {
+                    it.copy(message = "导入项目失败：${e.message}", messageSeq = it.messageSeq + 1)
+                }
+                return@launch
+            }
+            switchProject(dir)
+            _ui.update {
+                it.copy(message = "已导入项目 ${dir.name}", messageSeq = it.messageSeq + 1)
+            }
+            openMainFile(dir)
+        }
+    }
+
+    /** 把当前项目打成 zip 写到 SAF 目标。 */
+    fun exportProjectZip(uri: android.net.Uri) {
+        val dir = currentProject ?: run {
+            _ui.update { it.copy(message = "没有打开的项目", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        viewModelScope.launch {
+            if (!persistCurrentIfDirty()) return@launch
+            val summary = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        com.devterminal.project.ProjectArchive.export(dir, output)
+                    } ?: throw java.io.IOException("无法写入目标位置")
+                }
+            }.getOrElse { e ->
+                _ui.update {
+                    it.copy(message = "导出项目失败：${e.message}", messageSeq = it.messageSeq + 1)
+                }
+                return@launch
+            }
+            _ui.update {
+                it.copy(
+                    message = "已导出 ${dir.name}.zip · ${summary.files} 个文件 · " +
+                        "${String.format(java.util.Locale.US, "%.1f", summary.bytes / 1024.0 / 1024.0)}MB",
+                    messageSeq = it.messageSeq + 1
+                )
+            }
+        }
+    }
+
+    /** 导入/克隆成功后打开项目里第一个可运行文件；没有就保持空编辑器。 */
+    private fun openMainFile(dir: File) {
+        viewModelScope.launch {
+            val main = withContext(Dispatchers.IO) {
+                dir.walkTopDown().firstOrNull { it.isFile && LanguageRegistry.isRunnable(it) }
+            }
+            if (main != null) doOpenFile(main)
+        }
+    }
+
+    fun suggestedCloneName(remoteUrl: String): String =
+        remoteUrl.trim().trimEnd('/').substringAfterLast('/')
+            .removeSuffix(".git").ifBlank { "clone" }
+
+    fun suggestedProjectZipName(): String = "${currentProject?.name ?: "project"}.zip"
+
+    private fun hostOf(remoteUrl: String): String = runCatching {
+        java.net.URI(remoteUrl.trim().replaceFirst(Regex("^(https?://)[^/@]+@"), "$1")).host
+    }.getOrNull() ?: "远程"
 
     fun newFile(fileName: String) {
         val dir = currentProject ?: return

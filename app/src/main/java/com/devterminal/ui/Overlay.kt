@@ -23,6 +23,9 @@ sealed interface Overlay {
     /** 新建项目 */
     data object NewProject : Overlay
 
+    /** 从 Git 远程克隆一个新项目 */
+    data object CloneProject : Overlay
+
     /** Git 仓库 */
     data object Git : Overlay
 
