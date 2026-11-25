@@ -12,7 +12,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 [![Runtime](https://img.shields.io/badge/Runtime-100%25%20bundled-orange?style=flat-square)]()
 [![Ads](https://img.shields.io/badge/Ads-0-red?style=flat-square)]()
 
-**[Download APK](https://gitcode.com/badhope/CodePocket/releases)** · **[Website](https://x33834.github.io/CodePocket/)** · **[Gitee Mirror](https://gitee.com/badhope/CodePocket)**
+**[Download APK](https://gitcode.com/badhope/CodePocket/releases)** · **[Website](https://badhope.github.io/CodePocket/)** · **[Gitee Mirror](https://gitee.com/badhope/CodePocket)**
 
 > Keep your IDE in your pocket — code offline, anywhere.
 
@@ -94,7 +94,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **6 editor themes** (Darcula / Monokai / Tomorrow Night Blue / Solarized…)
 
 ### Run code
-- **Python**: native CPython 3.13 (arm64 + x86_64), full stdlib (pure-Python part + C extensions)
+- **Python**: native CPython 3.13 (arm64 + x86_64), standard library (test/idlelib/turtledemo trimmed) + C extensions
 - **JavaScript**: Rhino 1.7.15, pure Java, `console.log` / `input`
 - **Lua**: LuaJ 3.0.1, pure Java, `print` / `input`
 - **Streaming output** · **`input()` interaction** · arrow-key / Tab soft keyboard
@@ -106,6 +106,11 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python go-to-definition**: cursor symbol → project-wide definitions, import-aware ranking, file/line/signature picker
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
+
+### Packaging cleanup (0.0.32)
+- **Stale toolchain note removed**: the 441MB `usrtar.zip` instructions are gone; the app uses the bundled native CPython runtime and JGit, not the retired Termux bundle
+- **Stdlib slimmed**: CPython `test`, `idlelib` and `turtledemo` are excluded from `python-stdlib.zip`; 1740 files / 7.1MB removed, all runtime modules and 53 C extensions untouched
+- **Git wording fixed**: docs and site now say init / commit / push / pull (no clone) instead of "full Git capability"
 
 ### Data safety & lifecycle (0.0.31)
 - **No silent data loss**: with auto-save off, switching files/tabs/projects now asks Save / Discard / Cancel instead of overwriting the dirty buffer

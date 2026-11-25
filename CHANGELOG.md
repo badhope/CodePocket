@@ -2,6 +2,22 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.32] — 2026-11-25
+
+### 修复
+
+- **移除旧工具链残留说明**：删除 `app/src/main/assets/README.txt`。该文件仍在教用户下载 441MB 的 `usrtar.zip`，属于已废弃的 Termux 方案；当前运行时是原生 CPython + JGit，继续随 APK 分发会误导用户以为安装包漏文件。
+- **标准库瘦身**：`scripts/package_native.sh` 打包时剔除 `test`、`idlelib`、`turtledemo` 三个目录，共 1,740 个文件、约 7.1MB 压缩体积；`python-stdlib.zip` 从 11.43MB 降到 4.32MB。运行时模块、`ensurepip` 与 53 个 C 扩展均未改动。
+- **修正 Git 能力表述**：官网与文档不再写“完整 Git 能力”，改为实际支持的 init / commit / push / pull；clone 尚未实现，避免过度承诺。
+- **修正官网链接**：README 的 Website 链接从 `x33834.github.io` 改为实际部署的 `badhope.github.io`。
+
+### 构建
+
+- `versionCode 32` / `versionName 0.0.32`。
+- release APK **24,284,004 B**，SHA-256 `4dd471de80afd7fcd11f4e40a086e408788e31293c1f0d5835c3c0f40e44697d`；debug APK **43,360,958 B**，SHA-256 `46403e44938788b397400748e9907fd0ee754c62180060babe3d29ce02a124df`。
+- `python-stdlib.zip` 从 11.43MB 降到 4.32MB，APK 解压内容 55.6MB / 1,138 文件。
+- JVM 单测 **137 通过**，lintRelease **0 Error / 37 Warning**；两个包均通过签名与 `versionCode=32` 校验。
+
 ## [0.0.31] — 2026-11-25
 
 ### 修复
