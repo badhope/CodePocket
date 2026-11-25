@@ -2,7 +2,6 @@ package com.devterminal.ui
 
 import android.Manifest
 import android.content.Intent
-import android.content.res.Configuration
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -93,6 +92,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -184,6 +184,38 @@ private val scrollToLineSaver = run {
             )
         }
     )
+}
+
+private data class DrawerActionItem(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val enabled: Boolean = true,
+    val accent: androidx.compose.ui.graphics.Color? = null,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun DrawerActionGrid(actions: List<DrawerActionItem>, columns: Int) {
+    val cs = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+        actions.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
+                row.forEach { item ->
+                    ActionTile(
+                        icon = item.icon,
+                        label = item.label,
+                        onClick = item.onClick,
+                        modifier = Modifier.weight(1f),
+                        enabled = item.enabled,
+                        accent = item.accent ?: cs.primary,
+                    )
+                }
+                repeat(columns - row.size) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -357,11 +389,16 @@ fun EditorScreen(vm: EditorViewModel) {
         return
     }
 
+    val config = LocalConfiguration.current
+    val fontScale = LocalDensity.current.fontScale
+    val drawerWidth = EditorLayoutPolicy.drawerWidthDp(config.screenWidthDp).dp
+    val drawerColumns = EditorLayoutPolicy.drawerColumns(config.screenWidthDp, fontScale)
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier.width(272.dp),
+                modifier = Modifier.width(drawerWidth),
                 drawerContainerColor = cs.surface
             ) {
                 Column(Modifier.fillMaxHeight()) {
@@ -416,46 +453,42 @@ fun EditorScreen(vm: EditorViewModel) {
                     ) {
                         SectionLabel("快捷动作")
                         Spacer(Modifier.height(Dimens.sm))
-                        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                            ActionTile(Icons.Outlined.Folder, "项目",
-                                onClick = { overlay = Overlay.SwitchProject },
-                                modifier = Modifier.weight(1f))
-                            ActionTile(Icons.Filled.FileDownload, "导入",
-                                onClick = { importLauncher.launch(arrayOf("*/*")) },
-                                modifier = Modifier.weight(1f))
-                            ActionTile(Icons.Filled.FileUpload, "导出",
-                                onClick = { exportLauncher.launch(vm.suggestedExportName()) },
-                                enabled = ui.currentFile != null,
-                                modifier = Modifier.weight(1f))
-                        }
-                        Spacer(Modifier.height(Dimens.sm))
-                        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                            ActionTile(Icons.Filled.AccountTree, "Git",
-                                onClick = { overlay = Overlay.Git; vm.refreshGitStatus() },
-                                modifier = Modifier.weight(1f))
-                            ActionTile(Icons.Filled.AutoAwesome, "AI",
-                                onClick = { overlay = Overlay.Ai },
-                                accent = cs.secondary,
-                                modifier = Modifier.weight(1f))
-                            ActionTile(Icons.Filled.Search, "搜索",
-                                onClick = { overlay = Overlay.GlobalSearch },
-                                modifier = Modifier.weight(1f))
-                        }
-                        Spacer(Modifier.height(Dimens.sm))
-                        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
-                            ActionTile(Icons.Outlined.HealthAndSafety, "自检",
-                                onClick = { overlay = Overlay.Diagnostics },
-                                modifier = Modifier.weight(1f))
-                            ActionTile(Icons.Filled.Settings, "设置",
-                                onClick = { overlay = Overlay.Settings },
-                                modifier = Modifier.weight(1f))
-                            ActionTile(Icons.Outlined.LibraryBooks, "指南",
-                                onClick = { overlay = Overlay.Onboarding },
-                                modifier = Modifier.weight(1f))
-                            ActionTile(Icons.Outlined.Info, "关于",
-                                onClick = { overlay = Overlay.About },
-                                modifier = Modifier.weight(1f))
-                        }
+                        DrawerActionGrid(
+                            actions = listOf(
+                                DrawerActionItem(Icons.Outlined.Folder, "项目") {
+                                    overlay = Overlay.SwitchProject
+                                },
+                                DrawerActionItem(Icons.Filled.FileDownload, "导入") {
+                                    importLauncher.launch(arrayOf("*/*"))
+                                },
+                                DrawerActionItem(Icons.Filled.FileUpload, "导出", enabled = ui.currentFile != null) {
+                                    exportLauncher.launch(vm.suggestedExportName())
+                                },
+                                DrawerActionItem(Icons.Filled.AccountTree, "Git") {
+                                    overlay = Overlay.Git
+                                    vm.refreshGitStatus()
+                                },
+                                DrawerActionItem(Icons.Filled.AutoAwesome, "AI", accent = cs.secondary) {
+                                    overlay = Overlay.Ai
+                                },
+                                DrawerActionItem(Icons.Filled.Search, "搜索") {
+                                    overlay = Overlay.GlobalSearch
+                                },
+                                DrawerActionItem(Icons.Outlined.HealthAndSafety, "自检") {
+                                    overlay = Overlay.Diagnostics
+                                },
+                                DrawerActionItem(Icons.Filled.Settings, "设置") {
+                                    overlay = Overlay.Settings
+                                },
+                                DrawerActionItem(Icons.Outlined.LibraryBooks, "指南") {
+                                    overlay = Overlay.Onboarding
+                                },
+                                DrawerActionItem(Icons.Outlined.Info, "关于") {
+                                    overlay = Overlay.About
+                                },
+                            ),
+                            columns = drawerColumns,
+                        )
                     }
                 }
             }
@@ -463,99 +496,26 @@ fun EditorScreen(vm: EditorViewModel) {
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            MonoText(
-                                ui.currentFile?.name ?: "未打开文件",
-                                color = if (ui.currentFile != null) cs.onSurface else cs.faint,
-                                fontSize = 13,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
-                            )
-                            if (ui.dirty) {
-                                Spacer(Modifier.width(6.dp))
-                                Box(
-                                    Modifier
-                                        .size(6.dp)
-                                        .background(cs.secondary, androidx.compose.foundation.shape.CircleShape)
-                                )
-                            }
-                            if (ui.currentFile != null) {
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    currentSpec.displayName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = cs.muted,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                if (!currentSpec.isRunnable) {
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        "仅编辑",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = cs.faint,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Outlined.Menu, "打开文件树", tint = cs.muted)
-                        }
-                    },
-                    actions = {
-                        // 预览开关：只有 Markdown / HTML 文件出现
-                        if (vm.isPreviewable(ui.currentFile)) {
-                            QuietIconButton(
-                                Icons.Outlined.Preview, "实时预览",
-                                onClick = { vm.togglePreview() },
-                                tint = if (ui.previewVisible) cs.primary else cs.muted
-                            )
-                        }
-                        // 命令面板：其余动作的归处，保持顶栏清爽
-                        QuietIconButton(
-                            Icons.Outlined.Terminal, "命令面板",
-                            onClick = { overlay = Overlay.Palette }
-                        )
-                        if (ui.dirty) {
-                            QuietIconButton(
-                                Icons.Filled.Save, "保存",
-                                onClick = { vm.save() }, tint = cs.primary
-                            )
-                        }
-                        if (ui.running) {
-                            QuietIconButton(
-                                Icons.Filled.Stop, "停止",
-                                onClick = { vm.stopRun() }, tint = cs.error
-                            )
-                        } else {
-                            val canRun = vm.canRun(ui.currentFile)
-                            if (canRun && ui.currentFile?.extension.equals("py", ignoreCase = true)) {
-                                QuietIconButton(
-                                    Icons.Outlined.BugReport, "调试当前文件",
-                                    onClick = { vm.debugCurrent() },
-                                    tint = cs.muted,
-                                    size = 20.dp
-                                )
-                            }
-                            QuietIconButton(
-                                Icons.Filled.PlayArrow, "运行",
-                                onClick = { vm.runCurrent() },
-                                enabled = canRun,
-                                tint = if (canRun) cs.primary else cs.faint,
-                                size = 24.dp
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = cs.surface,
-                        scrolledContainerColor = cs.surface
-                    )
+                val config = LocalConfiguration.current
+                val fontScale = LocalDensity.current.fontScale
+                EditorTopBar(
+                    fileName = ui.currentFile?.name,
+                    dirty = ui.dirty,
+                    languageLabel = currentSpec.displayName,
+                    isRunnable = currentSpec.isRunnable,
+                    canRun = vm.canRun(ui.currentFile),
+                    isPython = ui.currentFile?.extension.equals("py", ignoreCase = true),
+                    previewable = vm.isPreviewable(ui.currentFile),
+                    previewVisible = ui.previewVisible,
+                    running = ui.running,
+                    compact = EditorLayoutPolicy.useCompactToolbar(config.screenWidthDp, fontScale),
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onSave = vm::save,
+                    onStop = vm::stopRun,
+                    onRun = vm::runCurrent,
+                    onDebug = vm::debugCurrent,
+                    onPalette = { overlay = Overlay.Palette },
+                    onPreview = vm::togglePreview,
                 )
             },
             bottomBar = {
@@ -587,13 +547,12 @@ fun EditorScreen(vm: EditorViewModel) {
             }
             BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
             val availableHeight = maxHeight.value
-            // ---- 横竖屏共用同一份内容、只是摆放不同 ----
+            // ---- 宽屏用两栏，窄屏保持上下结构 ----
             // 内容抽成局部 Composable（捕获 ui/vm 等闭包变量），避免两份拷贝日后走样。
-            // 横屏下编辑器与输出面板左右分栏：横屏最缺的是纵向空间，
-            // 继续上下排布会把编辑器挤到看不见代码（设计稿 grid 方案已验证过两栏收益）。
-            // 不能用内容区高度判断横竖屏：键盘弹起会让可用高度骤减，
-            // 竖屏手机可能被误判成横屏并突然变成左右分栏。这里以系统方向为准。
-            val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+            // 600dp 以上（横屏手机、平板竖屏）把输出面板放到右侧：横向有余量时，
+            // 上下叠放反而会把代码挤成一条。窄屏不按方向强分栏，给编辑器留高度。
+            // 用内容区宽度而不是 orientation，避免键盘弹起/分屏把方向判断带偏。
+            val useTwoPane = EditorLayoutPolicy.useTwoPane(maxWidth.value, maxHeight.value)
 
             // 只在渲染时夹取；键盘收起后自动恢复用户偏好高度。
             val visibleOutputHeight = LayoutMetrics.visibleOutputHeight(
@@ -745,7 +704,7 @@ fun EditorScreen(vm: EditorViewModel) {
                 )
             }
 
-            if (isLandscape) {
+            if (useTwoPane) {
                 Column(Modifier.fillMaxSize()) {
                     envBanner()
                     Row(Modifier.fillMaxWidth().weight(1f)) {
