@@ -135,11 +135,11 @@
 
   <header>
     <h1>手机上真正离线的 <span class="grad">编程终端</span></h1>
-    <p class="sub">在手机上直接写、跑、调试 Python、JavaScript 与 Lua。内嵌原生 CPython 3.13 引擎与完整 Git 能力，现代 IDE 体验——全程零网络、零广告。</p>
+    <p class="sub">在手机上直接写、跑、调试 Python、JavaScript 与 Lua。内嵌原生 CPython 3.13 引擎与离线 Git 工作流（init/commit/push/pull），现代 IDE 体验——全程零网络、零广告。</p>
     <div class="badges">
       <span class="badge"><b>100%</b> 离线运行</span>
       <span class="badge"><b>Python 3.13</b> · <b>JS</b> · <b>Lua</b></span>
-      <span class="badge"><b>v0.0.31</b> 数据安全加固</span>
+      <span class="badge"><b>v0.0.32</b> 包装清理</span>
       <span class="badge"><b>0</b> 广告 · 免费开源</span>
     </div>
     <div class="cta">
@@ -169,7 +169,7 @@
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-5 3 5 3M16 9l5 3-5 3M14 4l-4 16"/></svg></div>
         <h3>现代 IDE 体验</h3>
         <p>多文件 Tab、全局搜索、正则计数跳转、报错行点击直达源码、自动闭合括号、行号开关、自动换行、跳行、图片预览、双指缩放字号，还有 Git 面板、命令面板与分屏预览。</p>
-        <p><b>0.0.31 新增：</b>关闭自动保存后切文件/关 Tab/切项目先询问保存或放弃；文件保存改为临时文件 + fsync + rename；返回键关终端会停止 PTY，关闭 Agent 面板会取消任务；Agent 修改/撤销检查点不再覆盖未保存编辑；检查点 blob、会话日志和分享文本都有硬上限。</p>
+        <p><b>0.0.32 新增：</b>移除旧版 441MB usrtar 工具链说明，标准库剔除 test/idlelib/turtledemo 共 1740 个文件，APK 更小；运行模块与 53 个 C 扩展保持不变。Git 文案改为实际支持的 init/commit/push/pull。</p>
         <p><b>0.0.30：</b>手机端遮挡治理：所有面板按键盘上方可用高度布局，标题/输入框/按钮固定，只有正文滚动；终端全屏自适应、按键条贴键盘；键盘不再误触发布局切换。</p>
         <p><b>0.0.29：</b>本地 xterm.js ANSI 终端模拟器：真 PTY + 颜色/光标/全屏重绘，<code>vim</code>/<code>top</code>/<code>less</code> 正常显示；移动端方向键与 Ctrl 键、亮暗双主题。</p>
       </div>
@@ -232,7 +232,7 @@
 
   <section id="download">
     <h2>下载 APK</h2>
-    <p class="lead"><b>v0.0.31 数据安全加固版</b>：APK 内嵌完整 CPython 3.13 引擎、标准库与 50+ 原生 C 扩展，安装即用；支持 arm64 手机与 x86_64 模拟器，release 包约 31MB。本版补数据安全与后台生命周期：关闭自动保存后切文件/关 Tab/切项目先询问；保存原子落盘；返回键关终端真正停 PTY；Agent 不再覆盖未保存编辑；检查点与会话日志自动回收；熄屏跑长脚本持有 partial wakelock。</p>
+    <p class="lead"><b>v0.0.32 包装清理版</b>：APK 内嵌 CPython 3.13 引擎、运行用标准库与 50+ 原生 C 扩展，安装即用；支持 arm64 手机与 x86_64 模拟器。本版移除旧 usrtar 工具链说明，剔除不参与运行的 test/idlelib/turtledemo，release 包约 24MB，包体更小但不缺运行时。</p>
     <div class="dl">
       <div class="card">
         <h3>GitCode Release</h3>

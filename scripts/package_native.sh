@@ -110,7 +110,9 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
     for root, dirs, files in os.walk(src):
         # __pycache__ 是字节码缓存，占标准库体积 3/4，却能在首次 import 时自动重建；
         # 不进 zip 可把 60MB 降到 12MB 左右，显著缩短首启解压时间。
-        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        # test / idlelib / turtledemo 是 CPython 自测与演示代码，Android 端不运行，
+        # 共约 1750 个文件、6.8MB 压缩体积，打包时剔除。
+        dirs[:] = [d for d in dirs if d != "__pycache__" and d not in {"test", "idlelib", "turtledemo"}]
         if "lib-dynload" in root:
             continue  # C 扩展走 jniLibs，不进 zip
         for f in files:

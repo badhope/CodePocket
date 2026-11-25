@@ -1,16 +1,16 @@
 # CodePocket「口袋码」用户手册
 
-> 版本：v0.0.31 · 适用：Android 8.0+（Python 支持 ARM64 / x86_64；JavaScript/Lua 任意 ABI）
+> 版本：v0.0.32 · 适用：Android 8.0+（Python 支持 ARM64 / x86_64；JavaScript/Lua 任意 ABI）
 
 ---
 
 ## 1. 安装
 
-1. 从 [Releases](https://gitcode.com/badhope/CodePocket/releases) 下载 release APK（双 ABI 约 31MB，debug 包约 49MB）；
+1. 从 [Releases](https://gitcode.com/badhope/CodePocket/releases) 下载 release APK（双 ABI 约 24MB，debug 包约 43MB）；
 2. 手机允许"安装未知来源应用"（不同厂商路径不同，一般在 设置 → 安全 → 未知来源）；
 3. 安装后打开，首次运行会自动解压内置 Python 标准库（约 1~5 秒，之后秒开）。
 
-> 提示：release 约 31MB，因为内置了完整 CPython 3.13 原生运行时（arm64 + x86_64）、标准库与本地推理桥。装完即离线，无需再下载任何东西；本地模型权重按需下载。
+> 提示：release 约 24MB，因为内置了 CPython 3.13 原生运行时（arm64 + x86_64）、运行用标准库与本地推理桥。标准库已剔除 test/idlelib/turtledemo 等不参与运行的测试/演示目录；本地模型权重仍按需下载。
 
 ---
 
@@ -119,7 +119,7 @@ Agent 面板底部有「历史会话」。点开后列出最近 20 次任务的�
 
 ### 6.3 小屏与软键盘：哪些东西不会被挡住了
 
-0.0.31 重点补数据安全与后台生命周期：关闭自动保存后切文件/关 Tab/切项目会先询问保存或放弃；保存改为临时文件 + fsync + rename；编辑器拒绝打开超过 5MB 的文件和二进制文件；返回键关终端会停止 PTY，关闭 Agent 面板会取消任务；Agent 修改/撤销检查点不再覆盖未保存编辑；检查点 blob 与会话日志有回收/上限；运行时持有 partial wakelock，熄屏跑长脚本不被挂起。仍建议在真机上确认终端、软键盘与文件选择器的最终手感。
+0.0.32 重点做包体清理：删除旧 usrtar 工具链说明，标准库剔除 test/idlelib/turtledemo 共 1740 个文件，运行模块与 53 个 C 扩展未动；Git 文案改为实际支持的 init/commit/push/pull。0.0.31 重点补数据安全与后台生命周期：关闭自动保存后切文件/关 Tab/切项目会先询问保存或放弃；保存改为临时文件 + fsync + rename；编辑器拒绝打开超过 5MB 的文件和二进制文件；返回键关终端会停止 PTY，关闭 Agent 面板会取消任务；Agent 修改/撤销检查点不再覆盖未保存编辑；检查点 blob 与会话日志有回收/上限；运行时持有 partial wakelock，熄屏跑长脚本不被挂起。仍建议在真机上确认终端、软键盘与文件选择器的最终手感。
 
 0.0.30 把手机端最容易出问题的几个位置重做了一遍：
 

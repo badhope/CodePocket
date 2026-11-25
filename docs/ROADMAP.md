@@ -4,8 +4,10 @@
 
 ---
 
-## 已实现（v0.0.31 数据安全加固）
+## 已实现（v0.0.32 包装清理）
 
+- ✅ 移除旧 `usrtar.zip` 工具链说明，避免“安装包漏文件”的误解；标准库剔除 test/idlelib/turtledemo，`python-stdlib.zip` 从 11.43MB 降到 4.32MB
+- ✅ Git 文案对齐实际能力：init / commit / push / pull，不宣称 clone
 - ✅ 全局面板 edge-to-edge + IME 安全布局：标题/输入框/按钮固定，正文滚动；设置、AI、Agent、Git、搜索、终端在软键盘上方完整可见
 - ✅ 终端全屏自适应：PTY 主体按剩余高度伸缩，Esc/Tab/Ctrl/方向键条贴键盘上方；非 PTY 输入框固定底部
 - ✅ 输出面板高度分离用户偏好与当前可见值，键盘弹起不覆盖设置；展开 stdin 输入行通常至少 220dp，极矮屏降至 150dp
