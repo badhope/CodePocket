@@ -5,7 +5,8 @@ import kotlinx.coroutines.flow.Flow
 /**
  * 运行引擎的统一抽象：UI 层只依赖本接口，不关心底层实现。
  *
- * 当前唯一实现为 [NativeEngine]（原生 CPython 3.13.9，arm64-v8a / x86_64）。
+ * Python 实现为 [RemoteNativeEngine]：真正的 [NativeEngine] 在独立的 `:engine`
+ * 进程里，主进程只持有 Messenger 代理；JS/Lua 为同进程的纯 Java 实现。
  */
 interface RunEngine {
 
@@ -40,4 +41,14 @@ interface RunEngine {
 
     /** 释放运行时资源（退出应用时调用） */
     fun release()
+
+    /**
+     * 强制重启运行时。
+     *
+     * 纯 Java 引擎默认退化为 release；远程 Python 引擎会杀掉独立的 `:engine`
+     * 进程，主进程的编辑器和未保存内容不受影响。
+     */
+    suspend fun hardReset() {
+        release()
+    }
 }

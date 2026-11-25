@@ -23,10 +23,11 @@ CodePocket 是一款完全离线的安卓多语言 IDE。Python 由 NDK 交叉�
 - 原生 ARM64 / x86_64 性能，跑计算脚本不卡壳；
 - 真文件系统：脚本直接读写手机私有目录，cwd 就是项目目录；
 - 标准库全量：math / json / socket / ssl / sqlite3 / ctypes 等 C 扩展随包可用；
-- JGit 离线 Git：init / commit / push / pull 都能在手机上完成。
+- JGit 离线 Git：init / stage / unstage / commit / diff / push / pull / clone；提交前能逐文件审阅差异。
 
 ### 对所有人
 - **开源**（Apache-2.0）：代码透明，可审查、可 fork、可贡献；
+- **引擎进程隔离**：Python 跑在独立 `:engine` 进程，脚本卡死只重启引擎，不丢编辑器内容；
 - **无广告无内购**：没有会员墙，功能不藏着掖着；
 - **隐私友好**：代码和数据都在设备本地，AI 助手由用户自配端点（BYOK）。
 
@@ -38,9 +39,9 @@ CodePocket 是一款完全离线的安卓多语言 IDE。Python 由 NDK 交叉�
 |---|---|
 | 写代码 | 多文件 Tab、文件树、语法高亮（18 种语言 TextMate）、静态补全、查找替换、全局搜索 |
 | 跑代码 | 原生 CPython 3.13、流式输出、`input()` 交互、死循环超时中断、命令行参数 |
-| 管项目 | 多项目切换、4 个 Python 模板、SAF 导入导出、离线 Git |
+| 管项目 | 多项目切换、4 个 Python 模板、SAF 导入导出、离线 Git（含暂存与 Diff） |
 | 看结果 | Markdown / HTML 分屏预览、PNG 图片直接查看、输出复制与分享 |
-| 提效率 | 命令面板 ⌘K、AI 助手（BYOK）、会话恢复、崩溃日志本地留存 |
+| 提效率 | 命令面板 ⌘K、AI 助手（BYOK）、会话恢复、崩溃日志本地留存、纯 Python 包离线导入 |
 
 ---
 
@@ -58,8 +59,9 @@ CodePocket 是一款完全离线的安卓多语言 IDE。Python 由 NDK 交叉�
 - Python 运行：✅ 完整（原生 CPython 3.13，arm64 + x86_64）；
 - JavaScript / Lua 运行：✅ 纯 Java，任意 ABI；
 - Java / Kotlin / TypeScript 等 14 种语言：仅编辑、高亮与补全，不提供运行；
-- numpy / pandas / matplotlib：⚠️ **未预装**，离线导入第三方 wheel 的能力后续开放；
-- pip 联网装包：❌ 离线定位，不提供在线包安装。
+- numpy / pandas / matplotlib：⚠️ **未预装**；纯 Python `.whl` 可离线导入，含 Android 原生 `.so` 的 wheel 会在安装前被拒绝；
+- pip 联网装包：❌ 离线定位，不提供在线包安装；
+- Gradle / Java / Kotlin 工程构建、完整 LSP：❌ 不在 0.1.0 范围，不冒充 AndroidIDE。
 
 ---
 

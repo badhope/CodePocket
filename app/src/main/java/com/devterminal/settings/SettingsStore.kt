@@ -5,6 +5,10 @@ import android.content.SharedPreferences
 import android.content.res.Configuration
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * 主题模式（三态）：跟随系统 / 浅色 / 深色。
@@ -119,6 +123,18 @@ class SettingsStore(context: Context) {
     @Volatile
     private var encryptedReadFailed = false
 
+    /**
+     * 敏感字段写盘队列。
+     *
+     * EncryptedSharedPreferences.edit() 会走 Keystore 加密，低端机上在主线程
+     * 连续拖字号/输出高度会掉帧。这里把状态更新留在主线程，把加密写合并到
+     * 单线程：连续 20 次 save 只落最后一版，且不阻塞 UI。
+     */
+    private val writeExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "codepocket-settings-write").apply { isDaemon = true }
+    }
+    private val pendingSensitive = AtomicReference<AppSettings?>(null)
+
     init {
         runCatching { migrateSensitiveFromPlaintext() }
     }
@@ -216,15 +232,34 @@ class SettingsStore(context: Context) {
             .putString(KEY_GIT_NAME, s.gitUserName)
             .putString(KEY_GIT_EMAIL, s.gitUserEmail)
             .apply()
-        // 敏感字段写加密 prefs。Keystore 在极少数 ROM 上可能失效，
-        // 这里必须兜底：写失败最多丢敏感字段，不能让设置页保存动作直接崩溃。
-        runCatching {
-            encrypted.edit()
-                .putString(KEY_AI_KEY, s.aiApiKey)
-                .putString(KEY_GIT_REMOTE, s.gitRemoteUrl)
-                .putString(KEY_MCP_ENDPOINT, s.mcpEndpoint)
-                .apply()
-        }.onFailure { android.util.Log.w("SettingsStore", "敏感设置写入失败", it) }
+        // 敏感字段写加密 prefs，放到单线程合并落盘。Keystore 在极少数 ROM 上
+        // 可能失效，写失败最多丢敏感字段，不能让设置页保存动作直接崩溃。
+        pendingSensitive.set(s)
+        writeExecutor.execute {
+            while (true) {
+                val latest = pendingSensitive.getAndSet(null) ?: break
+                runCatching {
+                    encrypted.edit()
+                        .putString(KEY_AI_KEY, latest.aiApiKey)
+                        .putString(KEY_GIT_REMOTE, latest.gitRemoteUrl)
+                        .putString(KEY_MCP_ENDPOINT, latest.mcpEndpoint)
+                        .commit()
+                }.onFailure { android.util.Log.w("SettingsStore", "敏感设置写入失败", it) }
+            }
+        }
+    }
+
+    /**
+     * 测试/退出前把队列里的最后一版敏感设置落盘。
+     *
+     * 不能只取 pendingSensitive：worker 可能已经把它取走、正在 commit，此时
+     * 直接 return 会让 onStop 误以为已经落盘。这里往同一个单线程队列压一个
+     * 屏障任务，等它之前的写任务全部完成再返回。
+     */
+    fun flushWrites() {
+        val latch = CountDownLatch(1)
+        runCatching { writeExecutor.execute { latch.countDown() } }
+        runCatching { latch.await(3, TimeUnit.SECONDS) }
     }
 
     // ---------- 会话恢复：重启后回到上次的编辑现场 ----------

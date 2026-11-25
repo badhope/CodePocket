@@ -24,8 +24,8 @@ android {
         applicationId = "com.devterminal"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 34
-        versionName = "0.0.34"
+        versionCode = 40
+        versionName = "0.1.0"
         vectorDrawables { useSupportLibrary = true }
         // 原生 CPython 引擎：同时打 arm64 与 x86_64（后者用于模拟器/ChromeOS）
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
@@ -78,6 +78,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 
     packaging {
@@ -142,4 +146,9 @@ dependencies {
     testImplementation(libs.junit)
     // Android 的 org.json 在 JVM 单测里是 stub；补一份真实实现给 AgentDecisionParser 测试
     testImplementation("org.json:json:20240303")
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.compose.ui.test.manifest)
 }

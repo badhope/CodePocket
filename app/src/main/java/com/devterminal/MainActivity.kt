@@ -24,6 +24,12 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: EditorViewModel by viewModels()
 
+    override fun onStop() {
+        // 设置页的敏感字段是合并后台写；进后台时主动落盘，别等进程被回收。
+        runCatching { viewModel.flushSettings() }
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // 启动屏：在 super.onCreate 之前安装，图标在深色背景上展示
         installSplashScreen()

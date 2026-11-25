@@ -20,8 +20,9 @@ object EngineProvider {
     fun create(context: Context): RunEngine {
         checkNativeRuntime(context)
         val abi = Build.SUPPORTED_ABIS.firstOrNull { it == "arm64-v8a" || it == "x86_64" } ?: "unknown"
-        Log.i(TAG, "使用原生 CPython 3.13.9 ($abi) + Rhino/LuaJ 纯 Java 运行时")
-        return NativeEngine(context)
+        Log.i(TAG, "使用独立进程 CPython 3.13.9 ($abi) + Rhino/LuaJ 纯 Java 运行时")
+        // 主进程只拿代理，不加载 libpybridge；真正的 NativeEngine 在 :engine 进程。
+        return RemoteNativeEngine(context.applicationContext)
     }
 
     /**
@@ -50,17 +51,8 @@ object EngineProvider {
             )
         }
 
-        // 3) JNI 桥能否加载（触发 NativeBridge 静态 init → System.loadLibrary）
-        try {
-            Class.forName("com.devterminal.engine.NativeBridge")
-        } catch (e: UnsatisfiedLinkError) {
-            Log.e(TAG, "loadLibrary(pybridge) 失败", e)
-            throw IllegalStateException(
-                "原生 Python 运行时加载失败（库可能损坏或与设备不兼容）：${e.message}", e
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "NativeBridge 初始化失败", e)
-            throw IllegalStateException("原生 Python 初始化失败：${e.message}", e)
-        }
+        // 3) 不在主进程做 Class.forName("NativeBridge")。
+        //    libpybridge 必须在 :engine 进程加载；主进程只校验 APK 资产，
+        //    真正的 JNI 错误由引擎进程通过 MSG_PREPARE_FAILED 回传。
     }
 }

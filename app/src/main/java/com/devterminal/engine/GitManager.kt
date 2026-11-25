@@ -1,8 +1,17 @@
 package com.devterminal.engine
 
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.diff.DiffFormatter
+import org.eclipse.jgit.dircache.DirCacheIterator
+import org.eclipse.jgit.treewalk.AbstractTreeIterator
+import org.eclipse.jgit.treewalk.CanonicalTreeParser
+import org.eclipse.jgit.treewalk.EmptyTreeIterator
+import org.eclipse.jgit.treewalk.FileTreeIterator
+import org.eclipse.jgit.treewalk.filter.PathFilter
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.OutputStream
 
 /**
  * Git 操作管理（JGit 版）。
@@ -28,7 +37,12 @@ class GitManager {
         val recentCommits: List<String> = emptyList()
     )
 
-    data class Change(val statusCode: String, val path: String)
+    data class Change(val statusCode: String, val path: String) {
+        /** 第一列不是空格/问号，说明已进入暂存区。 */
+        val isStaged: Boolean
+            get() = statusCode.length >= 2 &&
+                statusCode[0] != ' ' && statusCode[0] != '?'
+    }
 
     /** JGit 纯 Java，随 APK 分发，天然可用 */
     fun isGitInstalled(): Boolean = true
@@ -45,14 +59,19 @@ class GitManager {
             runCatching {
                 val st = g.status().call()
                 // 状态码沿用 git CLI 惯例：?? 未跟踪；第一列暂存区，第二列工作区
-                val changes = buildList {
-                    st.added.forEach { add(Change("A ", it)) }
-                    st.changed.forEach { add(Change("M ", it)) }
-                    st.removed.forEach { add(Change("D ", it)) }
-                    st.modified.forEach { add(Change(" M", it)) }
-                    st.missing.forEach { add(Change(" D", it)) }
-                    st.untracked.forEach { add(Change("??", it)) }
-                }
+                // 同一路径可能同时在暂存区和工作区有变化（例如 MM）。
+                // 旧实现直接追加会生成两条同 path 记录，列表 key 冲突。
+                val codes = linkedMapOf<String, CharArray>()
+                fun touch(path: String): CharArray = codes.getOrPut(path) { charArrayOf(' ', ' ') }
+                st.added.forEach { touch(it)[0] = 'A' }
+                st.changed.forEach { touch(it)[0] = 'M' }
+                st.removed.forEach { touch(it)[0] = 'D' }
+                st.modified.forEach { touch(it)[1] = 'M' }
+                st.missing.forEach { touch(it)[1] = 'D' }
+                st.untracked.forEach { codes[it] = charArrayOf('?', '?') }
+                val changes = codes.entries
+                    .sortedBy { it.key }
+                    .map { (path, c) -> Change("${c[0]}${c[1]}", path) }
                 val branch = g.repository.branch ?: "HEAD"
                 var ahead = 0
                 var behind = 0
@@ -172,6 +191,184 @@ class GitManager {
                 }
             }
         }
+    }
+
+    /** 暂存单个文件（含删除）；不触碰其它路径。 */
+    fun stage(dir: File, path: String): String {
+        if (path.isBlank()) return "没有选择文件"
+        val git = openOrNull(dir) ?: return "还不是 Git 仓库：请先「初始化仓库」"
+        return git.use { g ->
+            guarded("暂存") {
+                g.add().addFilepattern(path).call()
+                // 删除的文件不在工作区，必须用 update 模式才能把删除写入索引。
+                if (path in g.status().call().missing) {
+                    g.add().setUpdate(true).addFilepattern(path).call()
+                }
+                "已暂存 $path"
+            }
+        }
+    }
+
+    /** 从暂存区撤回单个文件，工作区内容保持不动。 */
+    fun unstage(dir: File, path: String): String {
+        if (path.isBlank()) return "没有选择文件"
+        val git = openOrNull(dir) ?: return "还不是 Git 仓库：请先「初始化仓库」"
+        return git.use { g ->
+            guarded("取消暂存") {
+                g.reset().addPath(path).call()
+                "已取消暂存 $path"
+            }
+        }
+    }
+
+    /** 只提交暂存区，不再隐式 add 全部；界面把「暂存」和「提交」拆成两步。 */
+    fun commitStaged(dir: File, message: String, userName: String, userEmail: String): String {
+        if (message.isBlank()) return "提交信息不能为空"
+        val git = openOrNull(dir) ?: return "还不是 Git 仓库：请先「初始化仓库」"
+        return git.use { g ->
+            guarded("提交") {
+                val st = g.status().call()
+                val stagedCount = st.added.size + st.changed.size + st.removed.size
+                if (stagedCount == 0) {
+                    return@guarded "没有已暂存的变更：先点文件名右侧「暂存」或「全部暂存」"
+                }
+                val cmd = g.commit().setMessage(message.trim())
+                if (userName.isNotBlank()) {
+                    cmd.setAuthor(userName, userEmail.ifBlank { "dev@terminal.local" })
+                }
+                val rev = cmd.call()
+                "已提交 ${rev.name().take(7)}：${message.trim()}"
+            }
+        }
+    }
+
+    /** 暂存全部变更，等价于 git add -A（JGit 的 add(".") 不包含删除，需补 update）。 */
+    fun stageAll(dir: File): String {
+        val git = openOrNull(dir) ?: return "还不是 Git 仓库：请先「初始化仓库」"
+        return git.use { g ->
+            guarded("暂存全部") {
+                g.add().addFilepattern(".").call()
+                g.add().setUpdate(true).addFilepattern(".").call()
+                "已暂存全部变更"
+            }
+        }
+    }
+
+    /**
+     * 读取单文件差异。优先展示工作区 vs 暂存区，再回退到暂存区 vs HEAD；
+     * 未跟踪文件没有 Git 差异，直接把内容变成全加行，方便审阅。
+     *
+     * 输出限制 200KB：手机上的 Diff 对话框不是代码审阅器，超出只给前后片段。
+     */
+    fun diff(dir: File, path: String): String {
+        if (path.isBlank()) return "没有选择文件"
+        val git = openOrNull(dir) ?: return "还不是 Git 仓库：请先「初始化仓库」"
+        return git.use { g ->
+            guarded("查看差异") {
+                val st = g.status().call()
+                if (path in st.untracked) {
+                    val file = File(dir, path)
+                    if (!file.isFile) return@guarded "文件不存在：$path"
+                    val preview = readUntrackedCapped(file)
+                        ?: return@guarded "二进制文件不显示差异；如需查看请用终端工具"
+                    val body = preview.first.lineSequence().joinToString("\n") { "+$it" }
+                    val text = "--- /dev/null\n+++ b/$path\n$body"
+                    return@guarded preview.second?.let { capDiff(text) + it } ?: capDiff(text)
+                }
+                val working = captureDiff(g, path, cached = false)
+                val staged = captureDiff(g, path, cached = true)
+                when {
+                    working.isNotBlank() -> capDiff(working)
+                    staged.isNotBlank() -> capDiff("[已暂存]\n$staged")
+                    else -> "没有可显示的差异"
+                }
+            }
+        }
+    }
+
+    private fun captureDiff(g: Git, path: String, cached: Boolean): String {
+        val out = CappedOutputStream(200 * 1024)
+        val reader = g.repository.newObjectReader()
+        val formatter = DiffFormatter(out).apply {
+            setRepository(g.repository)
+            setReader(reader, g.repository.config)
+            setContext(3)
+            setPathFilter(PathFilter.create(path))
+        }
+        return try {
+            val index = DirCacheIterator(g.repository.readDirCache())
+            val headTreeId = g.repository.resolve("HEAD^{tree}")
+            val headTree: AbstractTreeIterator = if (headTreeId == null) {
+                EmptyTreeIterator()
+            } else {
+                CanonicalTreeParser().apply { reset(reader, headTreeId) }
+            }
+            // 未缓存：暂存区 -> 工作区；缓存：HEAD -> 暂存区。
+            val old = if (cached) headTree else index
+            val new = if (cached) index else FileTreeIterator(g.repository)
+            formatter.format(old, new)
+            formatter.flush()
+            out.text() + if (out.truncated) "\n\n[差异过大，已截断；完整内容请用终端 git diff]" else ""
+        } catch (_: Exception) {
+            ""
+        } finally {
+            runCatching { formatter.close() }
+            runCatching { reader.close() }
+        }
+    }
+
+    /**
+     * 未跟踪文件直接读进内存时同样要设上限：一个 100MB 的日志文件不应该在
+     * 点开 Diff 的瞬间把手机 OOM。返回 null 表示二进制，第二项是截断提示。
+     */
+    private fun readUntrackedCapped(file: File): Pair<String, String?>? {
+        val max = 200 * 1024
+        // readNBytes 在 Android API 33 才可用，这里手写有界读取以兼容 minSdk 24。
+        val out = ByteArrayOutputStream(max + 1)
+        file.inputStream().use { input ->
+            val buf = ByteArray(8192)
+            while (out.size() <= max) {
+                val n = input.read(buf)
+                if (n < 0) break
+                out.write(buf, 0, minOf(n, max + 1 - out.size()))
+            }
+        }
+        val bytes = out.toByteArray()
+        if (bytes.any { it == 0.toByte() }) return null
+        val text = bytes.copyOf(minOf(bytes.size, max)).toString(Charsets.UTF_8)
+        val note = if (bytes.size > max) "\n\n[文件过大，仅显示前 200KB；完整内容请用终端查看]" else null
+        return text to note
+    }
+
+    /** DiffFormatter 直接往这里写，超过 200KB 后只标记截断，不再增长内存。 */
+    private class CappedOutputStream(private val max: Int) : OutputStream() {
+        private val buffer = ByteArrayOutputStream(max)
+        var truncated = false
+            private set
+
+        override fun write(b: Int) {
+            if (buffer.size() < max) buffer.write(b) else truncated = true
+        }
+
+        override fun write(b: ByteArray, off: Int, len: Int) {
+            if (len <= 0) return
+            val room = max - buffer.size()
+            if (room <= 0) {
+                truncated = true
+                return
+            }
+            val n = minOf(room, len)
+            buffer.write(b, off, n)
+            if (n < len) truncated = true
+        }
+
+        fun text(): String = buffer.toString(Charsets.UTF_8.name())
+    }
+
+    private fun capDiff(text: String): String {
+        val max = 200 * 1024
+        if (text.length <= max) return text
+        return text.take(max) + "\n\n[差异过大，已截断；完整内容请用终端 git diff]"
     }
 
     // ---------- 内部工具 ----------

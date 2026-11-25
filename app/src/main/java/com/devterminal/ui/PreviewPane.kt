@@ -31,6 +31,7 @@ import androidx.core.content.FileProvider
 import com.devterminal.ui.components.QuietIconButton
 import com.devterminal.ui.theme.Dimens
 import com.devterminal.ui.theme.muted
+import com.devterminal.ui.theme.warning
 import java.io.File
 
 /**
@@ -48,6 +49,7 @@ import java.io.File
 fun PreviewPane(
     html: String,
     darkTheme: Boolean,
+    truncated: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val cs = MaterialTheme.colorScheme
@@ -118,6 +120,14 @@ fun PreviewPane(
                         }
                     },
                     size = 18.dp
+                )
+            }
+            if (truncated) {
+                Text(
+                    "预览仅显示前 512K 字符；编辑器原文未改动，完整内容请在浏览器打开。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.warning,
+                    modifier = Modifier.padding(horizontal = Dimens.md, vertical = 4.dp)
                 )
             }
             Spacer(Modifier.height(6.dp))

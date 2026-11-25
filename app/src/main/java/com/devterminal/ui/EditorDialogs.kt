@@ -71,6 +71,7 @@ import com.devterminal.ui.theme.faint
 import com.devterminal.ui.theme.hairline
 import com.devterminal.ui.theme.muted
 import java.io.File
+import java.io.IOException
 import kotlin.math.roundToInt
 
 /*
@@ -907,7 +908,7 @@ fun GotoLineDialog(onDismiss: () -> Unit, onGo: (Int) -> Unit) {
     }
 }
 
-/** 离线包管理：展示原生引擎内置能力（C 扩展 + site-packages），支持导入纯 Python 包（.zip） */
+/** 离线包管理：展示原生引擎内置能力（C 扩展 + site-packages），支持导入纯 Python wheel/zip */
 private data class BuiltinLibs(
     val extensions: List<String>,
     val purePackages: List<String>
@@ -923,58 +924,13 @@ private fun scanBuiltin(context: android.content.Context): BuiltinLibs {
             ?.filter { it.isNotBlank() }
             ?.sorted() ?: emptyList()
     }.getOrDefault(emptyList())
-    val pure = runCatching {
-        // 与引擎实际挂载路径一致（pybridge.c / NativeEngine）：
-        // filesDir/python-stdlib/lib/python3.13/site-packages
-        File(context.filesDir, "python-stdlib/lib/python3.13/site-packages").listFiles()
-            ?.filter { it.isDirectory }?.map { it.name }?.sorted() ?: emptyList()
-    }.getOrDefault(emptyList())
-    return BuiltinLibs(extensions, pure)
-}
-
-/** 导入纯 Python 包：仅接受 .zip（内容不含 .so/.wasm/.dll/.pyd 及 pyodide 痕迹），
- *  解压到 site-packages（pybridge 初始化时已把该目录加入 sys.path）。 */
-private fun importPurePythonPackage(context: android.content.Context, uri: Uri): Boolean {
-    val tmp = File(context.cacheDir, "import_pkg.zip")
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        tmp.outputStream().use { out -> input.copyTo(out) }
-    } ?: return false
-    val zf = runCatching { java.util.zip.ZipFile(tmp) }.getOrNull() ?: return false
-    try {
-        val it = zf.entries()
-        while (it.hasMoreElements()) {
-            val n = it.nextElement().name.lowercase()
-            if (n.endsWith(".so") || n.endsWith(".wasm") || n.endsWith(".dll") ||
-                n.endsWith(".pyd") || n.contains("pyodide")) return false
-        }
-        // 解压到引擎实际挂载的 site-packages 目录
-        val dest = File(context.filesDir, "python-stdlib/lib/python3.13/site-packages").apply { mkdirs() }
-        val eit = zf.entries()
-        var totalBytes = 0L
-        var entryCount = 0
-        while (eit.hasMoreElements()) {
-            val e = eit.nextElement()
-            if (e.isDirectory) continue
-            entryCount++
-            if (entryCount > 5000) return false
-            totalBytes += e.size.coerceAtLeast(0)
-            if (totalBytes > 100L * 1024 * 1024) return false
-            val relative = e.name.replace('\\', '/')
-            if (relative.startsWith("/") || relative.contains("..")) return false
-            val f = File(dest, relative)
-            val root = dest.canonicalFile
-            val rootPrefix = root.path + File.separator
-            val target = f.canonicalFile.path
-            if (target != root.path && !target.startsWith(rootPrefix)) return false
-            f.parentFile?.mkdirs()
-            zf.getInputStream(e).use { inp -> f.outputStream().use { out -> inp.copyTo(out) } }
-        }
-        tmp.delete()
-        return true
-    } finally {
-        zf.close()
-        tmp.delete()
+    val installer = com.devterminal.project.PythonPackageInstaller(
+        File(context.filesDir, "python-stdlib/lib/python3.13/site-packages")
+    )
+    val pure = installer.installed().map { pkg ->
+        if (pkg.version.isBlank()) pkg.name else "${pkg.name} ${pkg.version}"
     }
+    return BuiltinLibs(extensions, pure)
 }
 
 /** 离线包管理：列出内置能力，支持导入纯 Python 包 */
@@ -987,14 +943,37 @@ fun PackagesDialog(
     val cs = MaterialTheme.colorScheme
     var refresh by remember { mutableStateOf(0) }
     val libs = remember(refresh) { scanBuiltin(context) }
+    val installer = remember {
+        com.devterminal.project.PythonPackageInstaller(
+            File(context.filesDir, "python-stdlib/lib/python3.13/site-packages")
+        )
+    }
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val ok = runCatching { importPurePythonPackage(context, uri) }.getOrElse { false }
-        onToast(if (ok) "已导入 site-packages（纯 Python 包，可直接 import）"
-                    else "导入失败：仅支持纯 Python 包（.zip，内容不含 .so/.wasm）")
-        refresh++
+        val temp = File(context.cacheDir, "pkg-${java.util.UUID.randomUUID()}.whl")
+        val result = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                temp.outputStream().use { out ->
+                    val buf = ByteArray(8192)
+                    var total = 0L
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        total += n
+                        if (total > 100L * 1024 * 1024) throw IOException("安装包超过 100MB")
+                        out.write(buf, 0, n)
+                    }
+                }
+            } ?: throw IOException("无法读取安装包")
+            installer.install(temp)
+        }.getOrElse {
+            com.devterminal.project.PythonPackageInstaller.InstallResult(false, "导入失败：${it.message}")
+        }
+        temp.delete()
+        onToast(result.message)
+        if (result.ok) refresh++
     }
     QuietDialog(onDismiss = onDismiss, title = "离线 Python 包") {
         Text(
@@ -1033,15 +1012,15 @@ fun PackagesDialog(
         Hairline()
         Spacer(Modifier.height(Dimens.sm))
         Text(
-            "标准库（math/random/json/socket/ctypes/ssl/sqlite3 等）内置于 python-stdlib.zip，无需安装。",
+            "标准库（math/random/json/socket/ctypes/ssl/sqlite3 等）内置于 python-stdlib.zip，无需安装。仅支持纯 Python wheel；含 .so/.pyd 的原生包会在安装前被拒绝。",
             style = MaterialTheme.typography.labelSmall,
             color = cs.muted
         )
         Spacer(Modifier.height(Dimens.sm))
-        TextButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }) {
+        TextButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }) {
             Icon(Icons.Filled.NoteAdd, null, tint = cs.primary, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text("导入纯 Python 包（.zip）", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+            Text("导入纯 Python 包（.whl / .zip）", style = MaterialTheme.typography.labelLarge, color = cs.primary)
         }
     }
 }

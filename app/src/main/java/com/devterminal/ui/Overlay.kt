@@ -29,6 +29,9 @@ sealed interface Overlay {
     /** Git 仓库 */
     data object Git : Overlay
 
+    /** 单文件 Git 差异（只读审阅） */
+    data class GitDiff(val path: String) : Overlay
+
     /** AI 助手 */
     data object Ai : Overlay
 
