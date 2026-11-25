@@ -47,6 +47,9 @@ sealed interface Overlay {
     /** 跨文件定义候选（Python，v0.0.27） */
     data object Definitions : Overlay
 
+    /** 项目级文本引用（Python，v0.1.3） */
+    data object References : Overlay
+
     /** 本地模型下载与管理 */
     data object LocalModels : Overlay
 

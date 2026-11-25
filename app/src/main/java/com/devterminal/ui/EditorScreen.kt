@@ -799,6 +799,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     "gsearch" -> overlay = Overlay.GlobalSearch
                     "symbols" -> { vm.loadSymbols(); overlay = Overlay.Symbols }
                     "definition" -> if (vm.findDefinition()) overlay = Overlay.Definitions
+                    "references" -> if (vm.findReferences()) overlay = Overlay.References
                     "debug" -> vm.debugCurrent()
                     "models" -> { vm.refreshLocalModels(); overlay = Overlay.LocalModels }
                     "agentHistory" -> { vm.loadAgentSessions(); overlay = Overlay.AgentHistory }
@@ -950,6 +951,19 @@ fun EditorScreen(vm: EditorViewModel) {
             loading = ui.definitionLoading,
             onPick = { definition ->
                 vm.openDefinition(definition)
+                closeOverlay()
+            },
+            onDismiss = ::closeOverlay,
+        )
+    }
+
+    if (overlay == Overlay.References) {
+        ReferenceDialog(
+            query = ui.referenceQuery,
+            matches = ui.referenceMatches,
+            loading = ui.referencesLoading,
+            onPick = { reference ->
+                vm.openReference(reference)
                 closeOverlay()
             },
             onDismiss = ::closeOverlay,
@@ -1416,6 +1430,8 @@ private fun buildCommands(
         Icons.Filled.AccountTree) { onCommand("symbols") })
     add(Command("definition", "跳转到定义", "光标下的 Python 符号 / 跨文件",
         Icons.Filled.Search) { onCommand("definition") })
+    add(Command("references", "查找引用", "项目内文本级出现位置 / 不自动改名",
+        Icons.Filled.Search) { onCommand("references") })
     if (ui.debugging) {
         add(Command("debug-c", "调试：继续", "pdb c", Icons.Outlined.BugReport) { vm.sendDebugCommand("c") })
         add(Command("debug-n", "调试：下一步", "pdb n", Icons.Outlined.BugReport) { vm.sendDebugCommand("n") })
