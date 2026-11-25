@@ -114,7 +114,8 @@ fun MonoText(
         text,
         modifier = modifier,
         fontFamily = MonoFamily,
-        fontSize = fontSize.sp,
+        // 9/10sp 在 200% 系统字体缩放下仍可能过小；统一抬到 11sp 下限。
+        fontSize = fontSize.coerceAtLeast(11).sp,
         fontWeight = fontWeight,
         color = color,
         maxLines = maxLines,

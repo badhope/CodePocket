@@ -208,6 +208,7 @@ fun EditorScreen(vm: EditorViewModel) {
         // 用户看不见的 PTY shell / Agent 循环，继续吃 CPU 和电量。
         if (overlay == Overlay.Terminal) vm.closeTerminal()
         if (overlay == Overlay.Agent && ui.agentBusy) vm.cancelAgent()
+        if (overlay is Overlay.GitDiff) vm.closeGitDiff()
         overlay = Overlay.None
     }
 
@@ -690,6 +691,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     PreviewPane(
                         html = ui.previewHtml,
                         darkTheme = ui.settings.effectiveDarkTheme(),
+                        truncated = ui.previewTruncated,
                         modifier = Modifier.fillMaxWidth().weight(1f)
                     )
                 }
@@ -738,7 +740,7 @@ fun EditorScreen(vm: EditorViewModel) {
                     onDebugCommand = vm::sendDebugCommand,
                     onDebugBreak = vm::debugBreakHere,
                     engineStuck = ui.engineStuck,
-                    onRestartApp = vm::restartApp,
+                    onRestartEngine = vm::restartEngine,
                     modifier = mod
                 )
             }
@@ -870,6 +872,22 @@ fun EditorScreen(vm: EditorViewModel) {
             onCommit = vm::gitCommit,
             onPush = vm::gitPush,
             onPull = vm::gitPull,
+            onStage = vm::gitStage,
+            onUnstage = vm::gitUnstage,
+            onStageAll = vm::gitStageAll,
+            onDiff = { path ->
+                overlay = Overlay.GitDiff(path)
+                vm.openGitDiff(path)
+            },
+            onDismiss = ::closeOverlay
+        )
+    }
+
+    (overlay as? Overlay.GitDiff)?.let { diff ->
+        GitDiffDialog(
+            path = diff.path,
+            diff = ui.gitDiffText,
+            loading = ui.gitDiffLoading,
             onDismiss = ::closeOverlay
         )
     }

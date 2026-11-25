@@ -1,3 +1,42 @@
+# CodePocket 更新日志
+
+## [0.1.0] — 2026-11-25
+
+跨小数位的“可信移动 IDE”版本。重点不是再加面板，而是把 Python 引擎、Git 审阅、包安装和质量门禁补成能长期使用的地基。
+
+### Python 引擎独立进程
+
+- 新增 `EngineHostService`，运行在 `android:process=":engine"` 的独立进程；主进程只保留 `RemoteNativeEngine` 代理，不加载 `libpython` / `libpybridge`。
+- 主进程与引擎进程通过 `Messenger` + JSON 交换 prepare/run/stdin/stop/event；`RunRequest` 与全部 `RunEvent` 有协议往返测试。
+- 引擎卡死时，输出面板「重启引擎」只杀 `:engine` 进程，编辑器缓冲、Git、终端和未保存内容不受影响；不再需要重启整个 App。
+- prepare 期间引擎进程死亡会立即回传失败，不再干等 120 秒；引擎事件流异常终止会补发 `Failed` 终态，避免 UI 永远停在“运行中”。
+
+### Git 审阅闭环
+
+- 单文件「暂存 / 取消暂存」、全部暂存；提交改为只提交暂存区，空暂存会明确拒绝。
+- 点击变更文件打开 Diff 对话框：工作区 vs 暂存区优先，未跟踪文件显示全加行；输出上限 200KB。
+- Diff 读取改为有界流：未跟踪大文件只读前 200KB，二进制文件不强行解码，`DiffFormatter` 超过 200KB 停止增长内存。
+- `stageAll` 覆盖删除文件；同一路径暂存后再修改显示 `MM` 两列状态。
+
+### 0.0.31 剩余风险关闭
+
+- 文件树超过 10,000 项时顶部显示截断提示，不再静默丢节点。
+- Markdown/HTML 预览单独限制 512K 字符，编辑器原文不动；截断有可见说明。
+- `SettingsStore` 的加密字段改为单线程合并后台写；连续拖字号/输出高度只落最后一版，`onStop`/`onCleared` 主动 flush。
+- `MonoText` 最小字号抬到 11sp；设置页在 fontScale 2.0 下有 Robolectric/Compose 冒烟。
+- `PythonPackageInstaller` 支持纯 Python `.whl` / `.zip` 导入，解析 `dist-info` 名称与版本；拒绝 `.so/.pyd/.dll/.dylib/.wasm` 与路径穿越，安装失败按逆序回滚，不再留下半包。
+
+### 质量与边界
+
+- JVM/Robolectric 单测 **171 通过 / 0 失败 / 0 错误**（新增引擎协议、Git stage/diff、文件树截断、预览上限、设置异步、wheel 安装/回滚、Compose 冒烟）。
+- `lintRelease` **0 Error / 27 Warning**；`assembleRelease` 成功，release APK 24,327,148 B，双 ABI，16KB 页对齐，签名证书 SHA-256 `1b02135746d1426d7beda47e706fdb2c77a7145ea41e0f7e14addb191b87fac5`。
+- 明确不冒充：不做 Gradle/Java/Kotlin 工程构建、不提供完整 LSP、不支持含原生 `.so` 的 wheel；这些不是当前离线包体和 NDK 工具链能真实交付的能力。
+- **仍未做 ARM64 真机验收**：本机无 `/dev/kvm`，x86_64 TCG 模拟器反复失败；引擎进程、Git UI、文件树/预览、wheel 导入没有 Android 运行截图，发布说明中如实标注。
+
+### 版本
+
+- `versionCode 40` / `versionName 0.1.0`。
+
 # 更新日志（Changelog）
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。

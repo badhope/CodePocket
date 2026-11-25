@@ -13,9 +13,16 @@
 └──────────────────┬────────────────────────────┘
                    │ RunEngine 接口（Flow<RunEvent>）
 ┌──────────────────▼────────────────────────────┐
+│  主进程                                        │
+│  RuntimeRegistry · RemoteNativeEngine 代理     │
+│  JavaScript: Rhino · Lua: LuaJ                 │
+│  pdb · PTY（forkpty）· ExecutionService        │
+└──────────────────┬────────────────────────────┘
+                   │ Messenger + JSON（Binder）
+┌──────────────────▼────────────────────────────┐
+│  :engine 独立进程                              │
 │  NativeEngine（Kotlin）                        │
 │  状态机：busy/running/execActive/finishedSent  │
-│  sink：C 回调线程 → Flow 的事件出口             │
 └──────────────────┬────────────────────────────┘
                    │ JNI
 ┌──────────────────▼────────────────────────────┐
@@ -40,8 +47,11 @@
 | `RunEngine.kt` | 引擎接口：`run` / `stop` / `writeStdin` / `closeStdin` / `release` |
 | `LanguageRegistry.kt` | 单一事实源：20 种语言的 id/扩展名/语法/补全/运行级；3 运行 + 17 编辑 |
 | `RuntimeRegistry.kt` | languageId → RunEngine 路由：Python / JavaScript / Lua |
-| `EngineProvider.kt` | 工厂：Python 运行时自检 → 创建 `NativeEngine` |
-| `NativeEngine.kt` | Python 原生引擎：初始化、执行、中断、状态机 |
+| `EngineProvider.kt` | 工厂：ABI / stdlib 资产自检 → 创建 `RemoteNativeEngine`（主进程不加载 JNI） |
+| `RemoteNativeEngine.kt` | 主进程代理：绑定 `EngineHostService`，用 Messenger 收发 prepare/run/stop/stdin/event |
+| `EngineRpc.kt` | 跨进程协议：消息常量、`RunRequest` / `RunEvent` JSON 编解码 |
+| `EngineHostService.kt` | `:engine` 进程 Service：持有 `NativeEngine`，逐事件回传，处理 hard reset |
+| `NativeEngine.kt` | Python 原生引擎：初始化、执行、中断、状态机（只在 `:engine` 进程实例化） |
 | `JavaScriptEngine.kt` | Rhino 运行时：ES6、console/input、超时中断 |
 | `LuaEngine.kt` | LuaJ 运行时：Lua 5.2、print/input、DebugLib 超时 |
 | `NativeBridge.kt` | JNI 声明：`initialize` / `execFile` / `pushInputLine` / `pushEof` / `requestInterrupt` / `shutdown` |
@@ -50,8 +60,10 @@
 | `PtyTerminalView.kt` | 本地 WebView + xterm.js 终端：PTY 字节按 base64 写入、键盘回传、`FitAddon` resize、亮暗主题、离线限制 |
 | `EnvironmentInstaller.kt` | 环境自检与安装（引擎相关部分） |
 | `ExecutionService.kt` | 前台服务：运行期间保活（Android 12+） |
+| `../project/PythonPackageInstaller.kt` | 纯 Python wheel/zip 安装：原生产物拒绝、路径校验、失败回滚 |
 | `ProcessGroup.kt` | 命令进程组：pidfile + `/system/bin/setsid` + 负 PID 信号；setsid 缺失时退化 |
-| `GitManager.kt` | JGit 封装：init / commit / push / pull / clone（HTTPS） |
+| `GitManager.kt` | JGit 封装：init / commit / push / pull / clone（HTTPS）/ stage / unstage / diff |
+| `PreviewLimiter.kt` | 预览输入 512K 字符上限 |
 | `FriendlyError.kt` | Python / JavaScript / Lua 高频错误的"人话"翻译 |
 | `CompletionProvider.kt` | 静态补全：按 `CompletionProfile` 的关键字 / 内置函数 / 文件符号 |
 
@@ -153,7 +165,18 @@ sink（AtomicReference） —— C 回调 → Flow 的事件出口
 - **Git clone**：`GitManager.cloneInto` 只接受不存在或空的目标目录；`https://user:token@host/repo.git` 中的凭据拆到 `UsernamePasswordCredentialsProvider`，克隆 URL 不含 token，避免写入 `.git/config`；失败删除半成品目录。
 - **forkpty 子进程**：`ptybridge.c` 在 fork 前构造 `argv` 与 `envp`（过滤旧 `TERM`/`PS1`，追加 `TERM=xterm-256color`、`PS1=\w $ `），子进程只做 `chdir` + `execve`，不再在 `pid==0` 分支调用 `setenv`/`malloc` 系函数。
 - **命令进程组**：`ProcessGroup` 用 `sh -c 'echo $$ > pidfile; shift; exec /system/bin/setsid "$@"'` 把 shell 放进新会话，Kotlin 对负 PID 发 `SIGTERM`，300ms 后 `SIGKILL`；`/system/bin/setsid` 不存在时退回 `exec "$@"`，行为与旧版一致。`RunCommandTool` 与 `TerminalSession` 已接入。
-- **引擎卡死兜底**：`NativeEngine.isBusy` 暴露 `busy`；`stopRun()` 8 秒后仍占用则 UI 置 `engineStuck`，输出面板显示「重启应用」；`restartApp()` 同步保存当前文件，用 `AlarmManager` 约 900ms 后重新拉起入口，再 `killProcess`。**这不是解释器进程隔离**：卡在不可中断 C 调用时 `busy` 仍不会复位，只能重启应用。
+- **引擎卡死兜底**：`NativeEngine.isBusy` 暴露 `busy`；`stopRun()` 8 秒后仍占用则 UI 置 `engineStuck`，输出面板显示「重启应用」；`restartApp()` 同步保存当前文件，用 `AlarmManager` 约 900ms 后重新拉起入口，再 `killProcess`。**这是 0.0.34 的过渡方案**：卡在不可中断 C 调用时 `busy` 仍不会复位，只能重启应用；0.1.0 已改为 `:engine` 独立进程，见 4.5。
+
+---
+
+## 4.5 引擎进程隔离与发布级门禁（v0.1.0）
+
+- **进程边界**：`AndroidManifest.xml` 给 `EngineHostService` 加 `android:process=":engine"`。主进程只创建 `RemoteNativeEngine`，不 `System.loadLibrary`、不持有 `NativeEngine`；JNI 崩溃或卡死只影响引擎进程。
+- **协议**：`EngineRpc` 用 `Messenger` 的 `what` + `Bundle` 传 id/JSON；`runPayload` 编 `RunRequest`，`eventPayload` 编全部 `RunEvent`。`EngineRpcTest` 覆盖往返和坏数据拒绝。
+- **生命周期**：`ensureConnection()` 绑定 `BIND_AUTO_CREATE or BIND_IMPORTANT`；`onServiceDisconnected/onBindingDied/onNullBinding` 合成 `Failed`，prepare 期间的死亡也能立即结束等待；`hardReset()` 发 `MSG_HARD_RESET`，服务进程 `killProcess(myPid())` 后主进程解绑，下次运行重新 bind。
+- **终态保证**：`EngineHostService` 的 run 协程捕获非取消异常并补发 `Failed`，避免主进程 `callbackFlow` 永远等不到终态；`MSG_STOP` 带 run id，旧连接不会误停新 run。
+- **发布门禁**：`testDebugUnitTest` 171 通过；`lintRelease` 0 Error / 27 Warning；`assembleRelease`、双 ABI、16KB 页对齐、签名证书校验通过。**无 ARM64 真机验收**，因此不把 Robolectric 结果当成 Android 运行时证明。
+- **能力边界**：本版不集成 Gradle/Java/Kotlin 编译、不提供完整 LSP、不支持含原生 `.so` 的 wheel；只承诺离线包体内能真实工作的能力。
 
 ---
 

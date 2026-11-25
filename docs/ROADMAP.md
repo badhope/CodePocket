@@ -4,13 +4,24 @@
 
 ---
 
+## 已实现（v0.1.0 可信移动 IDE 底座）
+
+- ✅ Python 引擎独立进程：`EngineHostService` 跑在 `android:process=":engine"`，主进程只保留 Messenger 代理；卡死时只重启引擎，不再重启 App
+- ✅ 引擎协议：prepare/run/stop/stdin/event 全部 JSON 往返；prepare 期间死亡立即失败，run 异常补发终态
+- ✅ Git 审阅闭环：单文件/全部暂存、取消暂存、只提交暂存区、工作区/暂存区 Diff；200KB 有界输出，二进制与大文件不 OOM
+- ✅ 文件树 10,000 节点截断提示；Markdown/HTML 预览 512K 上限与可见提示
+- ✅ 设置加密字段后台合并写，`onStop`/`onCleared` flush；`MonoText` 最小 11sp
+- ✅ 纯 Python `.whl` / `.zip` 导入：元数据解析、原生产物拒绝、路径穿越拦截、逆序回滚
+- ✅ Robolectric/Compose 冒烟：文件树截断、Git Diff、fontScale 2.0 设置页
+- ⚠️ 仍未做 ARM64 真机验收；无 `/dev/kvm`，不伪造截图
+
 ## 已实现（v0.0.34 项目迁移与进程收尾）
 
 - ✅ Git clone：JGit 克隆 HTTPS 远程到新项目，凭据走 `UsernamePasswordCredentialsProvider`，不写入 `.git/config`；目标目录必须不存在或为空
 - ✅ 项目 zip 导入/导出：SAF 流式处理，Zip Slip / 绝对路径 / 盘符拒绝，10,000 条目 / 单文件 48MB / 总解压 256MB 上限；单顶层目录提升、重名后缀、导出排除 `.git`/`build`/`node_modules` 等
 - ✅ forkpty 子进程 async-signal-safe：fork 前构造 `argv`/`envp`，子进程只 `chdir` + `execve`
 - ✅ 命令进程组回收：`ProcessGroup` 用 `/system/bin/setsid` + pidfile + 负 PID `SIGTERM`/`SIGKILL`，setsid 缺失时退化；`RunCommandTool` 与 `TerminalSession` 接入
-- ✅ 引擎卡死恢复入口：停止 8 秒仍 busy 时输出面板显示「重启应用」，保存当前文件后重新拉起；真正解释器进程隔离仍待做
+- ✅ 引擎卡死恢复入口（历史）：停止 8 秒仍 busy 时输出面板显示「重启应用」；0.1.0 已改为 `:engine` 独立进程与「重启引擎」
 
 ## 已实现（v0.0.33 资源收尾）
 
@@ -99,9 +110,9 @@
 ## 进行中（v1.1 目标）
 
 - 🔄 第三方科学计算库离线支持：numpy / pandas / matplotlib 的 ARM64 wheel 随包
-  - 途径：本地交叉编译 wheel 或预构建 wheel 打包，离线导入；
+  - 途径：本地交叉编译 wheel 或预构建 wheel 打包，随 APK 预置；
   - 依赖：构建工具链扩展（`scripts/` 新增 wheel 打包流程）。
-- 🔄 离线包管理增强：图形化导入 `.whl`、模块可用性清单
+- ✅ 离线包管理：图形化导入纯 Python `.whl` / `.zip`，显示名称与版本；原生 wheel 在安装前拒绝
 - ✅ 官网站点更新：CodePocket 品牌页、下载、文档与社交卡片（`site/` 目录；演示视频仍为早期录屏）
 
 ---
@@ -124,7 +135,7 @@
 - 📋 应用商店上架（GitCode Releases / 第三方商店）
 - 📋 模板市场：社区贡献项目模板
 - 📋 插件机制（语言服务器协议 LSP 支持；当前只有符号大纲，不是 LSP）
-- 📋 CI 流水线：GitHub Actions 自动构建 + 冒烟测试
+- 📋 CI 流水线：GitHub Actions 已在 0.0.34 接入构建，但 0.1.0 的 UI 冒烟尚未接入 CI
 - 📋 真机测试矩阵（不同厂商 Android 版本）
 
 ### 工程化

@@ -27,7 +27,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 | Offline after install | ⚠️ extra setup | ⚠️ partial | ❌ needs network | ❌ needs network | ✅ **runtime bundled** |
 | Modern IDE UI | ❌ terminal only | ⚠️ dated | ✅ | ✅ | ✅ |
 | Multi-file tabs / find & replace | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Offline Git | ✅ | ❌ | ✅ | ✅ | ✅ **JGit** |
+| Offline Git + stage/diff | ✅ | ❌ | ✅ | ✅ | ✅ **JGit + review** |
 | Native performance | ✅ | ✅ | — | — | ✅ **native ARM64/x86_64 + pure-Java runtimes** |
 | AI assistant (BYOK) | ❌ | ❌ | ✅ cloud | ✅ cloud | ✅ **custom endpoint** |
 | Open source & ad-free | ✅ GPL | ❌ paid | ⚠️ ads | ⚠️ IAP | ✅ **Apache-2.0** |
@@ -63,22 +63,21 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 └──────────────────┬──────────────────────────┘
                    │ JNI (jobject callbacks)
 ┌──────────────────▼──────────────────────────┐
-│  RuntimeRegistry                            │
-│  Python: NativeEngine + pybridge.c (JNI)     │
-│  JavaScript: Rhino · Lua: LuaJ              │
-│  pdb debugger · streaming stdout/stderr      │
-│  timeout · stdin · real PTY (forkpty)        │
+│  Main process                                │
+│  RuntimeRegistry · RemoteNativeEngine proxy  │
+│  JavaScript: Rhino · Lua: LuaJ               │
+│  pdb · streaming output · PTY (forkpty)      │
 └──────────────────┬──────────────────────────┘
-                   │ dlopen + sys.path
+                   │ Messenger + JSON
 ┌──────────────────▼──────────────────────────┐
-│  jniLibs/<abi> (arm64-v8a / x86_64)         │
+│  :engine process                             │
+│  NativeEngine + pybridge.c (JNI)             │
 │  libpython3.13.so · libpybridge.so           │
-│  libptybridge.so · C extensions              │
-│  assets/python-stdlib.zip (pure-Python std)  │
+│  C extensions · assets/python-stdlib.zip     │
 └─────────────────────────────────────────────┘
 ```
 
-**Core trade-off**: no external native toolchain dependency, no cloud requirement. CPython 3.13 is cross-compiled with the NDK for both `arm64-v8a` and `x86_64`; JavaScript and Lua use pure-Java Rhino/LuaJ. The terminal now has a real `forkpty` backend, but its UI is line-oriented (not an ANSI terminal emulator); Java/Kotlin/TypeScript plus 14 other languages are editing-only.
+**Core trade-off**: no external native toolchain dependency, no cloud requirement. CPython 3.13 is cross-compiled with the NDK for both `arm64-v8a` and `x86_64`; JavaScript and Lua use pure-Java Rhino/LuaJ. Python runs in a dedicated `:engine` process, so a stuck native call can be killed without taking the editor down. The terminal has a real `forkpty` backend and a local xterm.js ANSI screen. Java/Kotlin/TypeScript plus 14 other languages are editing-only.
 
 ---
 
@@ -107,12 +106,21 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
+### Trusted mobile IDE foundation (0.1.0)
+- **Python engine isolation**: Python runs in `android:process=":engine"`; the main process holds only a Messenger proxy. The output panel's **重启引擎** action kills and rebinds only the engine process, preserving unsaved editor buffers, Git and terminal state
+- **Git review loop**: per-file stage / unstage, stage-all, commit-staged-only, and a diff dialog (working tree vs index, untracked files as all-added); 200KB output cap with bounded streaming so a 100MB log does not OOM
+- **Bounded previews**: Markdown/HTML preview is capped at 512K characters with a visible banner; the editor buffer itself is untouched
+- **File-tree truncation banner**: 10,000-node budget is no longer silent
+- **Async encrypted settings**: sensitive fields (AI key, Git remote token, MCP endpoint) coalesce on a single background writer; `onStop`/`onCleared` flush the last version
+- **Pure-Python package import**: `.whl` / `.zip` with `dist-info` metadata, native `.so/.pyd/.dll/.wasm` rejection, Zip-Slip guards, and reverse-order rollback on failure
+- **Quality gate**: 171 JVM/Robolectric tests, `lintRelease` 0 errors, Compose smoke for file-tree truncation, Git diff and fontScale 2.0
+
 ### Project migration & process teardown (0.0.34)
 - **Clone from Git**: `GitManager.cloneInto` uses JGit to clone an HTTPS remote into a new project; credentials go through `UsernamePasswordCredentialsProvider` and are never written into `.git/config`, and the target must be absent or empty
 - **Project zip import/export**: stream-based zip import with Zip Slip / absolute path / Windows drive rejection, 10,000-entry, 48MB-per-file and 256MB-total caps; a single top-level folder is promoted to the project root; export skips `.git`, `build`, `node_modules` and caches and caps at 256MB
 - **Async-signal-safe PTY child**: `ptybridge.c` now builds `argv`/`envp` before `forkpty`; the child only calls `chdir` + `execve`, with no `setenv` after fork
 - **Command process groups**: `ProcessGroup` writes the shell PID to a temp file, enters a new session via `/system/bin/setsid`, and sends `SIGTERM`/`SIGKILL` to the negative PID; when `setsid` is absent it falls back to the old direct-child behavior
-- **Engine-stuck escape hatch**: if the native engine is still busy 8s after Stop, the output panel shows a **重启应用** action that saves the current file, relaunches via `AlarmManager`, then kills the process; this is recovery, not true interpreter process isolation
+- **Engine-stuck escape hatch (historical)**: 0.0.34 detected a busy engine 8s after Stop and offered **重启应用**; 0.1.0 replaced this with true `:engine` process isolation and **重启引擎**
 
 ### Lifecycle & memory cleanup (0.0.33)
 - **ViewModel teardown**: `onCleared` cancels AI/Agent/model jobs, stops the PTY, and releases the native Python engine + RuntimeRegistry instead of leaving them alive after the Activity is reclaimed
@@ -123,7 +131,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 ### Packaging cleanup (0.0.32)
 - **Stale toolchain note removed**: the 441MB `usrtar.zip` instructions are gone; the app uses the bundled native CPython runtime and JGit, not the retired Termux bundle
 - **Stdlib slimmed**: CPython `test`, `idlelib` and `turtledemo` are excluded from `python-stdlib.zip`; 1740 files / 7.1MB removed, all runtime modules and 53 C extensions untouched
-- **Git wording fixed**: 0.0.32 aligned docs and site to init / commit / push / pull; 0.0.34 adds HTTPS clone, so the current list is init / commit / push / pull / clone
+- **Git wording fixed**: 0.0.32 aligned docs and site to init / commit / push / pull; 0.0.34 added HTTPS clone; 0.1.0 adds stage / unstage / stage-all / commit-staged / diff
 
 ### Data safety & lifecycle (0.0.31)
 - **No silent data loss**: with auto-save off, switching files/tabs/projects now asks Save / Discard / Cancel instead of overwriting the dirty buffer
@@ -155,7 +163,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Multi-project switching** (long-press to delete) · **4 Python templates**
 - **JGit Git integration**: init / commit / push / pull / clone (HTTPS), pure Java, offline where possible
 - **SAF import/export** (no storage permission needed): project zip in/out with traversal and size guards
-- **Offline package management**: inspect built-in modules / import local .whl
+- **Offline package management**: inspect built-in modules / import pure-Python `.whl` or `.zip`; native wheels are rejected before writing
 
 ### See results
 - **Markdown / HTML split-pane live preview**, debounced refresh
@@ -196,7 +204,7 @@ The native runtime (`libpython3.13.so` + C extensions + pure-Python stdlib zip, 
 
 - **Pure-Python stdlib**: `assets/python-stdlib.zip` (extracted to the app's private dir, then added to `sys.path`)
 - **C extension modules**: math, json, _random, _datetime, _socket, _ssl, _sqlite3, _ctypes, zlib, binascii etc. (`jniLibs/arm64-v8a` / `x86_64`)
-- **numpy / pandas / matplotlib / pillow are NOT preinstalled** — `import numpy` shows a missing-module hint. Offline installation of third-party wheels is planned for a later release.
+- **numpy / pandas / matplotlib / pillow are NOT preinstalled** — `import numpy` shows a missing-module hint. Pure-Python wheels can be imported offline; wheels containing Android-native `.so` files are rejected because the bundled CPython does not ship their ABI dependencies.
 
 ---
 
@@ -224,8 +232,10 @@ The native runtime (`libpython3.13.so` + C extensions + pure-Python stdlib zip, 
 | Python runtime | ✅ Full (native CPython 3.13, arm64 + x86_64) |
 | Java runtime | ❌ JVM not yet integrated (editing/highlighting only) |
 | Performance | ✅ Native execution, no WASM sandbox overhead |
-| Sci-stack libraries | ⚠️ numpy/pandas/matplotlib not preinstalled; offline import planned |
-| pip online install | ❌ Offline-first; extra libraries via manual wheel import |
+| Sci-stack libraries | ⚠️ numpy/pandas/matplotlib not preinstalled; pure-Python wheels only |
+| pip online install | ❌ Offline-first; extra pure-Python libraries via manual `.whl`/`.zip` import |
+| Gradle/Java/Kotlin build | ❌ Not in 0.1.0; no JVM/Gradle toolchain bundled |
+| Full LSP | ❌ Symbol index + static completion, not a language server |
 
 ---
 

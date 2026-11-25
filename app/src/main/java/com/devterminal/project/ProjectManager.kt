@@ -12,7 +12,9 @@ data class FileNode(
     val name: String,
     val path: String,
     val isDirectory: Boolean,
-    val children: List<FileNode> = emptyList()
+    val children: List<FileNode> = emptyList(),
+    /** 节点预算/深度用尽，子树不完整；UI 必须明确提示，不能静默当完整树。 */
+    val truncated: Boolean = false
 )
 
 /**
@@ -94,17 +96,13 @@ class ProjectManager(installer: EnvironmentInstaller) {
         /** 剩余节点预算；一次调用内共享，避免超大目录把主线程/内存拖死 */
         budget: IntArray = intArrayOf(MAX_TREE_NODES),
     ): FileNode {
-        if (budget[0] <= 0) {
-            return FileNode(dir.name, dir.absolutePath, dir.isDirectory, emptyList())
-        }
-        budget[0] -= 1
-        val children = if (depth >= MAX_DEPTH) emptyList()
-        else dir.listFiles()
-            ?.filterNot { it.name.startsWith(".") || it.name in EXCLUDED_DIRS }
-            ?.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
-            ?.map { buildTree(it, depth + 1, budget) }
-            ?: emptyList()
-        return FileNode(dir.name, dir.absolutePath, dir.isDirectory, children)
+        return buildFileTree(
+            dir = dir,
+            depth = depth,
+            budget = budget,
+            maxDepth = MAX_DEPTH,
+            excluded = EXCLUDED_DIRS
+        )
     }
 
     /**
@@ -208,4 +206,44 @@ class ProjectManager(installer: EnvironmentInstaller) {
         /** 不展示的目录（构建产物 / 依赖目录） */
         val EXCLUDED_DIRS = setOf("build", "__pycache__", "node_modules", ".gradle", ".idea", "dist")
     }
+}
+
+/**
+ * 文件树构建的纯函数，便于 JVM 单测节点预算与截断传播。
+ *
+ * 预算耗尽时返回 truncated=true，而不是伪造一棵完整树。UI 会据此显示提示。
+ */
+internal fun buildFileTree(
+    dir: File,
+    depth: Int = 0,
+    budget: IntArray = intArrayOf(10_000),
+    maxDepth: Int = 12,
+    excluded: Set<String> = setOf("build", "__pycache__", "node_modules", ".gradle", ".idea", "dist")
+): FileNode {
+    if (budget[0] <= 0) {
+        return FileNode(dir.name, dir.absolutePath, dir.isDirectory, emptyList(), truncated = true)
+    }
+    budget[0] -= 1
+    var truncated = false
+    val children = if (depth >= maxDepth) {
+        truncated = dir.listFiles()?.isNotEmpty() == true
+        emptyList()
+    } else {
+        val out = ArrayList<FileNode>()
+        val entries = dir.listFiles()
+            ?.filterNot { it.name.startsWith(".") || it.name in excluded }
+            ?.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+            ?: emptyList()
+        for (child in entries) {
+            if (budget[0] <= 0) {
+                truncated = true
+                break
+            }
+            val node = buildFileTree(child, depth + 1, budget, maxDepth, excluded)
+            out += node
+            if (node.truncated) truncated = true
+        }
+        out
+    }
+    return FileNode(dir.name, dir.absolutePath, dir.isDirectory, children, truncated)
 }

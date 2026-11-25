@@ -135,11 +135,11 @@
 
   <header>
     <h1>手机上真正离线的 <span class="grad">编程终端</span></h1>
-    <p class="sub">在手机上直接写、跑、调试 Python、JavaScript 与 Lua。内嵌原生 CPython 3.13 引擎与离线 Git 工作流（init/commit/push/pull/clone），现代 IDE 体验——全程零网络、零广告。</p>
+    <p class="sub">在手机上直接写、跑、调试 Python、JavaScript 与 Lua。内嵌原生 CPython 3.13 引擎与离线 Git 工作流（clone / stage / diff / commit / push / pull），现代 IDE 体验——全程零网络、零广告。</p>
     <div class="badges">
       <span class="badge"><b>100%</b> 离线运行</span>
       <span class="badge"><b>Python 3.13</b> · <b>JS</b> · <b>Lua</b></span>
-      <span class="badge"><b>v0.0.34</b> 项目迁移</span>
+      <span class="badge"><b>v0.1.0</b> 可信移动 IDE</span>
       <span class="badge"><b>0</b> 广告 · 免费开源</span>
     </div>
     <div class="cta">
@@ -169,7 +169,8 @@
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-5 3 5 3M16 9l5 3-5 3M14 4l-4 16"/></svg></div>
         <h3>现代 IDE 体验</h3>
         <p>多文件 Tab、全局搜索、正则计数跳转、报错行点击直达源码、自动闭合括号、行号开关、自动换行、跳行、图片预览、双指缩放字号，还有 Git 面板、命令面板与分屏预览。</p>
-        <p><b>0.0.34 新增：</b>从 HTTPS 远程 Git clone（凭据不落盘）、项目 zip 导入/导出（防 Zip Slip 与体积上限）、forkpty 子进程改为 fork 前构造环境并 execve、命令子进程用 setsid 进程组回收；引擎卡死时输出栏提供「重启应用」恢复入口。0.0.33 已补 ViewModel 销毁收尾、会话流式读取、删除真实结果与 PTY 输入上限。</p>
+        <p><b>0.1.0 新增：</b>Python 引擎移入独立 <code>:engine</code> 进程，卡死时只重启引擎不丢编辑器内容；Git 补单文件暂存/取消/全部暂存、只提交暂存区与 Diff 审阅；文件树/预览截断有提示；设置加密字段后台合并写；纯 Python <code>.whl/.zip</code> 离线导入与失败回滚；170 个 JVM/Robolectric 测试把门。</p>
+        <p><b>0.0.34：</b>HTTPS Git clone、项目 zip 导入/导出、PTY 子进程 execve、命令进程组回收。</p>
         <p><b>0.0.30：</b>手机端遮挡治理：所有面板按键盘上方可用高度布局，标题/输入框/按钮固定，只有正文滚动；终端全屏自适应、按键条贴键盘；键盘不再误触发布局切换。</p>
         <p><b>0.0.29：</b>本地 xterm.js ANSI 终端模拟器：真 PTY + 颜色/光标/全屏重绘，<code>vim</code>/<code>top</code>/<code>less</code> 正常显示；移动端方向键与 Ctrl 键、亮暗双主题。</p>
       </div>
@@ -197,7 +198,7 @@
         <tr><td>真实 Python 引擎</td><td class="yes">是</td><td class="yes">是</td><td class="no">Web</td><td>原生 3.13</td></tr>
         <tr><td>多语言</td><td class="yes">是</td><td class="no">仅 Python</td><td class="warn">受限</td><td>Python / JS / Lua 运行<br>+ 17 种编辑级</td></tr>
         <tr><td>完全离线</td><td class="warn">装包联网</td><td class="warn">部分</td><td class="warn">部分</td><td>零网络</td></tr>
-        <tr><td>Git 集成</td><td class="yes">是</td><td class="no">否</td><td class="yes">是</td><td>内置</td></tr>
+        <tr><td>Git 集成</td><td class="yes">是</td><td class="no">否</td><td class="yes">是</td><td>内置 + 暂存/Diff</td></tr>
         <tr><td>离线 AI 助手</td><td class="no">否</td><td class="no">否</td><td class="no">云端</td><td>Ollama</td></tr>
         <tr><td>价格</td><td class="yes">免费</td><td class="warn">免费+广告</td><td class="warn">免费+广告</td><td>免费无广告</td></tr>
       </tbody>
@@ -232,7 +233,7 @@
 
   <section id="download">
     <h2>下载 APK</h2>
-    <p class="lead"><b>v0.0.34 项目迁移版</b>：APK 内嵌 CPython 3.13 引擎、运行用标准库与 50+ 原生 C 扩展，安装即用；支持 arm64 手机与 x86_64 模拟器。本版新增 Git clone、项目 zip 导入/导出、PTY 子进程 execve 安全化、命令进程组回收与引擎卡死重启入口；release 包约 24MB。</p>
+    <p class="lead"><b>v0.1.0 可信移动 IDE</b>：APK 内嵌 CPython 3.13 引擎、运行用标准库与 50+ 原生 C 扩展，安装即用；支持 arm64 手机与 x86_64 模拟器。本版把 Python 引擎移入独立进程，补齐 Git 暂存/Diff、纯 Python 包导入、文件树/预览截断提示与设置后台写；release 包约 24MB。真机交互仍需按机型人工验收，页面不冒充已跑通所有 ROM。</p>
     <div class="dl">
       <div class="card">
         <h3>GitCode Release</h3>

@@ -136,9 +136,9 @@ fun OutputPanel(
     debugging: Boolean = false,
     onDebugCommand: ((String) -> Unit)? = null,
     onDebugBreak: (() -> Unit)? = null,
-    /** 停止 8 秒后引擎仍被 NativeEngine 占用：显示「重启应用」出口 */
+    /** 停止 8 秒后引擎仍被 :engine 进程占用：显示「重启引擎」出口 */
     engineStuck: Boolean = false,
-    onRestartApp: (() -> Unit)? = null
+    onRestartEngine: (() -> Unit)? = null
 ) {
     val cs = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
@@ -274,10 +274,10 @@ fun OutputPanel(
                     )
                 }
             }
-            if (engineStuck && !running && onRestartApp != null) {
-                TextButton(onClick = onRestartApp) {
+            if (engineStuck && !running && onRestartEngine != null) {
+                TextButton(onClick = onRestartEngine) {
                     Text(
-                        "重启应用",
+                        "重启引擎",
                         style = MaterialTheme.typography.labelSmall,
                         color = cs.error
                     )

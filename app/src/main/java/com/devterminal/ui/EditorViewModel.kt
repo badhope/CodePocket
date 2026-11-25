@@ -197,6 +197,9 @@ data class UiState(
     val gitStatus: GitManager.GitStatus? = null,
     val gitBusy: Boolean = false,
     val gitLastResult: String? = null,
+    val gitDiffPath: String? = null,
+    val gitDiffText: String = "",
+    val gitDiffLoading: Boolean = false,
     // ---------- AI 助手（v0.3） ----------
     val aiMessages: List<AiClient.ChatMessage> = emptyList(),
     val aiBusy: Boolean = false,
@@ -232,6 +235,8 @@ data class UiState(
     // ---------- 实时预览（v0.5，Markdown / HTML） ----------
     /** 预览分屏是否展开（仅当前文件为 .md/.html 时可开） */
     val previewVisible: Boolean = false,
+    /** 预览输入超过 512K 字符，当前只渲染前 512K；编辑器原文未截断。 */
+    val previewTruncated: Boolean = false,
     /** 预览面板的完整 HTML 文档（防抖后由 renderPreview 刷新） */
     val previewHtml: String = "",
     // ---------- 会话恢复：光标定位（-1=无请求） ----------
@@ -316,6 +321,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         runCatching { agentApproval?.cancel() }
         runCatching { agentPlanApproval?.cancel() }
         runCatching { stopPty() }
+        runCatching { settingsStore.flushWrites() }
         terminalSession = null
         runCatching { runtimes?.release() ?: pythonEngine?.release() }
         runtimes = null
@@ -756,7 +762,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (st.engineStuck) {
             _ui.update {
                 it.copy(
-                    message = "引擎仍被卡死的 Python 调用占用，请先点输出栏「重启应用」",
+                    message = "引擎仍被卡死的 Python 调用占用，请先点输出栏「重启引擎」",
                     messageSeq = it.messageSeq + 1
                 )
             }
@@ -1020,7 +1026,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             it.output,
                             if (stuck) {
                                 "[CodePocket] 引擎未响应停止：Python 执行线程卡在不可中断的原生调用。" +
-                                    "点输出栏「重启应用」可恢复；当前文件会先保存。"
+                                    "点输出栏「重启引擎」可恢复；当前文件会先保存。"
                             } else {
                                 "[CodePocket] 引擎未响应停止，界面已强制复位。若再次运行提示" +
                                     "\"已有程序在运行中\"，说明旧进程仍在收尾，请稍候重试。"
@@ -1035,6 +1041,39 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onInputDraftChanged(text: String) {
         _ui.update { it.copy(inputDraft = text) }
+    }
+
+    /**
+     * 只重启 Python 引擎进程，不重启 App。
+     *
+     * 0.1.0 的 NativeEngine 已移入 `:engine` 进程；杀掉的只是这个子进程，
+     * 当前编辑器缓冲已先同步保存，终端/Git/Agent 都不受影响。
+     */
+    fun restartEngine() {
+        saveOnBackground()
+        val engine = activeEngine() ?: runtimes?.engineFor(LanguageRegistry.PYTHON.id) ?: run {
+            _ui.update { it.copy(message = "没有可重启的 Python 引擎", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        viewModelScope.launch {
+            _ui.update {
+                it.copy(
+                    engineStuck = false,
+                    running = false,
+                    inputVisible = false,
+                    output = appendLines(it.output, "[CodePocket] 正在重启 Python 引擎进程…")
+                )
+            }
+            withContext(Dispatchers.IO) { runCatching { engine.hardReset() } }
+            runCatching { ExecutionService.stop(context) }
+            _ui.update {
+                it.copy(
+                    output = appendLines(it.output, "[CodePocket] Python 引擎已重启；下次运行会重新预热。"),
+                    message = "引擎已重启",
+                    messageSeq = it.messageSeq + 1
+                )
+            }
+        }
     }
 
     /**
@@ -1382,7 +1421,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun renderPreview() {
         val file = _ui.value.currentFile ?: return
-        val text = _ui.value.editorText
+        val limited = com.devterminal.engine.PreviewLimiter.limit(_ui.value.editorText)
+        val text = limited.text
         val dark = _ui.value.settings.themeMode.resolvesDark(context)
         viewModelScope.launch {
             val html = withContext(Dispatchers.Default) {
@@ -1392,7 +1432,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             // 只在预览仍然打开时落地，避免快速开关后旧结果闪现
-            if (_ui.value.previewVisible) _ui.update { it.copy(previewHtml = html) }
+            if (_ui.value.previewVisible) {
+                _ui.update { it.copy(previewHtml = html, previewTruncated = limited.truncated) }
+            }
         }
     }
 
@@ -1400,6 +1442,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun updateSettings(newSettings: com.devterminal.settings.AppSettings) {
         settingsStore.save(newSettings)
         _ui.update { it.copy(settings = newSettings) }
+    }
+
+    /** App 进入后台前把敏感设置的合并写队列落盘，避免进程被系统回收时丢最后一次修改。 */
+    fun flushSettings() {
+        runCatching { settingsStore.flushWrites() }
     }
 
     /** 拖拽结束后记录输出面板高度（拖动过程走 UI 本地状态，结束才落盘） */
@@ -1794,7 +1841,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _ui.update { it.copy(gitBusy = true) }
             val result = withContext(Dispatchers.IO) {
-                git.commitAll(dir, message, s.gitUserName.ifBlank { "CodePocket" },
+                git.commitStaged(dir, message, s.gitUserName.ifBlank { "CodePocket" },
                     s.gitUserEmail.ifBlank { "dev@terminal.local" })
             }
             _ui.update { it.copy(gitBusy = false, gitLastResult = result) }
@@ -1819,6 +1866,37 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             _ui.update { it.copy(gitBusy = false, gitLastResult = result) }
             refreshTree()
         }
+    }
+
+    fun gitStage(path: String) = gitChange(path) { dir -> git.stage(dir, path) }
+
+    fun gitUnstage(path: String) = gitChange(path) { dir -> git.unstage(dir, path) }
+
+    fun gitStageAll() = gitChange(null) { dir -> git.stageAll(dir) }
+
+    private fun gitChange(path: String?, action: (File) -> String) {
+        val dir = currentProject ?: return
+        viewModelScope.launch {
+            _ui.update { it.copy(gitBusy = true) }
+            val result = withContext(Dispatchers.IO) { runCatching { action(dir) }.getOrElse { "操作失败：${it.message}" } }
+            _ui.update { it.copy(gitBusy = false, gitLastResult = result) }
+            refreshGitStatus()
+        }
+    }
+
+    fun openGitDiff(path: String) {
+        val dir = currentProject ?: return
+        _ui.update { it.copy(gitDiffPath = path, gitDiffText = "", gitDiffLoading = true) }
+        viewModelScope.launch {
+            val text = withContext(Dispatchers.IO) { git.diff(dir, path) }
+            _ui.update { cur ->
+                if (cur.gitDiffPath == path) cur.copy(gitDiffText = text, gitDiffLoading = false) else cur
+            }
+        }
+    }
+
+    fun closeGitDiff() {
+        _ui.update { it.copy(gitDiffPath = null, gitDiffText = "", gitDiffLoading = false) }
     }
 
     fun onGitConfigChanged(name: String, email: String, remote: String) {

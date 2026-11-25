@@ -197,11 +197,15 @@
 - 38 没有 Git clone：`GitManager.cloneInto` 支持 HTTPS clone，token 走 JGit 凭据提供器，不写 `.git/config`。
 - 26 NativeEngine 无法复位：**仅部分处理**。新增 `engineStuck` 检测与输出面板「重启应用」入口，保存当前文件后重拉进程；没有实现解释器进程隔离，卡在不可中断 C 调用时仍只能重启应用。
 
+### 0.1.0 已处理
+
+- 26 NativeEngine 无法复位：**真正进程隔离**。新增 `EngineHostService`（`android:process=":engine"`）与 `RemoteNativeEngine`，主进程不再加载 JNI；卡死时 `hardReset()` 只杀引擎进程，编辑器/未保存内容不受影响。协议有 `EngineRpcTest`；仍无 Android 真机运行验收。
+- 30 文件树截断 UI 提示：`FileNode.truncated` + 树顶文案，`FileTreeBuilderTest` 覆盖预算/深度/传播。
+- 32 `SettingsStore.save` 主线程同步写加密盘：敏感字段改为单线程合并后台写，`onStop`/`onCleared` flush；`SettingsStoreTest` 覆盖读回与连续保存。
+- 33 可访问性：`MonoText` 最小 11sp；`ComposeSmokeTest` 在 fontScale 2.0 下打开设置页。
+- 34 大 Markdown/HTML 预览：`PreviewLimiter` 512K 上限 + `PreviewPane` 截断提示，原文不动；`PreviewLimiterTest` 覆盖。
+- 39 UI 测试：Robolectric + Compose 冒烟覆盖文件树截断、Git Diff、大字号设置页；仍是 JVM 侧，不是 instrumentation 真机测试。
+
 ### 仍未处理
 
-- 30 文件树截断 UI 提示。
-- 32 `SettingsStore.save` 主线程同步写盘。
-- 33 9sp/10sp 可访问性与 fontScale 2.0。
-- 34 大 Markdown/HTML 预览内存上限。
-- 39 instrumentation/UI 测试与截图回归。
-- 40 ARM64 真机验收：0.0.34 的 clone/zip UI、`ProcessGroup`、`restartApp`、PTY execve 仍无 Android 运行验收。
+- 40 ARM64 真机验收：本机无 `/dev/kvm`，0.1.0 的引擎进程、Git UI、文件树/预览、wheel 导入都没有 Android 运行截图；这是唯一保留的发布前人工门禁，不伪造。

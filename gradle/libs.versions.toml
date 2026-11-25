@@ -6,6 +6,10 @@ agp = "8.7.3"
 kotlin = "2.0.21"
 coreLibraryDesugaring = "2.1.4"
 junit = "4.13.2"
+robolectric = "4.14.1"
+androidxTestCore = "1.6.1"
+androidxTestJunit = "1.2.1"
+composeUiTest = "1.7.3"
 # ===== Android SDK =====
 compileSdk = "35"
 minSdk = "24"
@@ -76,6 +80,11 @@ desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", ver
 
 # --- 单元测试 ---
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4", version.ref = "composeUiTest" }
+compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest", version.ref = "composeUiTest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -97,6 +98,14 @@ fun FileTree(
         if (root == null) {
             QuietHint("加载中…", modifier = Modifier.padding(Dimens.gutter))
         } else {
+            if (root.truncated) {
+                Text(
+                    "文件过多，仅显示前 10,000 项；完整列表请在终端查看。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cs.warning,
+                    modifier = Modifier.padding(start = Dimens.gutter, end = Dimens.gutter, bottom = Dimens.sm)
+                )
+            }
             // weight(1f)：文件树要吃掉顶栏「项目」标签之外的剩余纵向空间，
             // 否则目录一长，底部文件就被裁在抽屉外。
             // 先摊平成可见列表再交给 LazyColumn：复用同一批 item，避免递归 emit 导致

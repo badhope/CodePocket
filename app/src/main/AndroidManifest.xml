@@ -33,6 +33,11 @@
         </activity>
 
         <service
+            android:name=".engine.EngineHostService"
+            android:exported="false"
+            android:process=":engine" />
+
+        <service
             android:name=".engine.ExecutionService"
             android:exported="false"
             android:foregroundServiceType="specialUse">

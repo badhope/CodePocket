@@ -21,7 +21,7 @@ A：Android 8.0+。Python 原生运行时同时提供 ARM64 与 x86_64；x86_64 
 ## 写代码与运行
 
 **Q：`import numpy` / `pandas` 报错？**
-A：当前版本未预装第三方科学计算库。这是文档曾误导的已知问题，已如实修正。离线安装 wheel 的能力在 v1.1 路线图中。
+A：当前版本未预装第三方科学计算库。纯 Python 的 `.whl` / `.zip` 可以离线导入；但 numpy/pandas/matplotlib 的 Android wheel 依赖原生 `.so`，当前 CPython 包体不带这些 ABI 依赖，所以会被安装器在写盘前拒绝。随包预置科学计算库在 v1.1 路线图中。
 
 **Q：运行 .java 文件？**
 A：当前仅支持编辑与语法高亮，运行能力未开放（会给出明确提示）。JVM 集成在路线图中。
@@ -33,7 +33,7 @@ A：该问题已在 v1.0.0 修复（引擎注入 `__file__` 等模块属性）�
 A：设置里可调超时秒数（默认 120s）。死循环保护默认开启。
 
 **Q：点停止后提示"已有程序在运行中"？**
-A：旧进程正在收尾（通常 2~3 秒），稍候重试。若持续出现，说明脚本未响应中断（如阻塞在不可中断的系统调用），请重启 App。
+A：旧进程正在收尾（通常 2~3 秒），稍候重试。若输出栏出现「重启引擎」，点它只会杀掉并重建 `:engine` 进程，编辑器未保存内容、Git 和终端都不受影响；不要再重启整个 App。
 
 **Q：`print("a", "b")` 输出顺序错乱？**
 A：不应出现。引擎做行缓冲保证一行内输出顺序正确。如遇请提交 Issue 附复现。
@@ -70,7 +70,10 @@ A：不会。xterm.js 与页面资源都打包在 APK 的 `assets/terminal/` 里
 A：设置 → AI 助手 → 填写 OpenAI 兼容端点（Base URL / API Key / 模型名）。代码只会发送到你配置的端点，不配置则零联网。
 
 **Q：Git 支持哪些操作？**
-A：init / commit / push / pull / clone，基于 JGit，纯离线可用（push/pull/clone 需要网络与仓库凭证）。clone 只支持 HTTPS，从项目列表底部「从 Git 克隆」进入；目标目录必须不存在或为空。
+A：init / stage / unstage / stage-all / commit（只提交暂存区）/ diff / push / pull / clone，基于 JGit。点变更文件可看 Diff；未跟踪文件按全加行显示，超过 200KB 截断。clone 只支持 HTTPS，从项目列表底部「从 Git 克隆」进入；目标目录必须不存在或为空。
+
+**Q：怎么离线装第三方包？**
+A：包管理 →「导入纯 Python 包」→ 选择 `.whl` 或 `.zip`。安装器会解析 `dist-info` 的 Name/Version，拒绝 `.so/.pyd/.dll/.dylib/.wasm` 和路径穿越；失败会回滚，不会留下半包。
 
 **Q：怎么导入导出项目？**
 A：通过系统文件选择器（SAF），无需存储权限。导入/导出的是项目 zip；导入拒绝绝对路径和 `../`，限制 10,000 条目 / 单文件 48MB / 解压 256MB，导出跳过 `.git`、`build`、`node_modules` 等目录并限制 256MB。
@@ -89,7 +92,7 @@ A：Apache-2.0，代码完全开源可审查。
 A：见 [CONTRIBUTING.md](../CONTRIBUTING.md)。修 bug、写文档、提 Issue 都可以。
 
 **Q：测试报告说 11/11 通过，为什么还有 bug？**
-A：`tools/test_suite.py` 驱动的是早期 Web 原型（Pyodide 时代遗留），未覆盖原生引擎。原生引擎的自动化测试在路线图中（[ROADMAP.md](ROADMAP.md)）。
+A：`tools/test_suite.py` 驱动的是早期 Web 原型（Pyodide 时代遗留），不能代表 Android 原生引擎。0.1.0 起以 `:app:testDebugUnitTest` 的 171 个 JVM/Robolectric 测试和 `lintRelease` 为准；真机交互仍需人工验收，见 [ROADMAP.md](ROADMAP.md)。
 
 ---
 

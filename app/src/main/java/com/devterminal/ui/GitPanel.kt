@@ -1,5 +1,6 @@
 package com.devterminal.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -64,6 +65,10 @@ fun GitPanelDialog(
     onCommit: (String) -> Unit,
     onPush: () -> Unit,
     onPull: () -> Unit,
+    onStage: (String) -> Unit = {},
+    onUnstage: (String) -> Unit = {},
+    onStageAll: () -> Unit = {},
+    onDiff: (String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var commitMsg by remember { mutableStateOf("") }
@@ -147,6 +152,7 @@ fun GitPanelDialog(
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
+                                        .clickable { onDiff(c.path) }
                                         .padding(vertical = 3.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -164,6 +170,18 @@ fun GitPanelDialog(
                                         fontSize = 11,
                                         color = cs.faint
                                     )
+                                    TextButton(
+                                        onClick = { if (c.isStaged) onUnstage(c.path) else onStage(c.path) },
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                            horizontal = 6.dp, vertical = 0.dp
+                                        )
+                                    ) {
+                                        Text(
+                                            if (c.isStaged) "取消" else "暂存",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = cs.muted
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -184,19 +202,29 @@ fun GitPanelDialog(
                     horizontalArrangement = Arrangement.spacedBy(Dimens.xs)
                 ) {
                     TextButton(
+                        onClick = onStageAll,
+                        enabled = status.changes.any { !it.isStaged }
+                    ) {
+                        Text(
+                            "全部暂存",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (status.changes.any { !it.isStaged }) cs.muted else cs.faint
+                        )
+                    }
+                    TextButton(
                         onClick = { onCommit(commitMsg); commitMsg = "" },
-                        enabled = commitMsg.isNotBlank()
+                        enabled = commitMsg.isNotBlank() && status.changes.any { it.isStaged }
                     ) {
                         Icon(
                             Icons.AutoMirrored.Outlined.Undo, null,
                             Modifier.size(15.dp),
-                            tint = if (commitMsg.isNotBlank()) cs.primary else cs.faint
+                            tint = if (commitMsg.isNotBlank() && status.changes.any { it.isStaged }) cs.primary else cs.faint
                         )
                         Spacer(Modifier.size(6.dp))
                         Text(
-                            "提交",
+                            "提交暂存",
                             style = MaterialTheme.typography.labelLarge,
-                            color = if (commitMsg.isNotBlank()) cs.primary else cs.faint
+                            color = if (commitMsg.isNotBlank() && status.changes.any { it.isStaged }) cs.primary else cs.faint
                         )
                     }
                     Spacer(Modifier.weight(1f))
@@ -266,6 +294,37 @@ fun GitPanelDialog(
                     "保存配置",
                     style = MaterialTheme.typography.labelLarge,
                     color = cs.primary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 只读 Diff 审阅。QuietDialog 的正文本身可滚动，这里不再嵌套 scroll，
+ * 避免同方向滚动容器抢手势。差异文本超过 200KB 时 GitManager 已截断。
+ */
+@Composable
+fun GitDiffDialog(
+    path: String,
+    diff: String,
+    loading: Boolean,
+    onDismiss: () -> Unit
+) {
+    val cs = MaterialTheme.colorScheme
+    QuietDialog(onDismiss = onDismiss, title = "差异 · $path") {
+        if (loading) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 1.6.dp)
+                Spacer(Modifier.size(Dimens.sm))
+                Text("读取差异…", style = MaterialTheme.typography.bodySmall, color = cs.muted)
+            }
+        } else {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                MonoText(
+                    diff.ifBlank { "没有可显示的差异" },
+                    fontSize = 11,
+                    color = cs.onSurface.copy(alpha = 0.85f)
                 )
             }
         }
