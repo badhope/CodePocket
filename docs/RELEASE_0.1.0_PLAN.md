@@ -84,7 +84,7 @@
 
 ## 6. 执行结果（2026-11-25）
 
-状态：**0.1.0 代码、测试、APK、文档已完成；五仓发布待执行。**
+状态：**0.1.0 代码、测试、APK、文档、五仓 main/tag/Release 已完成；唯一未关闭项是 ARM64 真机验收。**
 
 | 门禁 | 结果 |
 |---|---|
@@ -96,5 +96,6 @@
 | lintRelease | ✅ 0 Error / 27 Warning |
 | assembleRelease | ✅ 24,327,148 B，双 ABI，16KB 对齐，签名证书 SHA-256 `1b02135746d1426d7beda47e706fdb2c77a7145ea41e0f7e14addb191b87fac5` |
 | ARM64 真机 | ❌ 无设备/模拟器；不伪造截图，保留人工门禁 |
+| 五仓发布 | ✅ GitHub origin / fork / X33834、Gitee、GitCode 的 `v0.1.0` tag、Release 与双 APK 资产均已确认 |
 
 **范围说明**：用户提出“对比同行缺什么全部补完整”。本版在“当前离线包体 + 无 JVM/Gradle 工具链”的现实约束下，补齐了 Git 审阅、包导入、引擎隔离、预览/文件树/设置写盘与大字号 UI 冒烟；Gradle/Java/Kotlin 工程构建、完整 LSP、原生 wheel ABI 仍明确不做，不能在 0.1.0 里假装支持。
