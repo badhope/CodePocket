@@ -7,6 +7,8 @@ import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Terminal
@@ -640,6 +643,41 @@ fun NewProjectDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
     }
 }
 
+/** 从 Git 远程克隆：URL 可内嵌 https token，token 不落盘。 */
+@Composable
+fun CloneProjectDialog(onDismiss: () -> Unit, onClone: (String, String) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    var url by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    QuietDialog(
+        onDismiss = onDismiss,
+        title = "从 Git 克隆",
+        confirmLabel = if (url.isNotBlank()) "克隆" else null,
+        onConfirm = if (url.isNotBlank()) { { onClone(url.trim(), name.trim()) } } else null
+    ) {
+        QuietTextField(
+            value = url,
+            onValueChange = { url = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = "https://github.com/user/repo.git"
+        )
+        Spacer(Modifier.height(Dimens.sm))
+        QuietTextField(
+            value = name,
+            onValueChange = { name = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = "项目名（留空用仓库名）"
+        )
+        Spacer(Modifier.height(Dimens.md))
+        Text(
+            "只支持 https 远程。如需认证，在地址里填写用户名与访问令牌即可。" +
+                "令牌只用于本次克隆，不写入项目配置；克隆在后台进行，大仓库请耐心等待。",
+            style = MaterialTheme.typography.labelSmall,
+            color = cs.muted
+        )
+    }
+}
+
 /** 文件操作：重命名 / 删除（删除需二次确认） */
 @Composable
 fun FileActionDialog(
@@ -752,6 +790,9 @@ fun SwitchProjectDialog(
     currentPath: String?,
     onSelect: (java.io.File) -> Unit,
     onNewProject: () -> Unit,
+    onCloneProject: () -> Unit,
+    onImportZip: () -> Unit,
+    onExportZip: () -> Unit,
     onDelete: (java.io.File) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -800,6 +841,33 @@ fun SwitchProjectDialog(
             Icon(Icons.Filled.Add, null, tint = cs.primary, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text("新建项目", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.xs)
+        ) {
+            TextButton(onClick = onCloneProject) {
+                Icon(Icons.Outlined.CloudDownload, null, tint = cs.muted,
+                    modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("从 Git 克隆", style = MaterialTheme.typography.labelMedium, color = cs.muted)
+            }
+            TextButton(onClick = onImportZip) {
+                Icon(Icons.Outlined.Folder, null, tint = cs.muted,
+                    modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("导入 ZIP", style = MaterialTheme.typography.labelMedium, color = cs.muted)
+            }
+            if (currentPath != null) {
+                TextButton(onClick = onExportZip) {
+                    Icon(Icons.Outlined.Folder, null, tint = cs.muted,
+                        modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("导出当前项目", style = MaterialTheme.typography.labelMedium, color = cs.muted)
+                }
+            }
         }
     }
 

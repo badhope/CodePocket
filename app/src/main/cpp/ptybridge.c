@@ -39,6 +39,66 @@ static jmethodID g_on_exit = NULL;
 static volatile int g_closing = 0;
 static int g_thread_started = 0;
 
+/*
+ * fork 之后子进程只能调用 async-signal-safe 函数；setenv 会 malloc，
+ * 多线程进程 fork 后可能卡在 malloc 锁上。这里在 fork 之前把 argv/envp
+ * 全部构造好，子进程只做 chdir + execve。
+ */
+extern char **environ;
+
+static int env_is_key(const char *entry, const char *key) {
+    size_t n = strlen(key);
+    return strncmp(entry, key, n) == 0 && entry[n] == '=';
+}
+
+static char **build_child_env(void) {
+    int count = 0;
+    while (environ && environ[count]) count++;
+    char **envp = (char **)calloc((size_t)count + 3, sizeof(char *));
+    if (!envp) return NULL;
+    int out = 0;
+    for (int i = 0; i < count; i++) {
+        if (env_is_key(environ[i], "TERM") || env_is_key(environ[i], "PS1")) continue;
+        envp[out] = strdup(environ[i]);
+        if (!envp[out]) {
+            for (int j = 0; j < out; j++) free(envp[j]);
+            free(envp);
+            return NULL;
+        }
+        out++;
+    }
+    envp[out++] = strdup("TERM=xterm-256color");
+    envp[out++] = strdup("PS1=\\w $ ");
+    envp[out] = NULL;
+    if (!envp[out - 2] || !envp[out - 1]) {
+        for (int j = 0; j < out; j++) free(envp[j]);
+        free(envp);
+        return NULL;
+    }
+    return envp;
+}
+
+static void free_child_env(char **envp) {
+    if (!envp) return;
+    for (int i = 0; envp[i]; i++) free(envp[i]);
+    free(envp);
+}
+
+static char **build_child_argv(const char *shell) {
+    char **argv = (char **)calloc(3, sizeof(char *));
+    if (!argv) return NULL;
+    argv[0] = strdup(shell);
+    argv[1] = strdup("-i");
+    argv[2] = NULL;
+    if (!argv[0] || !argv[1]) {
+        free(argv[0]);
+        free(argv[1]);
+        free(argv);
+        return NULL;
+    }
+    return argv;
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void)reserved;
     g_vm = vm;
@@ -133,6 +193,18 @@ Java_com_devterminal_engine_PtyBridge_nativeStart(
 
     const char *cwd_s = (*env)->GetStringUTFChars(env, cwd, NULL);
     const char *shell_s = (*env)->GetStringUTFChars(env, shell, NULL);
+    const char *shell_path = shell_s ? shell_s : "/system/bin/sh";
+    char **child_env = build_child_env();
+    char **child_argv = build_child_argv(shell_path);
+    if (!child_env || !child_argv) {
+        LOGE("build child env/argv failed");
+        free_child_env(child_env);
+        free(child_argv);
+        if (cwd_s) (*env)->ReleaseStringUTFChars(env, cwd, cwd_s);
+        if (shell_s) (*env)->ReleaseStringUTFChars(env, shell, shell_s);
+        pthread_mutex_unlock(&g_lock);
+        return -ENOMEM;
+    }
     struct winsize ws;
     memset(&ws, 0, sizeof(ws));
     ws.ws_col = (unsigned short)(cols > 0 ? cols : 80);
@@ -143,6 +215,10 @@ Java_com_devterminal_engine_PtyBridge_nativeStart(
     if (pid < 0) {
         int err = errno;
         LOGE("forkpty failed: %s", strerror(err));
+        free_child_env(child_env);
+        free(child_argv[0]);
+        free(child_argv[1]);
+        free(child_argv);
         if (cwd_s) (*env)->ReleaseStringUTFChars(env, cwd, cwd_s);
         if (shell_s) (*env)->ReleaseStringUTFChars(env, shell, shell_s);
         pthread_mutex_unlock(&g_lock);
@@ -150,14 +226,18 @@ Java_com_devterminal_engine_PtyBridge_nativeStart(
     }
 
     if (pid == 0) {
-        // 子进程：forkpty 已建立控制终端；这里只切目录并 exec 交互 shell。
+        // 子进程：forkpty 已建立控制终端；这里只做 async-signal-safe 的
+        // chdir + execve，环境变量在 fork 前已构造好，不再调用 setenv。
         if (cwd_s && chdir(cwd_s) != 0) _exit(127);
-        setenv("TERM", "xterm-256color", 1);
-        setenv("PS1", "\\w $ ", 1);
-        execl(shell_s ? shell_s : "/system/bin/sh",
-              shell_s ? shell_s : "sh", "-i", (char *)NULL);
+        execve(shell_path, child_argv, child_env);
         _exit(127);
     }
+
+    // 父进程：子进程 fork 后拥有自己的地址空间，这里可以安全释放构造的数组。
+    free_child_env(child_env);
+    free(child_argv[0]);
+    free(child_argv[1]);
+    free(child_argv);
 
     // 父进程
     g_master = master;

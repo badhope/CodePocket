@@ -107,6 +107,13 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
+### Project migration & process teardown (0.0.34)
+- **Clone from Git**: `GitManager.cloneInto` uses JGit to clone an HTTPS remote into a new project; credentials go through `UsernamePasswordCredentialsProvider` and are never written into `.git/config`, and the target must be absent or empty
+- **Project zip import/export**: stream-based zip import with Zip Slip / absolute path / Windows drive rejection, 10,000-entry, 48MB-per-file and 256MB-total caps; a single top-level folder is promoted to the project root; export skips `.git`, `build`, `node_modules` and caches and caps at 256MB
+- **Async-signal-safe PTY child**: `ptybridge.c` now builds `argv`/`envp` before `forkpty`; the child only calls `chdir` + `execve`, with no `setenv` after fork
+- **Command process groups**: `ProcessGroup` writes the shell PID to a temp file, enters a new session via `/system/bin/setsid`, and sends `SIGTERM`/`SIGKILL` to the negative PID; when `setsid` is absent it falls back to the old direct-child behavior
+- **Engine-stuck escape hatch**: if the native engine is still busy 8s after Stop, the output panel shows a **重启应用** action that saves the current file, relaunches via `AlarmManager`, then kills the process; this is recovery, not true interpreter process isolation
+
 ### Lifecycle & memory cleanup (0.0.33)
 - **ViewModel teardown**: `onCleared` cancels AI/Agent/model jobs, stops the PTY, and releases the native Python engine + RuntimeRegistry instead of leaving them alive after the Activity is reclaimed
 - **Streaming session metadata**: `AgentSessionStore.metaOf` reads a session log once line-by-line; listing 20 sessions no longer pulls multiple 16MB files into memory
@@ -116,7 +123,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 ### Packaging cleanup (0.0.32)
 - **Stale toolchain note removed**: the 441MB `usrtar.zip` instructions are gone; the app uses the bundled native CPython runtime and JGit, not the retired Termux bundle
 - **Stdlib slimmed**: CPython `test`, `idlelib` and `turtledemo` are excluded from `python-stdlib.zip`; 1740 files / 7.1MB removed, all runtime modules and 53 C extensions untouched
-- **Git wording fixed**: docs and site now say init / commit / push / pull (no clone) instead of "full Git capability"
+- **Git wording fixed**: 0.0.32 aligned docs and site to init / commit / push / pull; 0.0.34 adds HTTPS clone, so the current list is init / commit / push / pull / clone
 
 ### Data safety & lifecycle (0.0.31)
 - **No silent data loss**: with auto-save off, switching files/tabs/projects now asks Save / Discard / Cancel instead of overwriting the dirty buffer
@@ -146,8 +153,8 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 
 ### Manage projects
 - **Multi-project switching** (long-press to delete) · **4 Python templates**
-- **JGit Git integration**: init / commit / push / pull, pure Java, offline
-- **SAF import/export** (no storage permission needed)
+- **JGit Git integration**: init / commit / push / pull / clone (HTTPS), pure Java, offline where possible
+- **SAF import/export** (no storage permission needed): project zip in/out with traversal and size guards
 - **Offline package management**: inspect built-in modules / import local .whl
 
 ### See results

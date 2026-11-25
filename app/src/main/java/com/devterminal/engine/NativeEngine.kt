@@ -39,6 +39,9 @@ class NativeEngine(private val context: Context) : RunEngine {
 
     private val busy = AtomicBoolean(false)
 
+    /** UI 用它判断停止 8 秒后是否仍被不响应中断的原生调用占着。 */
+    override val isBusy: Boolean get() = busy.get()
+
     /** 解释器初始化是否完成（首次 run 前惰性初始化，耗时约 0.5~2s） */
     private val initLock = Any()
     @Volatile

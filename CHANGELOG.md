@@ -2,6 +2,33 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.34] — 2026-11-25
+
+### 新增
+
+- **从 Git 克隆**：`GitManager.cloneInto` 用 JGit 克隆 HTTPS 远程到新项目；地址中的 `user:token` 拆到 `UsernamePasswordCredentialsProvider`，克隆 URL 不含凭据，避免 token 写入 `.git/config`。目标目录必须不存在或为空，失败删除半成品。
+- **项目 zip 导入/导出**：`ProjectArchive` 流式读写 zip。导出跳过 `.git`、`build`、`dist`、`node_modules`、`__pycache__`、`.gradle`、`.idea` 与符号链接，上限 256MB；导入先落临时目录，逐条 canonical path 校验，拒绝绝对路径、`..`、Windows 盘符、空路径，限制 10,000 条目 / 单文件 48MB / 总解压 256MB，单顶层目录自动提升，重名自动加 `-1`/`-2`。
+- **项目迁移入口**：项目列表新增「从 Git 克隆」「导入 ZIP」「导出当前项目」；启动页与命令面板同步接入，导出/导入使用 SAF，不申请存储权限。
+
+### 修复
+
+- **forkpty 子进程 async-signal-safe**：`ptybridge.c` 在 `forkpty` 前构造 `argv`/`envp`，过滤旧 `TERM`/`PS1` 并追加终端环境；子进程只 `chdir` + `execve`，不再在 `pid==0` 分支调用 `setenv`。
+- **命令子进程组回收**：新增 `ProcessGroup`，用 pidfile 记录 shell PID，经 `/system/bin/setsid` 进入新会话，超时先 `SIGTERM` 负 PID，300ms 后 `SIGKILL`；`setsid` 缺失时退回直接子进程。`RunCommandTool` 与 `TerminalSession` 已接入。
+- **引擎卡死恢复入口**：`NativeEngine.isBusy` 暴露 busy；`stopRun()` 8 秒后仍占用时置 `engineStuck`，输出面板显示「重启应用」；`restartApp()` 同步保存当前文件，`AlarmManager` 约 900ms 后重新拉起再杀进程。
+
+### 边界
+
+- `engineStuck` 是恢复入口，不是解释器进程隔离；脚本卡在不可中断 C 调用时 `busy` 仍不会复位，只能重启应用。
+- `ProcessGroup` 依赖 `/system/bin/setsid` 与负 PID 信号，不同 ROM 的 SELinux/二进制差异未做真机验证。
+- 0.0.34 的 clone/zip UI、`restartApp`、PTY execve 均未取得 Android 真机/模拟器运行验收。
+
+### 构建
+
+- `versionCode 34` / `versionName 0.0.34`。
+- release APK **24,293,808 B**，SHA-256 `6d2b056a875c52a84d445e652f4d3421ea8975c278813139a4b77aa3ae8b75c6`；debug APK **43,975,164 B**，SHA-256 `8020214efa14b842086688a4a0b0779642a30e8daad0786f53c8fb39d3cd3249`。
+- JVM 单测 **144 通过 / 0 失败 / 0 错误**，lintRelease **0 Error / 22 Warning**；两包 `versionCode=34`、正式 release 证书 SHA-256 `1b02135746d1426d7beda47e706fdb2c77a7145ea41e0f7e14addb191b87fac5`，`zipalign -c -p 4` 通过。
+- release APK 解压 **55,629,297 B / 1,138 文件**；`assets/python-stdlib.zip` 4,534,942 B / 574 文件；两个 ABI 的 `libptybridge.so` 均按 16KB 页对齐。
+
 ## [0.0.33] — 2026-11-25
 
 ### 修复

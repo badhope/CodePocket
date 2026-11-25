@@ -30,12 +30,10 @@ class TerminalSession(private val root: File) {
         val shell = listOf("/system/bin/sh", "/bin/sh").firstOrNull { File(it).exists() }
             ?: return CommandResult(false, -1, "设备没有可用的 sh")
         val output = StringBuilder()
-        val process = runCatching {
-            ProcessBuilder(shell, "-c", text)
-                .directory(cwd)
-                .redirectErrorStream(true)
-                .start()
+        val handle = runCatching {
+            ProcessGroup.start(shell, text, cwd, redirectErrorStream = true)
         }.getOrElse { e -> return CommandResult(false, -1, "启动失败：${e.message}") }
+        val process = handle.process
 
         val reader = Thread {
             runCatching {
@@ -52,7 +50,7 @@ class TerminalSession(private val root: File) {
         val deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(timeoutSeconds.coerceIn(3, 60))
         while (isAlive(process) && System.currentTimeMillis() < deadline) Thread.sleep(100)
         val timedOut = isAlive(process)
-        if (timedOut) process.destroy()
+        if (timedOut) ProcessGroup.destroy(handle)
         reader.join(1000)
         val exit = if (timedOut) -1 else runCatching { process.exitValue() }.getOrDefault(-1)
         val textOut = synchronized(output) { output.toString().trimEnd().take(MAX_OUTPUT) }

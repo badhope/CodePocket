@@ -12,6 +12,14 @@ interface RunEngine {
     /** 解释器是否已就绪（预热完成或首次运行完成加载） */
     val isEnvironmentReady: Boolean
 
+    /**
+     * 是否仍有一个运行占用引擎。
+     *
+     * 纯 Java 引擎（JS/Lua）通常能及时结束；NativeEngine 对不响应中断的原生调用
+     * 可能一直保持 true。UI 用它区分「只是收尾慢」与「必须重启应用」。
+     */
+    val isBusy: Boolean get() = false
+
     /** 预热：确保运行时可用（首次可能较慢，含原生库装载与标准库解压） */
     suspend fun prepareEnvironment(onProgress: (Long, Long) -> Unit)
 

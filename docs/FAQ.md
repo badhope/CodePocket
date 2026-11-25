@@ -70,10 +70,10 @@ A：不会。xterm.js 与页面资源都打包在 APK 的 `assets/terminal/` 里
 A：设置 → AI 助手 → 填写 OpenAI 兼容端点（Base URL / API Key / 模型名）。代码只会发送到你配置的端点，不配置则零联网。
 
 **Q：Git 支持哪些操作？**
-A：init / commit / push / pull / 状态查看，基于 JGit，纯离线可用（push/pull 需要网络与仓库凭证）。
+A：init / commit / push / pull / clone，基于 JGit，纯离线可用（push/pull/clone 需要网络与仓库凭证）。clone 只支持 HTTPS，从项目列表底部「从 Git 克隆」进入；目标目录必须不存在或为空。
 
 **Q：怎么导入导出项目？**
-A：通过系统文件选择器（SAF），无需存储权限。导入 zip/文件夹，导出项目 zip。
+A：通过系统文件选择器（SAF），无需存储权限。导入/导出的是项目 zip；导入拒绝绝对路径和 `../`，限制 10,000 条目 / 单文件 48MB / 解压 256MB，导出跳过 `.git`、`build`、`node_modules` 等目录并限制 256MB。
 
 **Q：会话恢复？**
 A：App 会记住上次打开的项目与文件，重启自动回到编辑现场。

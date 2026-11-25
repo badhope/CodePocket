@@ -49,12 +49,23 @@ class ProjectManager(installer: EnvironmentInstaller) {
     fun listProjects(): List<File> =
         root.listFiles { f -> f.isDirectory }?.sortedBy { it.name } ?: emptyList()
 
+    /**
+     * 为即将创建的项目分配一个不冲突的目录。
+     *
+     * Git clone / zip 导入都先拿到目录再落盘；目录名沿用与新建项目相同的清洗规则，
+     * 但不创建目录本身，由调用方决定失败时是否清理。
+     */
+    fun allocateProjectDir(name: String): File {
+        val base = sanitize(name.ifBlank { "project" })
+        var dir = File(root, base)
+        var i = 1
+        while (dir.exists()) { dir = File(root, "$base-${i++}") }
+        return dir
+    }
+
     /** 以模板新建项目，返回项目根目录 */
     fun createFromTemplate(template: ProjectTemplate, projectName: String? = null): File {
-        val name = sanitize(projectName ?: template.id)
-        var dir = File(root, name)
-        var i = 1
-        while (dir.exists()) { dir = File(root, "$name-${i++}") }
+        val dir = allocateProjectDir(projectName ?: template.id)
         dir.mkdirs()
         template.files.forEach { (rel, content) ->
             val f = File(dir, rel)

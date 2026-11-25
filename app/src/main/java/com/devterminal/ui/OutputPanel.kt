@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -115,6 +116,7 @@ fun OutputPanel(
     onInputSend: () -> Unit,
     onClear: () -> Unit,
     onRerun: () -> Unit,
+    modifier: Modifier = Modifier,
     /** 运行中点底部「■ 停止」pill 时回调 */
     onStop: (() -> Unit)? = null,
     /** 用户在输出区点「点击输入」入口，展开 stdin 输入行并弹键盘 */
@@ -134,7 +136,9 @@ fun OutputPanel(
     debugging: Boolean = false,
     onDebugCommand: ((String) -> Unit)? = null,
     onDebugBreak: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    /** 停止 8 秒后引擎仍被 NativeEngine 占用：显示「重启应用」出口 */
+    engineStuck: Boolean = false,
+    onRestartApp: (() -> Unit)? = null
 ) {
     val cs = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
@@ -267,6 +271,15 @@ fun OutputPanel(
                         fontSize = 10,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (engineStuck && !running && onRestartApp != null) {
+                TextButton(onClick = onRestartApp) {
+                    Text(
+                        "重启应用",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = cs.error
                     )
                 }
             }

@@ -4,6 +4,14 @@
 
 ---
 
+## 已实现（v0.0.34 项目迁移与进程收尾）
+
+- ✅ Git clone：JGit 克隆 HTTPS 远程到新项目，凭据走 `UsernamePasswordCredentialsProvider`，不写入 `.git/config`；目标目录必须不存在或为空
+- ✅ 项目 zip 导入/导出：SAF 流式处理，Zip Slip / 绝对路径 / 盘符拒绝，10,000 条目 / 单文件 48MB / 总解压 256MB 上限；单顶层目录提升、重名后缀、导出排除 `.git`/`build`/`node_modules` 等
+- ✅ forkpty 子进程 async-signal-safe：fork 前构造 `argv`/`envp`，子进程只 `chdir` + `execve`
+- ✅ 命令进程组回收：`ProcessGroup` 用 `/system/bin/setsid` + pidfile + 负 PID `SIGTERM`/`SIGKILL`，setsid 缺失时退化；`RunCommandTool` 与 `TerminalSession` 接入
+- ✅ 引擎卡死恢复入口：停止 8 秒仍 busy 时输出面板显示「重启应用」，保存当前文件后重新拉起；真正解释器进程隔离仍待做
+
 ## 已实现（v0.0.33 资源收尾）
 
 - ✅ ViewModel `onCleared` 统一停止 PTY、取消后台 Job、释放 NativeEngine/RuntimeRegistry
