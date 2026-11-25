@@ -299,6 +299,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         refreshLocalModels()
     }
 
+    /**
+     * ViewModel 销毁时统一收尾：Job、PTY、原生引擎都不留给进程级单例。
+     * 之前没有 onCleared，返回桌面/系统回收 Activity 后解释器和 PTY 可能继续存活。
+     */
+    override fun onCleared() {
+        runCatching { aiJob?.cancel() }
+        runCatching { agentJob?.cancel() }
+        runCatching { modelDownloadJob?.cancel() }
+        runCatching { cursorSaveJob?.cancel() }
+        runCatching { agentApproval?.cancel() }
+        runCatching { agentPlanApproval?.cancel() }
+        runCatching { stopPty() }
+        terminalSession = null
+        runCatching { runtimes?.release() ?: pythonEngine?.release() }
+        runtimes = null
+        pythonEngine = null
+        activeEngine = null
+        super.onCleared()
+    }
+
     private fun prepareEnvironment() {
         viewModelScope.launch {
             // 原生运行时随 APK 打包，无需解压/下载；这里只做目录初始化与解释器预热。
@@ -1213,7 +1233,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * xterm 的 onData 是逐键回调；如果每个回调都 launch 一个 IO 协程，
      * 调度顺序不保证，快速输入会乱序。用单消费者队列保证严格 FIFO。
      */
-    private var ptyInputQueue = Channel<String>(Channel.UNLIMITED)
+    private var ptyInputQueue = Channel<String>(PTY_INPUT_QUEUE_CAPACITY)
     private var ptyWriterJob: Job? = null
 
     /**
@@ -1281,7 +1301,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (ptyBridge != null) return
         // 新会话前丢弃旧队列；旧 writer 在 stop 时已取消。
         ptyInputQueue.close()
-        ptyInputQueue = Channel(Channel.UNLIMITED)
+        ptyInputQueue = Channel(PTY_INPUT_QUEUE_CAPACITY)
         resetPtyReplay()
         val token = ++ptySessionToken
         _ptyRaw.tryEmit(
@@ -1345,8 +1365,25 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 把 xterm 的键盘数据写回 shell（xterm 会自动带上 \r、方向键转义等）。 */
     fun writePtyData(data: String) {
         if (!_ui.value.terminalPty) return
-        if (ptyBridge == null) return
-        ptyInputQueue.trySend(data)
+        if (ptyBridge == null || data.isEmpty()) return
+        // 单次粘贴可能有几 MB，先截断再入队；队列本身也有界，避免连发把内存拉爆。
+        val chunk = if (data.length > MAX_PTY_WRITE_CHARS) {
+            _ui.update {
+                it.copy(
+                    message = "单次终端输入超过 ${MAX_PTY_WRITE_CHARS / 1024}KB，已截断",
+                    messageSeq = it.messageSeq + 1,
+                )
+            }
+            data.take(MAX_PTY_WRITE_CHARS)
+        } else data
+        if (ptyInputQueue.trySend(chunk).isFailure) {
+            _ui.update {
+                it.copy(
+                    message = "终端输入过快，已丢弃本次按键；请稍后再试",
+                    messageSeq = it.messageSeq + 1,
+                )
+            }
+        }
     }
 
     fun resizePty(cols: Int, rows: Int) {
@@ -2387,7 +2424,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 删除项目（当前项目不可删，由 UI 层拦截） */
     fun deleteProject(dir: File) {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = runCatching { projects.deleteProject(dir) }.isSuccess
+            val ok = runCatching { projects.deleteProject(dir) }.getOrDefault(false)
             _ui.update {
                 if (ok) it.copy(message = "已删除项目 ${dir.name}", messageSeq = it.messageSeq + 1)
                 else it.copy(message = "删除项目失败：${dir.name}", messageSeq = it.messageSeq + 1)
@@ -2695,5 +2732,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         const val MAX_SHARE_CHARS = 200_000
         /** 单行输出上限，防止程序打印一个超大字符串打爆内存 */
         const val MAX_OUTPUT_LINE_CHARS = 4000
+        /** PTY 输入队列容量；键盘逐键事件不应无限排队 */
+        const val PTY_INPUT_QUEUE_CAPACITY = 256
+        /** 单次 PTY 写入上限；覆盖大段粘贴，避免一个 String 占满堆 */
+        const val MAX_PTY_WRITE_CHARS = 64 * 1024
     }
 }

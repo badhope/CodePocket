@@ -107,6 +107,12 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
+### Lifecycle & memory cleanup (0.0.33)
+- **ViewModel teardown**: `onCleared` cancels AI/Agent/model jobs, stops the PTY, and releases the native Python engine + RuntimeRegistry instead of leaving them alive after the Activity is reclaimed
+- **Streaming session metadata**: `AgentSessionStore.metaOf` reads a session log once line-by-line; listing 20 sessions no longer pulls multiple 16MB files into memory
+- **Honest delete result**: project deletion now returns `deleteRecursively()`'s Boolean, so the UI no longer reports success when the filesystem refused
+- **Bounded PTY input**: a 256-slot input queue and a 64KB per-write cap replace the unbounded channel; large pastes are truncated with a visible message
+
 ### Packaging cleanup (0.0.32)
 - **Stale toolchain note removed**: the 441MB `usrtar.zip` instructions are gone; the app uses the bundled native CPython runtime and JGit, not the retired Termux bundle
 - **Stdlib slimmed**: CPython `test`, `idlelib` and `turtledemo` are excluded from `python-stdlib.zip`; 1740 files / 7.1MB removed, all runtime modules and 53 C extensions untouched

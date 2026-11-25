@@ -78,21 +78,39 @@ class AgentSessionStore(private val dir: File) {
 
     fun delete(sessionId: String): Boolean = File(dir, "$sessionId.jsonl").delete()
 
+    /**
+     * 只流式读一遍 JSONL：首行取 meta，其余行累计事件数并找结束标记。
+     * 旧实现 useLines { it.toList() } 会把单份 16MB 日志整份读进内存，
+     * 20 份历史会话同时列出来时就是数百 MB；这里保持 O(1) 内存。
+     */
     private fun metaOf(file: File): AgentSessionMeta? {
-        val lines = runCatching { file.useLines { it.toList() } }.getOrNull() ?: return null
-        val head = lines.firstOrNull() ?: return null
-        val json = runCatching { JSONObject(head) }.getOrNull() ?: return null
-        if (json.optString("type") != "session_meta") return null
-        val finished = lines.drop(1).any {
-            it.contains("\"type\":\"session_finished\"") || it.contains("\"type\":\"failure\"")
-        }
+        var json: JSONObject? = null
+        var eventCount = 0
+        var finished = false
+        runCatching {
+            file.useLines { lines ->
+                val it = lines.iterator()
+                if (!it.hasNext()) return@useLines
+                val head = it.next()
+                val parsed = runCatching { JSONObject(head) }.getOrNull() ?: return@useLines
+                if (parsed.optString("type") != "session_meta") return@useLines
+                json = parsed
+                while (it.hasNext()) {
+                    val line = it.next()
+                    eventCount++
+                    if (line.contains("\"type\":\"session_finished\"") ||
+                        line.contains("\"type\":\"failure\"")) finished = true
+                }
+            }
+        }.getOrNull() ?: return null
+        val meta = json ?: return null
         return AgentSessionMeta(
-            id = json.optString("id"),
-            task = json.optString("task"),
-            projectPath = json.optString("project_path"),
-            startedAt = json.optLong("at"),
+            id = meta.optString("id"),
+            task = meta.optString("task"),
+            projectPath = meta.optString("project_path"),
+            startedAt = meta.optLong("at"),
             lastAt = file.lastModified(),
-            eventCount = (lines.size - 1).coerceAtLeast(0),
+            eventCount = eventCount,
             finished = finished,
         )
     }

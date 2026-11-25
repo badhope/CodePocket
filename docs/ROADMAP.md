@@ -4,8 +4,11 @@
 
 ---
 
-## 已实现（v0.0.32 包装清理）
+## 已实现（v0.0.33 资源收尾）
 
+- ✅ ViewModel `onCleared` 统一停止 PTY、取消后台 Job、释放 NativeEngine/RuntimeRegistry
+- ✅ 会话列表流式读取，单份 16MB 日志不再整份进内存；删除项目返回真实 Boolean
+- ✅ PTY 输入队列 256 容量、单次写入 64KB 上限
 - ✅ 移除旧 `usrtar.zip` 工具链说明，避免“安装包漏文件”的误解；标准库剔除 test/idlelib/turtledemo，`python-stdlib.zip` 从 11.43MB 降到 4.32MB
 - ✅ Git 文案对齐实际能力：init / commit / push / pull，不宣称 clone
 - ✅ 全局面板 edge-to-edge + IME 安全布局：标题/输入框/按钮固定，正文滚动；设置、AI、Agent、Git、搜索、终端在软键盘上方完整可见

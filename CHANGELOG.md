@@ -2,6 +2,21 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.0.33] — 2026-11-25
+
+### 修复
+
+- **ViewModel 销毁统一收尾**：补 `onCleared`，取消 AI/Agent/模型下载/光标保存 Job，停止 PTY，释放 NativeEngine 与 RuntimeRegistry；返回桌面或系统回收 Activity 后不再把解释器和终端留在进程里。
+- **会话列表不再整份读日志**：`AgentSessionStore.metaOf` 从 `useLines { it.toList() }` 改为单遍流式读取，首行取 meta、其余行累计事件数与结束标记；单份 16MB 日志不再整份进内存。
+- **删除项目返回真实结果**：`ProjectManager.deleteProject` 返回 `deleteRecursively()` 的 Boolean，UI 不再把「调用没抛异常」误判成「删干净」。
+- **PTY 输入有界**：输入队列从 `UNLIMITED` 改为 256 容量；单次写入超过 64KB 截断并提示，队列满时丢弃本次按键并提示，避免大段粘贴或连发把内存拉爆。
+
+### 构建
+
+- `versionCode 33` / `versionName 0.0.33`。
+- release APK **24,282,804 B**，SHA-256 `a7975da1fab365c347b0515f9a65c9f7b344b98d2695f8a7f7d14badbad3e23d`；debug APK **43,361,838 B**，SHA-256 `1c977b0eaa6b350e566f538562875f60a69a07821d8bdd2ad1645954dcbd8111`。
+- JVM 单测 **137 通过**，lintRelease **0 Error / 23 Warning**；两包均通过 `versionCode=33`、双 ABI 与签名证书校验。
+
 ## [0.0.32] — 2026-11-25
 
 ### 修复
