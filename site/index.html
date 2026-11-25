@@ -139,7 +139,7 @@
     <div class="badges">
       <span class="badge"><b>100%</b> 离线运行</span>
       <span class="badge"><b>Python 3.13</b> · <b>JS</b> · <b>Lua</b></span>
-      <span class="badge"><b>v0.1.1</b> 移动布局收口</span>
+      <span class="badge"><b>v0.1.2</b> 引擎连接修复</span>
       <span class="badge"><b>0</b> 广告 · 免费开源</span>
     </div>
     <div class="cta">
@@ -169,6 +169,7 @@
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-5 3 5 3M16 9l5 3-5 3M14 4l-4 16"/></svg></div>
         <h3>现代 IDE 体验</h3>
         <p>多文件 Tab、全局搜索、正则计数跳转、报错行点击直达源码、自动闭合括号、行号开关、自动换行、跳行、图片预览、双指缩放字号，还有 Git 面板、命令面板与分屏预览。</p>
+        <p><b>0.1.2 修复：</b><code>:engine</code> 冷启动 Binder 等待从 8 秒提高到 30 秒，首次准备预算提高到 180 秒，慢模拟器/低端机不再被误判成 Python 运行时损坏。x86_64 Android 15 模拟器已真实运行 <code>main.py</code>，输出 <code>Hello from CodePocket!</code> 与 <code>1^2 + ... + 10^2 = 385</code>，退出码 0；ARM64 真机仍待验收。</p>
         <p><b>0.1.1 新增：</b>顶栏在 480dp 以下或 1.3 倍字体时只留菜单/保存/运行，其余动作进「更多」；600dp 平板与矮横屏切换左右两栏；抽屉宽度按屏幕夹在 200–272dp；快捷动作改三列。0.1.0 的引擎进程隔离、Git 暂存/Diff、纯 Python 包导入继续保留；179 个 JVM/Robolectric 测试把门。</p>
         <p><b>0.0.34：</b>HTTPS Git clone、项目 zip 导入/导出、PTY 子进程 execve、命令进程组回收。</p>
         <p><b>0.0.30：</b>手机端遮挡治理：所有面板按键盘上方可用高度布局，标题/输入框/按钮固定，只有正文滚动；终端全屏自适应、按键条贴键盘；键盘不再误触发布局切换。</p>
@@ -233,7 +234,7 @@
 
   <section id="download">
     <h2>下载 APK</h2>
-    <p class="lead"><b>v0.1.1 移动布局收口</b>：APK 内嵌 CPython 3.13 引擎、运行用标准库与 50+ 原生 C 扩展，安装即用；支持 arm64 手机与 x86_64 模拟器。0.1.1 把紧凑顶栏、宽屏两栏、抽屉宽度和快捷动作列数做成明确规则；0.1.0 的引擎进程隔离、Git 暂存/Diff、纯 Python 包导入继续保留。release 包约 24MB。真机交互仍需按机型人工验收，页面不冒充已跑通所有 ROM。</p>
+    <p class="lead"><b>v0.1.2 引擎连接修复</b>：APK 内嵌 CPython 3.13 引擎、运行用标准库与 50+ 原生 C 扩展；支持 arm64 手机与 x86_64 模拟器。0.1.2 把 <code>:engine</code> 冷启动等待提高到 30 秒、首次准备提高到 180 秒，保留 0.1.1 的紧凑顶栏、宽屏两栏、抽屉宽度和快捷动作列数。release 包约 24MB。真机交互仍需按机型人工验收，页面不冒充已跑通所有 ROM。</p>
     <div class="dl">
       <div class="card">
         <h3>GitCode Release</h3>

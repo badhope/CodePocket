@@ -78,7 +78,7 @@ class RemoteNativeEngine(private val appContext: Context) : RunEngine {
             if (!ok) messenger.completeExceptionally(IllegalStateException("无法绑定 Python 引擎进程"))
         }
 
-        suspend fun await(): Messenger = withTimeout(8_000L) { messenger.await() }
+        suspend fun await(): Messenger = withTimeout(30_000L) { messenger.await() }
 
         fun send(what: Int, id: Long = 0L, payload: String? = null): Boolean {
             if (dead) return false
@@ -185,7 +185,7 @@ class RemoteNativeEngine(private val appContext: Context) : RunEngine {
             throw IllegalStateException("无法向 Python 引擎进程发送初始化请求")
         }
         try {
-            withTimeout(120_000L) { done.await() }
+            withTimeout(180_000L) { done.await() }
         } finally {
             // 超时也必须摘掉监听器，否则后续事件会写进一个没人等待的 id。
             listeners.remove(id)

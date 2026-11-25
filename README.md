@@ -106,7 +106,13 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
 
-### Mobile layout pass (0.1.1)
+### 引擎连接修复（0.1.2）
+- **慢设备绑定容错**：主进程等待 `:engine` Binder 的时间从 8 秒提高到 30 秒，冷启动慢的模拟器或低端机不再被误判成运行时损坏
+- **准备预算**：首次准备标准库解压与 C 扩展抽取的总等待提高到 180 秒，期间仍显示进度；`:engine` 独立进程边界不变
+- **真实运行证据**：x86_64 Android 15 模拟器上，准备完成后打开 `main.py` 运行，输出 `Hello from CodePocket!`，算出 `1^2 + ... + 10^2 = 385`，退出码 0
+- **未宣称**：仍无 ARM64 真机验收；TCG 模拟器耗时不当成手机性能结论
+
+### 移动布局收口（0.1.1）
 - **Compact toolbar**: below 480dp or at 1.3× font scale, the top bar keeps only menu, save and run/stop; preview, command palette and debug move into a **更多** menu so 44dp touch targets stop squeezing the filename
 - **Width-based two-pane**: 600dp tablets and short landscape phones (≥520dp wide) place output beside the editor; normal portrait phones keep the vertical stack so code height is not sacrificed
 - **Adaptive drawer**: sidebar width is clamped to 200–272dp by screen width; quick actions switch from four to three columns on narrow screens or large fonts
