@@ -88,6 +88,7 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Sora Editor** code editor + 20-language TextMate syntax highlighting (3 runnable, 17 editable)
 - **Static completion**: per-language keyword/builtin profiles + symbols from the current file (zero process overhead)
 - **Python go-to-definition**: cursor symbol → project-wide `class` / `def` / module variable, with import-aware ranking (no LSP process)
+- **Python find references (0.1.3)**: reverse text index for the symbol under the cursor; file, line:column, preview and definition tag, capped at 200 hits; explicitly not semantic, no rename
 - **Find & replace** (count & jump) · **global search** (cross-file)
 - **26-key symbol bar** · **pinch-to-zoom font size** · auto bracket closing · soft wrap · line number toggle
 - **6 editor themes** (Darcula / Monokai / Tomorrow Night Blue / Solarized…)
@@ -105,6 +106,13 @@ Three runtimes are bundled inside the APK: a natively cross-compiled CPython 3.1
 - **Python go-to-definition**: cursor symbol → project-wide definitions, import-aware ranking, file/line/signature picker
 - **Python pdb debugger**: real stdlib `pdb`; breakpoints, next/step/continue, `p locals()`, stack, quit; quick-action bar in output panel
 - **Offline by design**: no language server process, no model download, hard caps at 300 `.py` files / 512KB per file
+
+### 项目级引用查找（0.1.3）
+- **反向索引**：从光标标识符列出它在整个 Python 项目中的出现位置，和 0.0.27 的定义跳转互补；命令面板执行「查找引用」
+- **可判读的结果**：显示文件、`Lx:y`、整行预览和「定义」标记，点击直接跳到对应行；只有 `.py`，最多 200 条
+- **文本级，不冒充 LSP**：注释、字符串、同名局部变量都会计入；不解析作用域、不做类型推断、**不自动改名**
+- **离线预算不变**：最多 300 个 `.py`、单文件 512KB，不启动语言服务器进程
+- **测试**：5 个新增 JVM/Compose 用例；全量 184 tests 全绿
 
 ### 引擎连接修复（0.1.2）
 - **慢设备绑定容错**：主进程等待 `:engine` Binder 的时间从 8 秒提高到 30 秒，冷启动慢的模拟器或低端机不再被误判成运行时损坏

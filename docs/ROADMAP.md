@@ -4,6 +4,17 @@
 
 ---
 
+## 已实现（v0.1.3 项目级引用查找）
+
+- ✅ `ProjectSymbolIndex.references()`：光标标识符 → 项目内文本级出现位置；文件、行、列、整行预览、定义标记
+- ✅ 复用定义索引预算：只扫 `.py`、最多 300 个文件、单文件 512KB、最多 200 条；当前文件优先排序
+- ✅ 完整标识符边界匹配，跳过 `mycallback` / `callback_extra` 等子串；支持 Unicode 标识符
+- ✅ `ReferenceDialog` 与命令面板「查找引用」；点击结果打开文件并跳到对应行
+- ✅ 明确边界：注释、字符串、同名局部变量都会计入；不解析作用域、不做类型推断、不自动改名，不是完整 LSP
+- ⚠️ 仍无 ARM64 真机验收；本轮 UI 证据来自 x86_64 Android 15 模拟器
+
+---
+
 ## 已实现（v0.1.0 可信移动 IDE 底座）
 
 - ✅ Python 引擎独立进程：`EngineHostService` 跑在 `android:process=":engine"`，主进程只保留 Messenger 代理；卡死时只重启引擎，不再重启 App

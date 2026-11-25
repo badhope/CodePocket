@@ -1,5 +1,28 @@
 # CodePocket 更新日志
 
+## [0.1.3] — 2026-11-26
+
+项目级文本引用查找。0.0.27 解决了“从使用处跳到定义”，这一版补反向：从光标下的标识符列出它在整个 Python 项目里出现的位置。仍然是离线的 LSP-lite，不启动语言服务器，也不自动改名。
+
+### 引用查找
+
+- `ProjectSymbolIndex.references()` 返回 `Reference(path, name, line, column, preview, isDefinition)`；最多 200 条，扫 `.py` 文件上限 300 个、单文件 512KB，与定义索引共用预算。
+- 按当前文件优先、路径、行号、列号排序；完整标识符边界匹配，`mycallback` / `callback_extra` 不会误命中 `callback`。
+- 光标取词复用 `wordAt`；命令面板新增「查找引用」，非 Python 文件、光标不在标识符上、零结果都有明确提示。
+- 新增 `ReferenceDialog`：文件、`Lx:y`、整行预览、定义标记；点击结果打开文件并跳到对应行。
+- 结果明确标注“文本级”：注释、字符串、同名局部变量都会计入；不解析作用域、不做类型推断、不自动改名。
+
+### 测试与构建
+
+- 全量 JVM/Robolectric：**184 tests / 0 failures / 0 errors / 0 skipped**，45 个测试 XML。
+- `lintRelease`：**0 errors / 27 warnings**。
+- release APK 24,339,656 B；debug APK 43,457,810 B；versionCode 43 / versionName 0.1.3；签名证书与 0.1.2 相同；121 个 `.so` 全部 16KB LOAD 对齐。
+
+### 边界
+
+- 仍无 ARM64 真机验收；只有 x86_64 Android 15 模拟器的 UI 验收。
+- 不做 rename/refactor，不把文本命中当语义引用；完整 LSP、Gradle/Java/Kotlin 构建和原生 wheel ABI 仍未做。
+
 ## [0.1.2] — 2026-11-25
 
 引擎连接与慢设备启动修复。0.1.1 的真实运行暴露出：在极慢的 x86_64 软件模拟器上，`:engine` 进程冷启动超过 8 秒，主进程按旧超时判定失败，于是 Python 显示不可用；原生库、标准库和 C 扩展本身没有缺失。

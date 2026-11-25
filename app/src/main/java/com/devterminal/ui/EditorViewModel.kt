@@ -220,6 +220,10 @@ data class UiState(
     val definitionQuery: String = "",
     val definitionMatches: List<ProjectSymbolIndex.Definition> = emptyList(),
     val definitionLoading: Boolean = false,
+    // ---------- 项目级引用（v0.1.3） ----------
+    val referenceQuery: String = "",
+    val referenceMatches: List<ProjectSymbolIndex.Reference> = emptyList(),
+    val referencesLoading: Boolean = false,
     // ---------- Agent 会话恢复（v0.0.21） ----------
     val agentRecovered: Boolean = false,
     val agentSessions: List<AgentSessionMeta> = emptyList(),
@@ -2855,6 +2859,72 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         openFile(file, targetLine = definition.line)
+    }
+
+    /**
+     * 光标下的 Python 标识符 → 项目内文本级引用。
+     *
+     * 与“跳转到定义”共用同一套索引上限，不启动 LSP。
+     * 结果包含当前文件、其它文件、注释与字符串里的同名文本；
+     * 这是刻意取舍：只帮用户看清“它还出现在哪”，不承诺语义正确，也不自动改名。
+     */
+    fun findReferences(): Boolean {
+        val st = _ui.value
+        val file = st.currentFile ?: run {
+            _ui.update { it.copy(message = "先打开一个 Python 文件", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        if (file.extension.lowercase() != "py") {
+            _ui.update { it.copy(message = "当前仅支持 Python 引用查找", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        val root = currentProject ?: file.parentFile ?: return false
+        val name = ProjectSymbolIndex(LocalWorkspace(root)).wordAt(
+            st.editorText,
+            st.cursorLine,
+            st.cursorColumn,
+        ) ?: run {
+            _ui.update { it.copy(message = "光标不在标识符上", messageSeq = it.messageSeq + 1) }
+            return false
+        }
+        val relative = runCatching {
+            file.relativeTo(root).path.replace(File.separatorChar, '/')
+        }.getOrElse { file.name }
+
+        _ui.update {
+            it.copy(
+                referenceQuery = name,
+                referenceMatches = emptyList(),
+                referencesLoading = true,
+            )
+        }
+        viewModelScope.launch {
+            val refs = withContext(Dispatchers.IO) {
+                runCatching {
+                    ProjectSymbolIndex(LocalWorkspace(root)).references(name, relative)
+                }.getOrElse { emptyList() }
+            }
+            _ui.update {
+                it.copy(
+                    referencesLoading = false,
+                    referenceMatches = refs,
+                    message = if (refs.isEmpty()) "没有找到“$name”的引用" else null,
+                    messageSeq = if (refs.isEmpty()) it.messageSeq + 1 else it.messageSeq,
+                )
+            }
+        }
+        return true
+    }
+
+    /** 打开引用所在文件并定位到列（1 基行号；列仅用于提示，当前跳行即可）。 */
+    fun openReference(reference: ProjectSymbolIndex.Reference) {
+        val root = currentProject ?: _ui.value.currentFile?.parentFile ?: return
+        val file = File(root, reference.path)
+        if (!file.isFile) {
+            _ui.update { it.copy(message = "引用文件不存在：${reference.path}", messageSeq = it.messageSeq + 1) }
+            return
+        }
+        openFile(file, targetLine = reference.line)
     }
 
     // ---------- 导入 / 导出（SAF） ----------

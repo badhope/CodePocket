@@ -98,4 +98,49 @@ class ProjectSymbolIndexTest {
         assertEquals(1, matches.size)
         assertEquals("main.py", matches.first().path)
     }
+
+    @Test
+    fun `references match whole identifiers only and rank current file first`() {
+        val root = project()
+        File(root, "main.py").writeText(
+            """
+            callback()
+            mycallback()
+            callback_extra()
+            # callback in a comment
+            """.trimIndent(),
+        )
+        File(root, "utils.py").writeText("def callback():\n    pass\n")
+
+        val refs = ProjectSymbolIndex(LocalWorkspace(root)).references("callback", "main.py")
+
+        assertEquals(3, refs.size)
+        assertEquals("main.py", refs.first().path)
+        assertEquals(1, refs.first().line)
+        assertEquals(1, refs.first().column)
+        assertTrue(refs.any { it.path == "utils.py" && it.line == 1 && it.isDefinition })
+        assertTrue(refs.none { it.preview.contains("mycallback") || it.preview.contains("callback_extra") })
+    }
+
+    @Test
+    fun `references respect the limit`() {
+        val root = project()
+        File(root, "main.py").writeText("value = 1\n".repeat(20))
+
+        val refs = ProjectSymbolIndex(LocalWorkspace(root)).references("value", "main.py", limit = 5)
+
+        assertEquals(5, refs.size)
+    }
+
+    @Test
+    fun `references ignore non python files and accept unicode identifiers`() {
+        val root = project()
+        File(root, "main.py").writeText("变量 = 1\nprint(变量)\n")
+        File(root, "notes.txt").writeText("变量 = 1\n")
+
+        val refs = ProjectSymbolIndex(LocalWorkspace(root)).references("变量", "main.py")
+
+        assertEquals(2, refs.size)
+        assertTrue(refs.all { it.path == "main.py" })
+    }
 }
